@@ -68,11 +68,11 @@
   "SETTINGS-PREPROCESSING-CONTRAST": "Contrast",
 
   "DOWNLOAD-TT-NBT": "Download the nbt",
-  "DOWNLOAD-NBT": "DOWNLOAD",
+  "DOWNLOAD-NBT": "DOWNLOAD NBT",
   "DOWNLOAD-TT-NBTSPLIT": "Download the nbt split into 1x1 chunks",
   "DOWNLOAD-NBTSPLIT": "DOWNLOAD AS 1x1 SPLIT",
   "DOWNLOAD-TT-MAPDAT": "Download the map.dat split into 1x1 chunks",
-  "DOWNLOAD-MAPDAT": "DOWNLOAD",
+  "DOWNLOAD-MAPDAT": "DOWNLOAD MAPDAT",
   "DOWNLOAD-TT-PDN": "Downloads color palette for use in Paint.net",
   "DOWNLOAD-PDN": "DOWNLOAD PDN PALETTE",
   "DOWNLOAD-TT-VIEWONLINE": "View the schematic online without downloading",
