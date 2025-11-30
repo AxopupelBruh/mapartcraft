@@ -50,6 +50,9 @@ import Strings_pt_Br from "./pt-Br/strings.json";
 import Flag_ja from "./ja/flag.svg";
 import Strings_ja from "./ja/strings.json";
 
+import Flag_tr from "./tr/flag.svg";
+import Strings_tr from "./tr/strings.json";
+
 const Locale = {
   en: { strings: Strings_en, flag: Flag_en },
   ua: { strings: Strings_ua, flag: Flag_ua },
@@ -64,6 +67,7 @@ const Locale = {
   es: { strings: Strings_es, flag: Flag_es },
   "zh-Hans": { strings: Strings_zh_Hans, flag: Flag_zh_Hans },
   "zh-Hant": { strings: Strings_zh_Hant, flag: Flag_zh_Hant },
+  tr: { strings: Strings_tr, flag: Flag_tr },
   ja: { strings: Strings_ja, flag: Flag_ja },
   el: { strings: Strings_el, flag: Flag_el },
   eo: { strings: Strings_eo, flag: Flag_eo },
