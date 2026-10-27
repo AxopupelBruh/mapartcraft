@@ -1,0 +1,55 @@
+:root {
+  --rebaneGreen: #7BAE7F;
+}
+
+@import url("https://fonts.googleapis.com/css?family=Open+Sans");
+@import url("https://fonts.googleapis.com/css?family=Lato");
+
+@font-face {
+  font-family: "kenpixel_mini_square";
+  src: url("./kenpixel_mini_square.woff") format("woff");
+}
+
+html {
+  background-color: #333;
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+body {
+  font-family: Lato, Open Sans, Arial;
+  color: #fff;
+  font-size: 16px;
+  margin: auto auto;
+  padding: 1em;
+  line-height: 1.4;
+  text-align: justify;
+}
+
+a,
+a:visited {
+  color: var(--rebaneGreen);
+}
+
+[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th:first-child {
+  /* For tables in map settings to align with other settings */
+  padding-left: 0;
+}
+
+.displayNone {
+  display: none;
+}

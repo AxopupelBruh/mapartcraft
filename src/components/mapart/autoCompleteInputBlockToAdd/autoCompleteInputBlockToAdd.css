@@ -1,0 +1,25 @@
+.blockToAddSuggestions {
+  position: absolute;
+  z-index: 50;
+  margin: 0;
+  padding: 0;
+  font-family: "kenpixel_mini_square";
+  background: var(--rebaneGreen);
+  color: white;
+}
+
+.blockToAddSuggestion th {
+  font-weight: normal;
+  padding: 0.2em;
+}
+
+.blockToAddSuggestion th:first-child {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.blockToAddSuggestion:hover {
+  background-color: #609060;
+  cursor: pointer;
+}

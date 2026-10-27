@@ -1,0 +1,194 @@
+{
+  "TRANSLATION": {
+    "NAME": "French",
+    "CREDITS": "Traduction: Albatros_, YIemanja"
+  },
+  "HEAD-META-TAGS": {
+    "DESCRIPTION": "Un générateur de schematic et de map.dat pour Minecraft"
+  },
+  "FAQ": {
+    "FAQ": "FAQ",
+    "PLEASE-READ-1": "Merci de lire la ",
+    "PLEASE-READ-2": " avant de poser toutes questions!",
+    "VIDEO-TUTORIAL": "Tutoriel vidéo"
+  },
+  "DESCRIPTION": {
+    "1": "Un générateur de Mapart Minecraft: schematic et de map.dat, conçu pour être utilisable par les administrateurs de serveurs ainsi que par les joueurs en survie comme sur le serveur ",
+    "2": ", qui fonctionne sur navigateur web.",
+    "3": "Inspiré par ",
+    "4": "Redstonehelper's map art program",
+    "5": ", avec l’objectif de rendre accessible une fonctionnalité très demandée sans avoir besoin de télécharger aucun programme.",
+    "6": null,
+    "7": null
+  },
+  "BLOCK-SELECTION": {
+    "TITLE": "Sélection des blocs",
+    "PRESETS": {
+      "TITLE": "Préconfiguration",
+      "DELETE": "Supprimer",
+      "DELETE-CONFIRM": null,
+      "DELETE-ERROR-DEFAULT": "Vous ne pouvez pas supprimer le réglage par defaut",
+      "SAVE": "Sauvegarder",
+      "SAVE-PROMPT-ENTER-NAME": "Entrer un nom pour votre préconfiguration:",
+      "SHARE": "Partager",
+      "SHARE-TT": "Partager les blocs que vous avez actuellement sélectionnés en lien",
+      "SHARE-WARNING-NONE-SELECTED": "Sélectionnez des blocs avant de les partager!",
+      "SHARE-LINK": "Partager votre préconfiguration actuel avec un lien",
+      "DOWNLOAD": "Telecharger",
+      "DOWNLOAD-TT": "Télécharger la palette de couleur à utiliser sur Paint.net",
+      "DOWNLOAD-WARNING-NONE-SELECTED": "Sélectionnez des blocs avant de télécharger la palette!",
+      "DOWNLOAD-WARNING-MAX-COLOURS-1": "Attention, votre palette a ",
+      "DOWNLOAD-WARNING-MAX-COLOURS-2": " couleurs, alors que le maximum sur Paint.net est de 96. Certaines couleurs seront inaccessibles via Paint.net",
+      "IMPORT-ERROR-CORRUPTED": "Le lien preset est corrompu!",
+      "NONE": "Aucun",
+      "EVERYTHING": "Tout",
+      "CARPETS": "Carpets",
+      "GREYSCALE": "Nuance de gris",
+      "PISTON-CLEARABLE": null
+    },
+    "UNSUPPORTED-PAST": "Non supporté",
+    "ADD-CUSTOM": {
+      "TITLE": null,
+      "BLOCK-NAME": null,
+      "NEEDS-SUPPORT": null,
+      "FLAMMABLE": null,
+      "VERSIONS": null,
+      "COLOUR-SET": null,
+      "NBT-TAGS": null,
+      "ADD": null,
+      "ERROR-NONE-SELECTED": null,
+      "ERROR-NO-NAME": null,
+      "EXAMPLES": null,
+      "DELETE": "Supprimer",
+      "NO-EXPORT": null
+    }
+  },
+  "MAP-PREVIEW": {
+    "TITLE": "Aperçu de la map",
+    "BEST-RESOLUTION-TT": "Une image de cette résolution de base fonctionnera mieux",
+    "ASPECT-RATIO-MISMATCH-TT": "L'image ne correspond pas au format de la map",
+    "SCALE-MINUS-TT": "Aperçu plus petit",
+    "SCALE-PLUS-TT": "Aperçu plus grand"
+  },
+  "MAP-SETTINGS": {
+    "TITLE": "Paramètres",
+    "MODE": "Mode",
+    "MODE-TT": "choisissez votre mode",
+    "MODE-VISUAL": "Visuel",
+    "MODE-VISUAL-NA": "Visuel (non disponible)",
+    "VERSION": "Version",
+    "VERSION-TT": "Sélectionnez la version la plus proche de celle que vous utilisez",
+    "MAP-SIZE": "Taille de la map",
+    "CROP": {
+      "TITLE": "Recadrer",
+      "TITLE-TT": "Recadre votre image au lieu de l'étirer",
+      "OFF": "Off",
+      "CENTER": "Centrer",
+      "MANUAL": "Manuel",
+      "ZOOM": "Zoom"
+    },
+    "GRID-OVERLAY": "Grille",
+    "GRID-OVERLAY-TT": "Fait apparaître un calque délimitant les maps, et chunks 16x16",
+    "3D": {
+      "TITLE": "Escaliers",
+      "TITLE-TT": "Rend la map en 3D. Plus dure à construire, mais 3 fois plus de couleurs !",
+      "OFF": "Off (2D)",
+      "CLASSIC": "On (classique)",
+      "VALLEY": "On (Vallée)",
+      "FULL-DARK": null,
+      "FULL-LIGHT": null,
+      "ON": "On",
+      "ON-UNOBTAINABLE": "On (introuvables)",
+      "FULL-UNOBTAINABLE": null
+    },
+    "NBT-SPECIFIC": {
+      "WHERE-SUPPORT-BLOCKS": {
+        "TITLE": "Ajoute des blocs dessous",
+        "NONE": "Aucun blocs",
+        "IMPORTANT": "Les blocs important",
+        "ALL": "Tous les blocs",
+        "ALL-OPTIMIZED": "Tous les blocs (optimisé)",
+        "ALL-DOUBLE": "Tout en double",
+        "ALL-DOUBLE-OPTIMIZED": "Tout en double (optimisé)"
+      },
+      "SUPPORT-BLOCK-TO-ADD": "Bloc à ajouter",
+      "SUPPORT-BLOCK-TO-ADD-TT": "En rapport avec l'option précédente"
+    },
+    "MAPDAT-SPECIFIC": {
+      "UNOBTAINABLE-COLOURS": "Couleurs introuvables",
+      "UNOBTAINABLE-COLOURS-TT": "Permet map.dat d'obtenir des couleurs impossibles à obtenir avec schematics",
+      "TRANSPARENCY": "Transparence",
+      "TRANSPARENCY-TT": "Tolérance",
+      "TRANSPARENCY-TOLERANCE": "Tolérance",
+      "MAPDAT-FILENAME-USE-ID": "Nom du fichier",
+      "MAPDAT-FILENAME-USE-ID-TT": "Sauvgarde mapdats en tant que 'map_#.dat'",
+      "MAPDAT-FILENAME-ID-RANGE": "Distance"
+    },
+    "BETTER-COLOUR": "Meilleure couleur",
+    "BETTER-COLOUR-TT": "Donne une meilleure précision des couleurs",
+    "DITHERING": {
+      "TITLE": "Dithering",
+      "TITLE-TT": "Ajoute des pixels aléatoires pour une illusion de couleurs",
+      "NONE": "Rien",
+      "PROPAGATION-RED": null,
+      "PROPAGATION-GREEN": null,
+      "PROPAGATION-BLUE": null
+    },
+    "PREPROCESSING": {
+      "TITLE": "Image en cours de traitement",
+      "ENABLE": "Activé",
+      "BRIGHTNESS": "luminosité",
+      "CONTRAST": "Contraste",
+      "SATURATION": "Saturation",
+      "BACKGROUND": {
+        "TITLE": "Arrière plan",
+        "TITLE-TT": "Pour les images transparentes",
+        "OFF": "Off",
+        "DITHERED": "On (dithered)",
+        "SMOOTH": "On (lisse)"
+      },
+      "BACKGROUND-COLOUR": "Couleur"
+    },
+    "EXTRAS": {
+      "TITLE": null,
+      "MORE-STAIRCASING-OPTIONS": null,
+      "MORE-STAIRCASING-OPTIONS-TT": null
+    }
+  },
+  "DOWNLOAD": {
+    "ERROR-NONE-SELECTED": "Sélectionnez des blocs avant de télécharger!",
+    "NBT-SPECIFIC": {
+      "DOWNLOAD": "TÉLÉCHARGER",
+      "DOWNLOAD-TT": "Télécharge le fichier nbt",
+      "DOWNLOAD-SPLIT": "TÉLÉCHARGER EN SECTION 1x1",
+      "DOWNLOAD-SPLIT-TT": "Télécharge le NBT en plusieurs séction de 1x1 map"
+    },
+    "MAPDAT-SPECIFIC": {
+      "DOWNLOAD": "TELECHARGER",
+      "DOWNLOAD-TT": "Télécharger le map.dat en section de 1x1 map"
+    },
+    "ZIPPING": "Zip en cours"
+  },
+  "MATERIALS": {
+    "TITLE": "Matériaux",
+    "BLOCK": "Bloc",
+    "AMOUNT": "Quantité",
+    "PLACEHOLDER-BLOCK-TT": "Placeholder Bloc",
+    "SHOW-PER-SPLIT": "Afficher le nombres max de matériaux par section",
+    "SHOW-PER-SPLIT-TT": "Pour réutiliser les blocs une fois la carte verrouillée",
+    "REFRESH-MATERIALS": "ACTUALISER LES MATÉRIAUX",
+    "REFRESH-MATERIALS-TT": "Actualiser la liste des matériaux",
+    "COPY-CLIPBOARD": null
+  },
+  "VIEW-ONLINE": {
+    "TITLE": "Voir en ligne",
+    "TITLE-TT": "Permet de voir le schematic sans le télécharger",
+    "TOO-BIG-FOR-SINGLE": "Schematic trop volumineux; télécharger le en section 1x1",
+    "CONTROLS": "Contrôle",
+    "TO-EXIT": "Quitter",
+    "SIZE": "Taille"
+  },
+  "LITEMATICA-WARNING": "Attention, Litematica n'est pas optimisé pour la version 1.15.2; une mise à niveau vers la version 1.16.5 est recommandée",
+  "EDGE-WARNING": "Note: Microsoft Edge n’est pas compatible.\\nMerci d’utiliser Chrome (de préférence) ou Firefox pour utiliser MapartCraft",
+  "NONE": "Aucun"
+}

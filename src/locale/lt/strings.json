@@ -1,0 +1,194 @@
+{
+  "TRANSLATION": {
+    "NAME": "Lietuvių",
+    "CREDITS": "Išvertė: AdomceXD"
+  },
+  "HEAD-META-TAGS": {
+    "DESCRIPTION": "Minecraft žemėlapių meno schemų generatorius"
+  },
+  "FAQ": {
+    "FAQ": "DUK",
+    "PLEASE-READ-1": "Prašome perskaityti ",
+    "PLEASE-READ-2": " prieš užduodami bet kokius klausimus!",
+    "VIDEO-TUTORIAL": "Vaizdo pamoka"
+  },
+  "DESCRIPTION": {
+    "1": "Minecraft žemėlapio schemų ir map.dat generatorius, sukurtas taip, kad būtų įmanomas tiek serverių administratoriams, tiek išlikimo žaidėjams tokiuose serveriuose kaip ",
+    "2": ", veikianis jūsų naršyklėje.",
+    "3": "Įkvėptas ",
+    "4": "Redstonehelper žemėlapių meno programa",
+    "5": ", siekiant pridėti labai pageidaujamų funkcijų ir pašalinti būtinybę atsisiųsti programą.",
+    "6": null,
+    "7": null
+  },
+  "BLOCK-SELECTION": {
+    "TITLE": "Bloko pasirinkimas",
+    "PRESETS": {
+      "TITLE": "Išankstiniai nustatymai",
+      "DELETE": "Ištrinti",
+      "DELETE-CONFIRM": "Ar norite ištrinti šį išankstinį nustatymą:",
+      "DELETE-ERROR-DEFAULT": "Tai numatytasis išankstinis nustatymas, kurio negalima redaguoti ir (arba) ištrinti.",
+      "SAVE": "Išsaugoti",
+      "SAVE-PROMPT-ENTER-NAME": "Įveskite išankstinio nustatymo pavadinimą:",
+      "SHARE": "Dalintis",
+      "SHARE-TT": "bendrinti šiuo metu pasirinktus blokus kaip nuorodą",
+      "SHARE-WARNING-NONE-SELECTED": "Pasirinkite blokus prieš juos bendrindami!",
+      "SHARE-LINK": "Nukopijuokite šią nuorodą, norėdami bendrinti šiuo metu pasirinktus blokus",
+      "DOWNLOAD": "Eksportuoti paletę",
+      "DOWNLOAD-TT": "Atsisiunčiama spalvų paletė, skirta naudoti Paint.NET",
+      "DOWNLOAD-WARNING-NONE-SELECTED": "Pasirinkite blokus prieš atsisiunčiant paletę!",
+      "DOWNLOAD-WARNING-MAX-COLOURS-1": "Įspėjimas, jūsų paletėje yra ",
+      "DOWNLOAD-WARNING-MAX-COLOURS-2": " spalvų, o Paint.NET programoje - 96. Kai kurios spalvos bus neprieinamos Paint.NET",
+      "IMPORT-ERROR-CORRUPTED": "Išankstinių nustatymų nuoroda sugadinta!",
+      "NONE": "Nėra",
+      "EVERYTHING": "Viskas",
+      "CARPETS": "Kilimai",
+      "GREYSCALE": "Pilka skalė",
+      "PISTON-CLEARABLE": null
+    },
+    "UNSUPPORTED-PAST": "Nepalaikoma praeitis",
+    "ADD-CUSTOM": {
+      "TITLE": "Pridėti pasirinktinį",
+      "BLOCK-NAME": "Bloko pavadinimas",
+      "NEEDS-SUPPORT": "Reikia pagalbos",
+      "FLAMMABLE": "Degus",
+      "VERSIONS": "Versijos",
+      "COLOUR-SET": "Spalvų rinkinys",
+      "NBT-TAGS": "NBT Žymos",
+      "ADD": "Pridėti",
+      "ERROR-NONE-SELECTED": "Prieš pridėdami pasirinkite versiją (-as)",
+      "ERROR-NO-NAME": "Prieš pridėdami įveskite bloko pavadinimą",
+      "EXAMPLES": "Pavyzdžiai",
+      "DELETE": "Trinti",
+      "NO-EXPORT": "Pastaba: pasirinktiniai blokai nebus eksportuojami."
+    }
+  },
+  "MAP-PREVIEW": {
+    "TITLE": "Žemėlapio peržiūra",
+    "BEST-RESOLUTION-TT": "Vaizdo šaltinis su šia raiška veiks geriausiai",
+    "ASPECT-RATIO-MISMATCH-TT": "Vaizdas neatitinka žemėlapio kraštinių santykio",
+    "SCALE-MINUS-TT": "Mažinti peržiūrą",
+    "SCALE-PLUS-TT": "Didinti peržiūrą"
+  },
+  "MAP-SETTINGS": {
+    "TITLE": "Nustatymai",
+    "MODE": "Režimas",
+    "MODE-TT": "Pasirinkite režimą, kuriame norite veikti",
+    "MODE-VISUAL": "Vizualinis",
+    "MODE-VISUAL-NA": "Vizualinis (nepasiekiamas)",
+    "VERSION": "Versija",
+    "VERSION-TT": "Pasirinkite versiją, kuri yra artimiausia jūsų naudojama",
+    "MAP-SIZE": "Žemėlapio dydis",
+    "CROP": {
+      "TITLE": "Apkarpymas",
+      "TITLE-TT": "Apkarpo jūsų vaizdą, vietoj jo ištempimo",
+      "OFF": "Išjungta",
+      "CENTER": "Centras",
+      "MANUAL": "Rankinis",
+      "ZOOM": "Priartinimas"
+    },
+    "GRID-OVERLAY": "Tinklelis",
+    "GRID-OVERLAY-TT": "Uždengia tinkleliu, kuris rodo 16x16 gabalus ir 1x1 dalis",
+    "3D": {
+      "TITLE": "Laiptai",
+      "TITLE-TT": "Padaro žemėlapį 3D. Sudėtingiau pastatyti, bet turėsite tris kartus daugiau spalvų!",
+      "OFF": "Išjungta (2D)",
+      "CLASSIC": "Įjungta (Klasikinis)",
+      "VALLEY": "Įjungta (Slėnis)",
+      "FULL-DARK": "Visiškai Tamsu",
+      "FULL-LIGHT": "Visiškai Šviesu",
+      "ON": "Įjungta",
+      "ON-UNOBTAINABLE": "Įjungta (Nepasiekiama)",
+      "FULL-UNOBTAINABLE": "Visiškai Nepasiekiama"
+    },
+    "NBT-SPECIFIC": {
+      "WHERE-SUPPORT-BLOCKS": {
+        "TITLE": "Pridėti blokus po",
+        "NONE": "Nėra blokų",
+        "IMPORTANT": "Svarbūs blokai",
+        "ALL": "Visi blokai",
+        "ALL-OPTIMIZED": "Visi blokai (optimizuoti)",
+        "ALL-DOUBLE": "Visi dvigubi",
+        "ALL-DOUBLE-OPTIMIZED": "Visi dvigubi (optimizuoti)"
+      },
+      "SUPPORT-BLOCK-TO-ADD": "Pridėti bloką",
+      "SUPPORT-BLOCK-TO-ADD-TT": "Susijęs su ankstesniu pasirinkimu"
+    },
+    "MAPDAT-SPECIFIC": {
+      "UNOBTAINABLE-COLOURS": "Nepasiekiamos spalvos",
+      "UNOBTAINABLE-COLOURS-TT": "Įjungia map.dat spalvas, kurių negalima gauti schemose",
+      "TRANSPARENCY": "Permatomumas",
+      "TRANSPARENCY-TT": "Įjungia permatomumą map.dat",
+      "TRANSPARENCY-TOLERANCE": "Paklaida",
+      "MAPDAT-FILENAME-USE-ID": "Skaitmeninis Failo Pavadinimas",
+      "MAPDAT-FILENAME-USE-ID-TT": "Išsaugoti map.dat kaip 'map_#.dat'",
+      "MAPDAT-FILENAME-ID-RANGE": "Diapazonas"
+    },
+    "BETTER-COLOUR": "Geresnė spalva",
+    "BETTER-COLOUR-TT": "Suteikia geresnį spalvų tikslumą",
+    "DITHERING": {
+      "TITLE": "Diteris",
+      "TITLE-TT": "Prideda atsitiktinius taškus, kad sukurtų daugiau spalvų iliuziją",
+      "NONE": "Nėra",
+      "PROPAGATION-RED": null,
+      "PROPAGATION-GREEN": null,
+      "PROPAGATION-BLUE": null
+    },
+    "PREPROCESSING": {
+      "TITLE": "Vaizdo paruošimas",
+      "ENABLE": "Įjungti",
+      "BRIGHTNESS": "Ryškumas",
+      "CONTRAST": "Kontrastas",
+      "SATURATION": "Sotumas",
+      "BACKGROUND": {
+        "TITLE": "Fonas",
+        "TITLE-TT": "Vaizdams su permatomumu",
+        "OFF": "Išjungta",
+        "DITHERED": "Įjungta (dithered)",
+        "SMOOTH": "Įjungta (sklandžiai)"
+      },
+      "BACKGROUND-COLOUR": "Spalva"
+    },
+    "EXTRAS": {
+      "TITLE": "Papildomi nustatymai",
+      "MORE-STAIRCASING-OPTIONS": "Daugiau Laiptų Parinkčių",
+      "MORE-STAIRCASING-OPTIONS-TT": "Visiškai Tamsu, Visiškai Šviesu ir Visiškai Nepasiekiama parinktys"
+    }
+  },
+  "DOWNLOAD": {
+    "ERROR-NONE-SELECTED": "Pasirinkite blokus prieš atsisiųsdami!",
+    "NBT-SPECIFIC": {
+      "DOWNLOAD": "Atsisiųsti NBT",
+      "DOWNLOAD-TT": "Atsisiųsti nbt",
+      "DOWNLOAD-SPLIT": "Atsisiųsti kaip 1x1 dalis",
+      "DOWNLOAD-SPLIT-TT": "Atsisiųsti nbt padalinta į 1x1 gabalus"
+    },
+    "MAPDAT-SPECIFIC": {
+      "DOWNLOAD": "Atsisiųsti MAPDAT",
+      "DOWNLOAD-TT": "Atsisiųsti map.dat padalinta į 1x1 gabalus"
+    },
+    "ZIPPING": "Kompresuojama"
+  },
+  "MATERIALS": {
+    "TITLE": "Medžiagos",
+    "BLOCK": "Blokas",
+    "AMOUNT": "Kiekis",
+    "PLACEHOLDER-BLOCK-TT": "Pakeitimo Blokas",
+    "SHOW-PER-SPLIT": "Rodyti tik maksimalias medžiagas per dalį",
+    "SHOW-PER-SPLIT-TT": "Medžiagų pakartotiniam naudojimui su užrakintais žemėlapiais",
+    "REFRESH-MATERIALS": "ATNAUJINTI MEDŽIAGAS",
+    "REFRESH-MATERIALS-TT": "Atnaujinti medžiagų sąrašą",
+    "COPY-CLIPBOARD": null
+  },
+  "VIEW-ONLINE": {
+    "TITLE": "PERŽIŪRĖTI INTERNETU",
+    "TITLE-TT": "Peržiūrėti schemą internetu be atsisiuntimo",
+    "TOO-BIG-FOR-SINGLE": "Per didelis vienai schemai; atsisiųskite 1x1 dalis",
+    "CONTROLS": "Valdymas",
+    "TO-EXIT": "Norėdami išeiti",
+    "SIZE": "Dydis"
+  },
+  "LITEMATICA-WARNING": "Įspėjimas, Litematica ne taip gerai palaiko 1.15.2; rekomenduojama atsinaujinti į 1.16.5",
+  "EDGE-WARNING": "Pastaba: naudojant MapartCraft su Microsoft Edge naršykle nepalaikoma.\\nPrašome naudoti Chrome (rekomenduojama) arba Firefox",
+  "NONE": "Nėra"
+}
