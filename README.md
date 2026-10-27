@@ -103,14 +103,14 @@ Run `npm run build`. The output in `build/` can be served by any static host. Th
 
 ### GitHub Pages
 
-The repository includes `.github/workflows/main.yml`, which builds the app and publishes `build/` through GitHub Pages. The route paths are restored on deep links by `public/404.html`.
+The site is published from the `gh-pages` branch. The source stays on `main`; `deploy.sh` builds the app and force-pushes only the generated files to `gh-pages`. Route paths are restored on deep links by `public/404.html`.
 
-1. Create a public repository on GitHub and push this source to its `main` branch.
-2. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **GitHub Actions**.
-3. Push to `main`, or run the **Deploy to GitHub Pages** workflow manually from the **Actions** tab.
+1. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **Deploy from a branch**.
+2. Choose the `gh-pages` branch and the `/ (root)` folder.
+3. Run `./deploy.sh` after changes.
 4. Open `https://<user>.github.io/<repository>/` after the deployment finishes.
 
-Do not upload the local `build/` directory; the workflow creates a fresh build with `npm ci` and `npm run build`.
+The generated files are not committed to `main`; `npm run build` output is deployed to `gh-pages` by the script.
 
 ## Credits and license
 
