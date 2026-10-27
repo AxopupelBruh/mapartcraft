@@ -9,7 +9,7 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 
 import WorkerBuilder from './workers/worker-builder';
 import NBTWorker from "./workers/nbt";
-import { canvasToBlob, exportArtFolder, pixelsToCanvas, sanitizeFilename } from "../../studioStorage";
+import { canvasToBlob, exportArtZip, pixelsToCanvas, sanitizeFilename } from "../../studioStorage";
 
 import "./greenButtons.css";
 
@@ -180,7 +180,7 @@ class GreenButtons extends Component {
     try {
       const canvas = pixelsToCanvas(currentMaterialsData.pixelsData, width, height);
       const pngBlob = await canvasToBlob(canvas, "image/png");
-      const result = await exportArtFolder({
+      const result = await exportArtZip({
         artName,
         litematicFiles,
         pngBlob,
@@ -189,25 +189,17 @@ class GreenButtons extends Component {
       this.setState({
         buttonWidth_Litematic: 1,
         litematicExportInProgress: false,
-        litematicStatus:
-          result.mode === "folder"
-            ? `${this.t("STUDIO/EXPORT-SAVED", "Saved: ")}Arts&litematic/${result.folderName}`
-            : `ZIP: ${result.folderName}.zip`,
+        litematicStatus: `ZIP: ${result.filename}`,
       });
     } catch (error) {
-      const cancelled = error && error.name === "AbortError";
-      if (!cancelled) console.error("Could not export litematic folder", error);
+      console.error("Could not export .litematic + PNG", error);
       this.setState({
         buttonWidth_Litematic: 1,
         litematicExportInProgress: false,
-        litematicStatus: cancelled
-          ? this.t("STUDIO/EXPORT-CANCELLED", "Export cancelled")
-          : this.t("STUDIO/EXPORT-ERROR", "Export failed"),
+        litematicStatus: this.t("STUDIO/EXPORT-ERROR", "Export failed"),
       });
-      if (!cancelled) {
-        const message = `${this.t("STUDIO/EXPORT-FAILED", "Could not save .litematic + PNG: ")}${error.message || error}`;
-        window.alert(message);
-      }
+      const message = `${this.t("STUDIO/EXPORT-FAILED", "Could not export .litematic + PNG: ")}${error.message || error}`;
+      window.alert(message);
     }
   };
 
@@ -443,7 +435,7 @@ class GreenButtons extends Component {
             </div>
           </Tooltip>
           <br />
-          <Tooltip tooltipText={this.t("STUDIO/LITEMATIC-TT", "Save .litematic and PNG into Arts&litematic")}>
+          <Tooltip tooltipText={this.t("STUDIO/LITEMATIC-TT", "Download .litematic and PNG as a ZIP archive")}>
             <div className="greenButton greenButton_wide" onClick={this.onGetLitematicClicked}>
               <span className="greenButton_text_dummy">{this.t("STUDIO/LITEMATIC-BUTTON", "Download .litematic + PNG")}</span>
               <span className="greenButton_text">{this.t("STUDIO/LITEMATIC-BUTTON", "Download .litematic + PNG")}</span>

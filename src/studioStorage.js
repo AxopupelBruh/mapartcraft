@@ -1,13 +1,12 @@
 /*
  * Local-first persistence for MapartCraft Local Studio.
- * Settings live in localStorage; the export folder handle lives in IndexedDB.
- * Nothing is uploaded anywhere.
+ * Settings live in localStorage; the current editing session lives in
+ * IndexedDB. Exports are ordinary ZIP downloads. Nothing is uploaded anywhere.
  */
 
 const SETTINGS_KEY = "mapartcraft_studio_settings_v1";
 const DB_NAME = "mapartcraft-studio";
-const DB_VERSION = 2;
-const HANDLES_STORE = "handles";
+const DB_VERSION = 3;
 const SESSION_STORE = "session";
 
 export function loadSettings() {
@@ -37,8 +36,10 @@ export function openStudioDB() {
     const request = window.indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains(HANDLES_STORE)) {
-        db.createObjectStore(HANDLES_STORE, { keyPath: "key" });
+      // Folder exports were removed. Clean up the old handle store without
+      // touching the single recovery session.
+      if (db.objectStoreNames.contains("handles")) {
+        db.deleteObjectStore("handles");
       }
       if (!db.objectStoreNames.contains(SESSION_STORE)) {
         db.createObjectStore(SESSION_STORE, { keyPath: "id" });
@@ -88,22 +89,6 @@ export async function clearSession() {
   db.close();
 }
 
-export async function saveFolderHandle(handle) {
-  const db = await openStudioDB();
-  const tx = db.transaction(HANDLES_STORE, "readwrite");
-  tx.objectStore(HANDLES_STORE).put({ key: "exportFolder", handle });
-  await transactionDone(tx);
-  db.close();
-}
-
-export async function getFolderHandle() {
-  const db = await openStudioDB();
-  const tx = db.transaction(HANDLES_STORE, "readonly");
-  const record = await requestToPromise(tx.objectStore(HANDLES_STORE).get("exportFolder"));
-  db.close();
-  return record ? record.handle : null;
-}
-
 export function sanitizeFilename(name, fallback = "MyArt") {
   const cleaned = String(name || "")
     .replace(/[\\/:*?"<>|]+/g, "-")
@@ -143,104 +128,23 @@ export function pixelsToCanvas(pixelsData, width, height) {
   return canvas;
 }
 
-export async function verifyFolderPermission(handle, readWrite = true) {
-  if (!handle?.queryPermission) return false;
-  const options = { mode: readWrite ? "readwrite" : "read" };
-  if ((await handle.queryPermission(options)) === "granted") return true;
-  if ((await handle.requestPermission(options)) === "granted") return true;
-  return false;
-}
-
-export async function getOrPickExportFolder() {
-  if (typeof window.showDirectoryPicker !== "function") return null;
-
-  // A stored handle can become stale (folder moved/deleted) or lose its
-  // permission. Neither case should prevent exporting: ignore the handle and
-  // ask the user for a folder again.
-  try {
-    const existing = await getFolderHandle();
-    if (existing && (await verifyFolderPermission(existing, true))) return existing;
-  } catch (error) {
-    console.warn("Could not restore the export folder handle", error);
-  }
-
-  // Cancelling the picker is not the same as the API being unavailable.
-  // Let the export UI report that nothing was written instead of silently
-  // downloading a ZIP the user did not ask for.
-  const picked = await window.showDirectoryPicker({ mode: "readwrite" });
-
-  // Saving the handle is a convenience for the next export. Some browsers
-  // cannot structured-clone it (or block IndexedDB in private mode), so a
-  // failure here must not discard the folder the user just chose.
-  try {
-    await saveFolderHandle(picked);
-  } catch (error) {
-    console.warn("Could not remember the export folder handle", error);
-  }
-  return picked;
-}
-
-export async function uniqueDirectoryName(rootHandle, requestedName) {
-  const base = sanitizeFilename(requestedName);
-  for (let i = 1; i <= 999; i++) {
-    const candidate = i === 1 ? base : `${base} (${i})`;
-    try {
-      await rootHandle.getDirectoryHandle(candidate, { create: false });
-    } catch (error) {
-      return candidate;
-    }
-  }
-  return `${base} (${Date.now()})`;
-}
-
-async function writeBytesToDirectory(directory, filename, bytes) {
-  const fileHandle = await directory.getFileHandle(filename, { create: true });
-  const writable = await fileHandle.createWritable();
-  await writable.write(bytes);
-  await writable.close();
-}
-
 /**
- * Write one art folder:
- *   Arts&litematic/Name/Name.litematic
- *   Arts&litematic/Name/Name.png
- * If the directory picker is unavailable, download a ZIP with the same layout.
+ * Download one shared ZIP containing the .litematic files and PNG preview.
+ * The files are placed at the ZIP root, so extracting it leaves them directly
+ * in the Downloads folder without an extra art folder.
  */
-export async function exportArtFolder({ artName, litematicFiles, pngBlob, pngName }) {
-  const rootHandle = await getOrPickExportFolder();
-  const folderName = await (async () => {
-    if (rootHandle) return uniqueDirectoryName(rootHandle, artName);
-    return sanitizeFilename(artName);
-  })();
-
-  if (rootHandle) {
-    try {
-      const directory = await rootHandle.getDirectoryHandle(folderName, { create: true });
-      for (const file of litematicFiles) {
-        await writeBytesToDirectory(directory, file.name, file.bytes);
-      }
-      if (pngBlob) {
-        await writeBytesToDirectory(directory, pngName || `${folderName}.png`, pngBlob);
-      }
-      return { mode: "folder", folderName };
-    } catch (error) {
-      // Permission can be revoked between picking and writing, or a handle
-      // restored from IndexedDB can point at a folder that no longer exists.
-      // Keep the export usable by falling through to the ZIP fallback.
-      console.warn("Could not write the export folder; using ZIP instead", error);
-    }
-  }
-
+export async function exportArtZip({ artName, litematicFiles, pngBlob, pngName }) {
+  const baseName = sanitizeFilename(artName);
   const JSZip = (await import("jszip")).default;
   const zip = new JSZip();
-  const folder = zip.folder(folderName);
   for (const file of litematicFiles) {
-    folder.file(file.name, file.bytes);
+    zip.file(file.name, file.bytes);
   }
   if (pngBlob) {
-    folder.file(pngName || `${folderName}.png`, pngBlob);
+    zip.file(pngName || `${baseName}.png`, pngBlob);
   }
   const blob = await zip.generateAsync({ type: "blob" });
-  downloadBlob(blob, `${folderName}.zip`);
-  return { mode: "zip", folderName };
+  const filename = `${baseName}.zip`;
+  downloadBlob(blob, filename);
+  return { filename };
 }

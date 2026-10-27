@@ -229,15 +229,13 @@
   "SESSION-ERROR": "Session save failed",
   "RESET-SESSION": "Reset session",
   "RESET-SESSION-CONFIRM": "Reset the current session? The uploaded image and manual edits will be removed.",
-  "EXPORT-SAVED": "Saved: ",
-  "EXPORT-CANCELLED": "Export cancelled",
   "EXPORT-ERROR": "Export failed",
-  "EXPORT-FAILED": "Could not save .litematic + PNG: ",
+  "EXPORT-FAILED": "Could not export .litematic + PNG: ",
   "WAIT-PREVIEW": "Wait for the preview first.",
   "NO-BLOCKS": "No blocks selected.",
   "PREPARING-LITEMATIC": "Preparing .litematic...",
   "LITEMATIC-BUTTON": "Download .litematic + PNG",
-  "LITEMATIC-TT": "Save .litematic and PNG into Arts&litematic"
+  "LITEMATIC-TT": "Download .litematic and PNG as a ZIP archive"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Pixel editor",
