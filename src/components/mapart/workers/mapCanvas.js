@@ -32,12 +32,15 @@ var optionValue_cleanup_edges = 60;
 var optionValue_cleanup_despeckle = 0;
 var optionValue_cleanup_paletteIslands = true;
 var optionValue_cleanup_colours = 0;
+var optionValue_cleanup_coloursPerceptual = false;
+var optionValue_cleanup_islandsSmart = false;
 var optionValue_cleanup_adaptiveDither = true;
 var optionValue_style;
 var pixelEdits;
 var hasPixelEdits = false;
 var hasMaskEdits = false;
 var sourceImageData = null;
+var cleanupProtectionMask = null;
 
 var colourSetsToUse = []; // colourSetIds and shades to use in map
 var exactColourCache = new Map(); // for mapping RGB that exactly matches in coloursJSON to colourSetId and tone
@@ -620,6 +623,7 @@ function cleanupDenoise(radius, strength, preserveEdges) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
       if (original[i + 3] < 128) continue;
+      if (cleanupProtectionMask && cleanupProtectionMask[y * width + x]) continue;
       let n = 0;
       for (let dy = -radius; dy <= radius; dy++) {
         const ny = y + dy;
@@ -666,6 +670,7 @@ function cleanupDespeckle(size) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
       if (original[i + 3] < 128) continue;
+      if (cleanupProtectionMask && cleanupProtectionMask[y * width + x]) continue;
 
       // Do not eat one-pixel lines: if the pixel has matching neighbours on
       // both sides of an axis or diagonal, it is detail rather than an island.
@@ -727,7 +732,13 @@ function cleanupDespeckle(size) {
       original[i] = savedR;
       original[i + 1] = savedG;
       original[i + 2] = savedB;
-      if (centerSupport <= size && medianSupport >= Math.max(6, Math.ceil(n * 0.55))) {
+      let protectDetail = false;
+      if (optionValue_cleanup_islandsSmart) {
+        const centerLuminance = 0.299 * savedR + 0.587 * savedG + 0.114 * savedB;
+        const medianLuminance = 0.299 * mr + 0.587 * mg + 0.114 * mb;
+        protectDetail = Math.abs(centerLuminance - medianLuminance) > 70 || (centerLuminance > 215 && medianLuminance < 190);
+      }
+      if (!protectDetail && centerSupport <= size && medianSupport >= Math.max(6, Math.ceil(n * 0.55))) {
         data[medianPixel] = mr;
         data[medianPixel + 1] = mg;
         data[medianPixel + 2] = mb;
@@ -849,6 +860,162 @@ function cleanupSimplifyColours(targetCount) {
   for (let pixel = 0; pixel < pixelCount; pixel++) {
     const bin = binOf[pixel];
     if (bin === 65535) continue;
+    if (cleanupProtectionMask && cleanupProtectionMask[pixel]) continue;
+    const i = pixel * 4;
+    data[i] = mapR[bin];
+    data[i + 1] = mapG[bin];
+    data[i + 2] = mapB[bin];
+  }
+}
+
+function cleanupSimplifyColoursPerceptual(targetCount) {
+  const target = Math.max(2, Math.round(targetCount));
+  const data = canvasImageData.data;
+  const width = optionValue_mapSize_x * 128;
+  const height = optionValue_mapSize_y * 128;
+  const pixelCount = width * height;
+  const histogramCount = new Uint32Array(32768);
+  const histogramR = new Uint32Array(32768);
+  const histogramG = new Uint32Array(32768);
+  const histogramB = new Uint32Array(32768);
+  const binOf = new Uint16Array(pixelCount);
+  let opaqueCount = 0;
+
+  for (let pixel = 0; pixel < pixelCount; pixel++) {
+    const i = pixel * 4;
+    if (data[i + 3] < 128) {
+      binOf[pixel] = 65535;
+      continue;
+    }
+    const bin = ((data[i] >> 3) << 10) | ((data[i + 1] >> 3) << 5) | (data[i + 2] >> 3);
+    binOf[pixel] = bin;
+    histogramCount[bin]++;
+    histogramR[bin] += data[i];
+    histogramG[bin] += data[i + 1];
+    histogramB[bin] += data[i + 2];
+    opaqueCount++;
+  }
+
+  const bins = [];
+  for (let bin = 0; bin < 32768; bin++) {
+    if (histogramCount[bin] === 0) continue;
+    const count = histogramCount[bin];
+    const red = histogramR[bin] / count;
+    const green = histogramG[bin] / count;
+    const blue = histogramB[bin] / count;
+    const lab = rgb2lab50([red, green, blue]);
+    bins.push({ bin, count, rSum: histogramR[bin], gSum: histogramG[bin], bSum: histogramB[bin], lab });
+  }
+  if (bins.length <= target) return;
+
+  // Keep small but saturated accents (eyes, sparks, tiny details) instead of
+  // letting a large flat box absorb them.
+  const accentCandidates = bins
+    .filter((item) => item.count <= Math.max(2, opaqueCount * 0.0025) && Math.hypot(item.lab[1], item.lab[2]) >= 18)
+    .sort(
+      (a, b) =>
+        Math.hypot(b.lab[1], b.lab[2]) * Math.log2(b.count + 2) -
+        Math.hypot(a.lab[1], a.lab[2]) * Math.log2(a.count + 2)
+    );
+  const accentBudget = Math.max(1, Math.round(target * 0.15));
+  const accents = [];
+  for (const candidate of accentCandidates) {
+    if (accents.length >= accentBudget) break;
+    if (
+      accents.every(
+        (accent) =>
+          Math.abs(accent.lab[0] - candidate.lab[0]) +
+            Math.abs(accent.lab[1] - candidate.lab[1]) +
+            Math.abs(accent.lab[2] - candidate.lab[2]) >
+          24
+      )
+    ) {
+      accents.push(candidate);
+    }
+  }
+  const accentBins = new Set(accents.map((accent) => accent.bin));
+  const normalBins = bins.filter((item) => !accentBins.has(item.bin));
+  let boxes = normalBins.length ? [normalBins] : [];
+  const normalTarget = Math.max(1, target - accents.length);
+
+  while (boxes.length < normalTarget) {
+    let bestIndex = -1;
+    let bestChannel = 0;
+    let bestScore = -1;
+    for (let i = 0; i < boxes.length; i++) {
+      const box = boxes[i];
+      if (box.length < 2) continue;
+      let minL = 100, maxL = 0, minA = 0, maxA = 0, minB = 0, maxB = 0;
+      let count = 0;
+      for (const item of box) {
+        minL = Math.min(minL, item.lab[0]); maxL = Math.max(maxL, item.lab[0]);
+        minA = Math.min(minA, item.lab[1]); maxA = Math.max(maxA, item.lab[1]);
+        minB = Math.min(minB, item.lab[2]); maxB = Math.max(maxB, item.lab[2]);
+        count += item.count;
+      }
+      const ranges = [maxL - minL, maxA - minA, maxB - minB];
+      const channel = ranges[0] >= ranges[1] && ranges[0] >= ranges[2] ? 0 : ranges[1] >= ranges[2] ? 1 : 2;
+      const score = ranges[channel] * Math.log2(count + 2);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+        bestChannel = channel;
+      }
+    }
+    if (bestIndex < 0 || bestScore <= 0) break;
+
+    const box = boxes[bestIndex];
+    box.sort((a, b) => a.lab[bestChannel] - b.lab[bestChannel]);
+    let total = 0;
+    for (const item of box) total += item.count;
+    let accumulated = 0;
+    let split = 0;
+    for (let i = 0; i < box.length - 1; i++) {
+      accumulated += box[i].count;
+      if (accumulated >= total / 2) {
+        split = i + 1;
+        break;
+      }
+    }
+    if (split <= 0) split = Math.ceil(box.length / 2);
+    if (split >= box.length) split = box.length - 1;
+    boxes.splice(bestIndex, 1, box.slice(0, split), box.slice(split));
+  }
+
+  const mapR = new Uint8Array(32768);
+  const mapG = new Uint8Array(32768);
+  const mapB = new Uint8Array(32768);
+  for (const box of boxes) {
+    let count = 0, sumR = 0, sumG = 0, sumB = 0;
+    for (const item of box) {
+      count += item.count;
+      sumR += item.rSum;
+      sumG += item.gSum;
+      sumB += item.bSum;
+    }
+    if (!count) continue;
+    const r = Math.round(sumR / count);
+    const g = Math.round(sumG / count);
+    const b = Math.round(sumB / count);
+    for (const item of box) {
+      mapR[item.bin] = r;
+      mapG[item.bin] = g;
+      mapB[item.bin] = b;
+    }
+  }
+  for (const accent of accents) {
+    const r = Math.round(accent.rSum / accent.count);
+    const g = Math.round(accent.gSum / accent.count);
+    const b = Math.round(accent.bSum / accent.count);
+    mapR[accent.bin] = r;
+    mapG[accent.bin] = g;
+    mapB[accent.bin] = b;
+  }
+
+  for (let pixel = 0; pixel < pixelCount; pixel++) {
+    const bin = binOf[pixel];
+    if (bin === 65535) continue;
+    if (cleanupProtectionMask && cleanupProtectionMask[pixel]) continue;
     const i = pixel * 4;
     data[i] = mapR[bin];
     data[i + 1] = mapG[bin];
@@ -910,6 +1077,62 @@ function cleanupBuildEdgeMask() {
   return mask;
 }
 
+function buildSerpentineEdgeMask() {
+  const data = canvasImageData.data;
+  const width = optionValue_mapSize_x * 128;
+  const height = optionValue_mapSize_y * 128;
+  const mask = new Uint8Array(width * height);
+  const threshold = 56;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const pixel = y * width + x;
+      const i = pixel * 4;
+      if (data[i + 3] < 128) continue;
+      let diff = 0;
+      const left = x > 0 ? i - 4 : -1;
+      const right = x + 1 < width ? i + 4 : -1;
+      const up = y > 0 ? i - width * 4 : -1;
+      const down = y + 1 < height ? i + width * 4 : -1;
+      for (const j of [left, right, up, down]) {
+        if (j < 0 || data[j + 3] < 128) continue;
+        diff = Math.max(
+          diff,
+          Math.abs(data[i] - data[j]),
+          Math.abs(data[i + 1] - data[j + 1]),
+          Math.abs(data[i + 2] - data[j + 2])
+        );
+      }
+      if (diff >= threshold) mask[pixel] = 1;
+    }
+  }
+  return mask;
+}
+
+function diffuseSerpentineError(x, y, direction, quantError, matrix, strength, edgeMask) {
+  const data = canvasImageData.data;
+  const width = optionValue_mapSize_x * 128;
+  const height = optionValue_mapSize_y * 128;
+  // Do not carry error away from strong edges; this keeps line art crisp.
+  if (edgeMask[y * width + x]) return;
+  for (let row = 0; row < matrix.length; row++) {
+    const ny = y + row;
+    if (ny >= height) continue;
+    for (let column = 0; column < matrix[row].length; column++) {
+      const weight = matrix[row][column];
+      if (!weight) continue;
+      const nx = x + (column - 2) * direction;
+      if (nx < 0 || nx >= width) continue;
+      const neighborPixel = ny * width + nx;
+      if (edgeMask[neighborPixel]) continue;
+      const neighborIndex = neighborPixel * 4;
+      if (data[neighborIndex + 3] < 128) continue;
+      data[neighborIndex] += quantError[0] * weight * strength;
+      data[neighborIndex + 1] += quantError[1] * weight * strength;
+      data[neighborIndex + 2] += quantError[2] * weight * strength;
+    }
+  }
+}
+
 function cleanupBilateral(radius, strength, preserveEdges) {
   const data = canvasImageData.data;
   const width = optionValue_mapSize_x * 128;
@@ -924,6 +1147,7 @@ function cleanupBilateral(radius, strength, preserveEdges) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
       if (original[i + 3] < 128) continue;
+      if (cleanupProtectionMask && cleanupProtectionMask[y * width + x]) continue;
       let sumR = 0, sumG = 0, sumB = 0, weightSum = 0;
       for (let dy = -radius; dy <= radius; dy++) {
         const ny = y + dy;
@@ -962,6 +1186,7 @@ function cleanupGuided(radius, strength, preserveEdges) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4;
       if (original[i + 3] < 128) continue;
+      if (cleanupProtectionMask && cleanupProtectionMask[y * width + x]) continue;
       let sumR = 0, sumG = 0, sumB = 0;
       let sumR2 = 0, sumG2 = 0, sumB2 = 0;
       let n = 0;
@@ -1007,7 +1232,10 @@ function cleanupApply() {
     else if (optionValue_cleanup_denoiseMethod === "guided") cleanupGuided(radius, denoise, preserveEdges);
     else cleanupDenoise(radius, denoise, preserveEdges);
   }
-  if (optionValue_cleanup_colours > 0) cleanupSimplifyColours(optionValue_cleanup_colours);
+  if (optionValue_cleanup_colours > 0) {
+    if (optionValue_cleanup_coloursPerceptual) cleanupSimplifyColoursPerceptual(optionValue_cleanup_colours);
+    else cleanupSimplifyColours(optionValue_cleanup_colours);
+  }
   if (optionValue_cleanup_despeckle > 0) cleanupDespeckle(optionValue_cleanup_despeckle);
   if (optionValue_cleanup_adaptiveDither && optionValue_dithering !== DitherMethods.None.uniqueId) {
     return cleanupBuildEdgeMask();
@@ -1113,6 +1341,128 @@ function cleanupPaletteIslands(size) {
   return changed;
 }
 
+function cleanupSmartPaletteIslands(size) {
+  const data = canvasImageData.data;
+  const width = optionValue_mapSize_x * 128;
+  const height = optionValue_mapSize_y * 128;
+  const visited = new Uint8Array(width * height);
+  const queue = new Int32Array(128 * 128);
+  let changed = false;
+
+  for (let mapY = 0; mapY < optionValue_mapSize_y; mapY++) {
+    for (let mapX = 0; mapX < optionValue_mapSize_x; mapX++) {
+      const baseX = mapX * 128;
+      const baseY = mapY * 128;
+      for (let localY = 0; localY < 128; localY++) {
+        for (let localX = 0; localX < 128; localX++) {
+          const gx = baseX + localX;
+          const gy = baseY + localY;
+          const start = gy * width + gx;
+          if (visited[start]) continue;
+          const startOffset = start * 4;
+          if (data[startOffset + 3] < 128) continue;
+          const key = (data[startOffset] << 16) | (data[startOffset + 1] << 8) | data[startOffset + 2];
+          let head = 0;
+          let tail = 0;
+          let hasEdits = false;
+          let minX = localX;
+          let maxX = localX;
+          let minY = localY;
+          let maxY = localY;
+          let luminanceSum = 0;
+          const boundary = new Map();
+          queue[tail++] = start;
+          visited[start] = 1;
+          while (head < tail) {
+            const pixel = queue[head++];
+            const px = pixel % width;
+            const py = (pixel - px) / width;
+            if (pixelEdits[pixel] !== undefined) hasEdits = true;
+            luminanceSum +=
+              0.299 * data[pixel * 4] + 0.587 * data[pixel * 4 + 1] + 0.114 * data[pixel * 4 + 2];
+            const lx = px - baseX;
+            const ly = py - baseY;
+            if (lx < minX) minX = lx;
+            if (lx > maxX) maxX = lx;
+            if (ly < minY) minY = ly;
+            if (ly > maxY) maxY = ly;
+            for (let dy = -1; dy <= 1; dy++) {
+              const ny = ly + dy;
+              if (ny < 0 || ny >= 128) continue;
+              for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue;
+                const nx = lx + dx;
+                if (nx < 0 || nx >= 128) continue;
+                const neighbor = (baseY + ny) * width + baseX + nx;
+                const neighborOffset = neighbor * 4;
+                if (data[neighborOffset + 3] < 128) continue;
+                const neighborKey =
+                  (data[neighborOffset] << 16) | (data[neighborOffset + 1] << 8) | data[neighborOffset + 2];
+                if (neighborKey === key) {
+                  if (!visited[neighbor]) {
+                    visited[neighbor] = 1;
+                    queue[tail++] = neighbor;
+                  }
+                } else if (boundary.has(neighborKey)) {
+                  boundary.set(neighborKey, boundary.get(neighborKey) + 1);
+                } else {
+                  boundary.set(neighborKey, 1);
+                }
+              }
+            }
+          }
+          if (hasEdits || tail > size || boundary.size === 0) continue;
+
+          // Shape: only compact blobs are palette noise; thin lines and
+          // diagonals have a low bounding-box fill ratio.
+          const boxWidth = maxX - minX + 1;
+          const boxHeight = maxY - minY + 1;
+          if (tail / (boxWidth * boxHeight) < 0.34) continue;
+
+          let replacementKey = 0;
+          let replacementCount = -1;
+          let boundaryTotal = 0;
+          for (const [candidate, count] of boundary.entries()) {
+            boundaryTotal += count;
+            if (count > replacementCount) {
+              replacementKey = candidate;
+              replacementCount = count;
+            }
+          }
+          // Connectivity: the replacement must surround the island on most
+          // sides rather than being a single adjacent pixel.
+          if (replacementCount < boundaryTotal * 0.7) continue;
+
+          const rr = (replacementKey >> 16) & 255;
+          const gg = (replacementKey >> 8) & 255;
+          const bb = replacementKey & 255;
+          const cr = (key >> 16) & 255;
+          const cg = (key >> 8) & 255;
+          const cb = key & 255;
+          const colourDistance = Math.abs(cr - rr) + Math.abs(cg - gg) + Math.abs(cb - bb);
+          const contrastLimit = 60 + (100 - optionValue_cleanup_edges) * 0.7;
+          if (colourDistance > contrastLimit) continue;
+
+          const islandLuminance = luminanceSum / tail;
+          const replacementLuminance = 0.299 * rr + 0.587 * gg + 0.114 * bb;
+          // Protect specular highlights, eyes and other deliberate accents.
+          if (Math.abs(islandLuminance - replacementLuminance) > 70) continue;
+          if (tail <= 2 && islandLuminance > 200) continue;
+
+          for (let i = 0; i < tail; i++) {
+            const offset = queue[i] * 4;
+            data[offset] = rr;
+            data[offset + 1] = gg;
+            data[offset + 2] = bb;
+          }
+          changed = true;
+        }
+      }
+    }
+  }
+  return changed;
+}
+
 function recomputeMaterialCounts() {
   for (const row of maps) {
     for (const map of row) {
@@ -1145,6 +1495,19 @@ function recomputeMaterialCounts() {
 
 function getMapartImageDataAndMaterials() {
   if (hasMaskEdits) sourceImageData = new Uint8ClampedArray(canvasImageData.data);
+  cleanupProtectionMask = null;
+  if (hasPixelEdits) {
+    const width = optionValue_mapSize_x * 128;
+    const height = optionValue_mapSize_y * 128;
+    const pixelCount = width * height;
+    for (const [index, value] of Object.entries(pixelEdits)) {
+      if (value !== "protect") continue;
+      const pixel = parseInt(index, 10);
+      if (!Number.isInteger(pixel) || pixel < 0 || pixel >= pixelCount) continue;
+      if (!cleanupProtectionMask) cleanupProtectionMask = new Uint8Array(pixelCount);
+      cleanupProtectionMask[pixel] = 1;
+    }
+  }
   const edgeMask = cleanupApply();
 
   for (let y = 0; y < optionValue_mapSize_y; y++) {
@@ -1183,6 +1546,7 @@ function getMapartImageDataAndMaterials() {
       DitherMethods.FloydSteinberg.uniqueId,
       DitherMethods.FloydSteinberg_20.uniqueId,
       DitherMethods.FloydSteinberg_24.uniqueId,
+      DitherMethods.FloydSteinbergEdge.uniqueId,
       DitherMethods.Atkinson.uniqueId,
       DitherMethods.Atkinson_6.uniqueId,
       DitherMethods.Atkinson_10.uniqueId,
@@ -1202,24 +1566,31 @@ function getMapartImageDataAndMaterials() {
     ditherMatrix = ditherMatrix.map((row) => row.map((weight) => weight / divisor));
   }
   const multimapWidth = optionValue_mapSize_x * 128;
+  const pixelCount = canvasImageData.data.length / 4;
+  const isSerpentine = chosenDitherMethod.uniqueId === DitherMethods.FloydSteinbergEdge.uniqueId;
+  const serpentineEdgeMask = isSerpentine ? buildSerpentineEdgeMask() : null;
   const ditherStrength = Math.max(0, optionValue_dithering_strength) / 100.0;
   const ditherStrengthMultiplier = ditherStrength;
   const ditheringPropagationRed = optionValue_dithering_propagation_red / 100.0;
   const ditheringPropagationGreen = optionValue_dithering_propagation_green / 100.0;
   const ditheringPropagationBlue = optionValue_dithering_propagation_blue / 100.0;
   let lastProgressPercent = -1;
-  for (let i = 0; i < canvasImageData.data.length; i += 4) {
+  for (let order = 0; order < pixelCount; order++) {
+    const row = Math.floor(order / multimapWidth);
+    const columnInRow = order - row * multimapWidth;
+    const multimap_x = isSerpentine && row % 2 === 1 ? multimapWidth - 1 - columnInRow : columnInRow;
+    const multimap_y = row;
+    const serpentineDirection = isSerpentine && row % 2 === 1 ? -1 : 1;
+    const i = (multimap_y * multimapWidth + multimap_x) * 4;
     const indexR = i;
     const indexG = i + 1;
     const indexB = i + 2;
     const indexA = i + 3;
 
-    const multimap_x = (i / 4) % multimapWidth;
-    const multimap_y = (i / 4 - multimap_x) / multimapWidth;
     const whichMap_x = Math.floor(multimap_x / 128);
     const whichMap_y = Math.floor(multimap_y / 128);
     const individualMap_y = multimap_y % 128;
-    if (multimap_x === 0) {
+    if (columnInRow === 0) {
       const progress = multimap_y / (128 * optionValue_mapSize_y);
       const progressPercent = Math.floor(progress * 100);
       if (progressPercent !== lastProgressPercent) {
@@ -1234,7 +1605,8 @@ function getMapartImageDataAndMaterials() {
     let closestColourSetIdAndTone;
     const editedValue = hasPixelEdits ? pixelEdits[i / 4] : null;
     const editedIsMask = editedValue === "mask";
-    const editedRGB = editedValue && !editedIsMask ? hexToRGB(editedValue) : null;
+    const editedIsProtect = editedValue === "protect";
+    const editedRGB = editedValue && !editedIsMask && !editedIsProtect ? hexToRGB(editedValue) : null;
     if (editedIsMask) {
       // A mask pins the pixel to the closest single tone of its original
       // source colour, so it stays clean without overriding the source hue.
@@ -1336,6 +1708,7 @@ function getMapartImageDataAndMaterials() {
         case DitherMethods.FloydSteinberg.uniqueId:
         case DitherMethods.FloydSteinberg_20.uniqueId:
         case DitherMethods.FloydSteinberg_24.uniqueId:
+        case DitherMethods.FloydSteinbergEdge.uniqueId:
         case DitherMethods.Atkinson.uniqueId:
         case DitherMethods.Atkinson_6.uniqueId:
         case DitherMethods.Atkinson_10.uniqueId:
@@ -1362,6 +1735,17 @@ function getMapartImageDataAndMaterials() {
             ((oldPixel[2] - closestColour[2]) * ditheringPropagationBlue) * ditherStrengthMultiplier
           ];
 
+          if (isSerpentine) {
+            diffuseSerpentineError(
+              multimap_x,
+              multimap_y,
+              serpentineDirection,
+              quant_error,
+              ditherMatrix,
+              ditherStrengthMultiplier,
+              serpentineEdgeMask
+            );
+          } else {
           try {
             // ditherMatrix [0][0...2] should always be zero, and can thus be skipped
             if (multimap_x + 1 < multimapWidth) {
@@ -1440,6 +1824,7 @@ function getMapartImageDataAndMaterials() {
             }
           } catch (e) {
             console.log(e); // ???
+          }
           }
           break;
         }
@@ -1621,7 +2006,10 @@ function getMapartImageDataAndMaterials() {
   }
 
   if (optionValue_cleanup_enabled && optionValue_cleanup_despeckle > 0 && optionValue_cleanup_paletteIslands) {
-    if (cleanupPaletteIslands(optionValue_cleanup_despeckle)) {
+    const islandsChanged = optionValue_cleanup_islandsSmart
+      ? cleanupSmartPaletteIslands(optionValue_cleanup_despeckle)
+      : cleanupPaletteIslands(optionValue_cleanup_despeckle);
+    if (islandsChanged) {
       recomputeMaterialCounts();
     }
   }
@@ -1658,6 +2046,8 @@ onmessage = (e) => {
   optionValue_cleanup_despeckle = e.data.body.optionValue_cleanup_despeckle || 0;
   optionValue_cleanup_paletteIslands = e.data.body.optionValue_cleanup_paletteIslands !== false;
   optionValue_cleanup_colours = e.data.body.optionValue_cleanup_colours || 0;
+  optionValue_cleanup_coloursPerceptual = !!e.data.body.optionValue_cleanup_coloursPerceptual;
+  optionValue_cleanup_islandsSmart = !!e.data.body.optionValue_cleanup_islandsSmart;
   optionValue_cleanup_adaptiveDither = e.data.body.optionValue_cleanup_adaptiveDither !== false;
   optionValue_style = e.data.body.optionValue_style;
   pixelEdits = e.data.body.pixelEdits || {};

@@ -75,6 +75,10 @@ class MapSettings extends Component {
       onOptionChange_PreProcessingBackgroundColourSelect,
       preProcessingValue_backgroundColour,
       onOptionChange_PreProcessingBackgroundColour,
+      preProcessingValue_gamma,
+      onOptionChange_PreProcessingGamma,
+      preProcessingValue_autoLevels,
+      onOptionChange_PreProcessingAutoLevels,
       optionValue_extras_moreStaircasingOptions,
       onOptionChange_extras_moreStaircasingOptions,
     } = this.props;
@@ -695,6 +699,61 @@ class MapSettings extends Component {
         </td>
       </tr>
     );
+    const setting_preprocessing_gamma = (
+      <tr>
+        <th>
+          <Tooltip tooltipText={getLocaleString("MAP-SETTINGS/PREPROCESSING/GAMMA-TT")}>
+            <b>
+              {getLocaleString("MAP-SETTINGS/PREPROCESSING/GAMMA")}
+              {":"}
+            </b>
+          </Tooltip>{" "}
+        </th>
+        <td>
+          <input
+            type="range"
+            min="50"
+            max="200"
+            value={preProcessingValue_gamma}
+            onChange={(e) => onOptionChange_PreProcessingGamma(parseInt(e.target.value))}
+            disabled={!optionValue_preprocessingEnabled}
+          />
+        </td>
+        <td>
+          <BufferedNumberInput
+            min="50"
+            max="200"
+            step="1"
+            value={preProcessingValue_gamma}
+            validators={[(t) => !isNaN(t), (t) => t >= 50, (t) => t <= 200]}
+            onValidInput={onOptionChange_PreProcessingGamma}
+            disabled={!optionValue_preprocessingEnabled}
+            style={{ width: "3em" }}
+          />
+        </td>
+      </tr>
+    );
+    const setting_preprocessing_autoLevels = (
+      <tr>
+        <th>
+          <Tooltip tooltipText={getLocaleString("MAP-SETTINGS/PREPROCESSING/AUTO-LEVELS-TT")}>
+            <b>
+              {getLocaleString("MAP-SETTINGS/PREPROCESSING/AUTO-LEVELS")}
+              {":"}
+            </b>
+          </Tooltip>{" "}
+        </th>
+        <td>
+          <input
+            type="checkbox"
+            checked={preProcessingValue_autoLevels}
+            onChange={onOptionChange_PreProcessingAutoLevels}
+            disabled={!optionValue_preprocessingEnabled}
+          />
+        </td>
+        <td />
+      </tr>
+    );
     const setting_preprocessing_background = (
       <tr>
         <th>
@@ -749,6 +808,8 @@ class MapSettings extends Component {
                 {setting_preprocessing_brightness}
                 {setting_preprocessing_contrast}
                 {setting_preprocessing_saturation}
+                {setting_preprocessing_gamma}
+                {setting_preprocessing_autoLevels}
                 {setting_preprocessing_background}
                 {setting_preprocessing_backgroundColour}
               </tbody>

@@ -150,6 +150,19 @@
   accent-color: var(--rebaneGreen);
 }
 
+.studioResizeSelect select {
+  border: 1px solid #777;
+  background-color: #333;
+  color: #fff;
+  padding: 0.12em 0.25em;
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: 0.9em;
+}
+
+.studioCheck input:disabled {
+  opacity: 0.45;
+}
+
 .studioScaleHint {
   color: var(--rebaneGreen);
   font-family: Lato, Open Sans, Arial, sans-serif;

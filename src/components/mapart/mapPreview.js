@@ -16,6 +16,7 @@ import IMG_Textures from "../../images/textures.png";
 import IMG_GridOverlay from "../../images/gridOverlay.png";
 
 import { detectPixelScale } from "./pixelPerfect";
+import { resizeLanczos } from "./imageResample";
 
 import "./mapPreview.css";
 
@@ -24,6 +25,7 @@ const EDITOR_TOOLS = [
   ["erase", "PIXEL-EDITOR/TOOL-ERASER", "Eraser", "E"],
   ["pick", "PIXEL-EDITOR/TOOL-PICK", "Eyedropper", "I"],
   ["mask", "PIXEL-EDITOR/TOOL-MASK", "Mask", "M"],
+  ["protect", "PIXEL-EDITOR/TOOL-PROTECT", "Protect", "P"],
   ["fill", "PIXEL-EDITOR/TOOL-FILL", "Fill", "F"],
   ["line", "PIXEL-EDITOR/TOOL-LINE", "Line", "L"],
   ["rect", "PIXEL-EDITOR/TOOL-RECT", "Rectangle", "U"],
@@ -39,6 +41,7 @@ const EDITOR_TOOL_KEYS = {
   e: "erase",
   i: "pick",
   m: "mask",
+  p: "protect",
   f: "fill",
   l: "line",
   u: "rect",
@@ -134,6 +137,9 @@ class MapPreview extends Component {
       prevProps.preProcessingValue_saturation === newProps.preProcessingValue_saturation,
       prevProps.preProcessingValue_backgroundColourSelect === newProps.preProcessingValue_backgroundColourSelect,
       prevProps.preProcessingValue_backgroundColour === newProps.preProcessingValue_backgroundColour,
+      prevProps.preProcessingValue_gamma === newProps.preProcessingValue_gamma,
+      prevProps.preProcessingValue_autoLevels === newProps.preProcessingValue_autoLevels,
+      prevProps.optionValue_resizeMethod === newProps.optionValue_resizeMethod,
       prevProps.optionValue_pixelPerfect === newProps.optionValue_pixelPerfect,
       prevProps.optionValue_autoDetectPixelScale === newProps.optionValue_autoDetectPixelScale,
       prevProps.uploadedImage === newProps.uploadedImage,
@@ -177,6 +183,8 @@ class MapPreview extends Component {
       prevProps.optionValue_cleanup_despeckle === newProps.optionValue_cleanup_despeckle,
       prevProps.optionValue_cleanup_paletteIslands === newProps.optionValue_cleanup_paletteIslands,
       prevProps.optionValue_cleanup_colours === newProps.optionValue_cleanup_colours,
+      prevProps.optionValue_cleanup_coloursPerceptual === newProps.optionValue_cleanup_coloursPerceptual,
+      prevProps.optionValue_cleanup_islandsSmart === newProps.optionValue_cleanup_islandsSmart,
       prevProps.optionValue_cleanup_adaptiveDither === newProps.optionValue_cleanup_adaptiveDither,
       prevProps.optionValue_preprocessingEnabled === newProps.optionValue_preprocessingEnabled,
       prevProps.preProcessingValue_brightness === newProps.preProcessingValue_brightness,
@@ -184,6 +192,9 @@ class MapPreview extends Component {
       prevProps.preProcessingValue_saturation === newProps.preProcessingValue_saturation,
       prevProps.preProcessingValue_backgroundColourSelect === newProps.preProcessingValue_backgroundColourSelect,
       prevProps.preProcessingValue_backgroundColour === newProps.preProcessingValue_backgroundColour,
+      prevProps.preProcessingValue_gamma === newProps.preProcessingValue_gamma,
+      prevProps.preProcessingValue_autoLevels === newProps.preProcessingValue_autoLevels,
+      prevProps.optionValue_resizeMethod === newProps.optionValue_resizeMethod,
       prevProps.optionValue_pixelPerfect === newProps.optionValue_pixelPerfect,
       prevProps.optionValue_autoDetectPixelScale === newProps.optionValue_autoDetectPixelScale,
       prevProps.optionValue_style === newProps.optionValue_style,
@@ -219,6 +230,7 @@ class MapPreview extends Component {
     }
     if (prevProps.pixelEdits !== this.props.pixelEdits) {
       this.editorMap = { ...(this.props.pixelEdits || {}) };
+      this.drawEditorSelection();
     }
     if (prevState.editorEnabled !== this.state.editorEnabled) {
       this.drawEditorSelection();
@@ -333,6 +345,15 @@ class MapPreview extends Component {
     if (!canvas) return;
     const context = canvas.getContext("2d");
     context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = "rgba(96, 165, 250, 0.45)";
+    for (const [index, value] of Object.entries(this.editorMap || {})) {
+      if (value !== "protect") continue;
+      const pixel = parseInt(index, 10);
+      if (!Number.isInteger(pixel) || pixel < 0 || pixel >= canvas.width * canvas.height) continue;
+      const x = pixel % canvas.width;
+      const y = (pixel - x) / canvas.width;
+      context.fillRect(x, y, 1, 1);
+    }
     const selection = this.state.editorSelection;
     if (!selection) return;
     context.fillStyle = "rgba(123, 174, 127, 0.18)";
@@ -865,11 +886,14 @@ class MapPreview extends Component {
     this.editorMap = { ...nextMap };
     this.clearEditorOverlay();
     if (this.props.onPixelEditsChange) this.props.onPixelEditsChange({ ...nextMap });
-    this.setState({
-      editorHistoryDepth: this.editorUndo.length,
-      editorRedoDepth: 0,
-      editorStatus,
-    });
+    this.setState(
+      {
+        editorHistoryDepth: this.editorUndo.length,
+        editorRedoDepth: 0,
+        editorStatus,
+      },
+      this.drawEditorSelection
+    );
   };
 
   closestSmoothColourTo(colourHex) {
@@ -900,6 +924,159 @@ class MapPreview extends Component {
     return `#${colourRGB_return.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
   }
 
+  getSourceRect(sourceWidth, sourceHeight, mapSizeX, mapSizeY, cropImage, zoom, percentX, percentY) {
+    if (cropImage === CropModes.OFF.uniqueId) {
+      return { x: 0, y: 0, width: sourceWidth, height: sourceHeight };
+    }
+    if (cropImage !== CropModes.CENTER.uniqueId && cropImage !== CropModes.MANUAL.uniqueId) {
+      throw new Error("Unknown optionValue_cropImage");
+    }
+    let samplingWidth;
+    let samplingHeight;
+    let samplingOffsetX;
+    let samplingOffsetY;
+    if (sourceWidth * mapSizeY > sourceHeight * mapSizeX) {
+      // image w/h greater than canvas w/h
+      samplingWidth = Math.floor((10 * sourceHeight * mapSizeX) / (mapSizeY * zoom));
+      // the 10 is because the input is from 10 to 50 in steps of 1; scale down by 10
+      samplingHeight = Math.floor((10 * sourceHeight) / zoom);
+    } else {
+      // image w/h leq canvas w/h
+      samplingWidth = Math.floor((10 * sourceWidth) / zoom);
+      samplingHeight = Math.floor((10 * sourceWidth * mapSizeY) / (mapSizeX * zoom));
+    }
+    samplingWidth = Math.max(1, samplingWidth);
+    samplingHeight = Math.max(1, samplingHeight);
+    samplingOffsetX = Math.floor((percentX * (sourceWidth - samplingWidth)) / 100);
+    samplingOffsetY = Math.floor((percentY * (sourceHeight - samplingHeight)) / 100);
+    return {
+      x: Math.max(0, samplingOffsetX),
+      y: Math.max(0, samplingOffsetY),
+      width: Math.min(samplingWidth, sourceWidth),
+      height: Math.min(samplingHeight, sourceHeight),
+    };
+  }
+
+  drawLanczosIntoSource(ctx_source, drawSource, cropRect, backgroundColour, filterValue) {
+    const targetWidth = ctx_source.canvas.width;
+    const targetHeight = ctx_source.canvas.height;
+    // A cheap high-quality pass down to at most 2x the target keeps Lanczos
+    // affordable on large photos while still suppressing moire.
+    const prescale = Math.min(1, (targetWidth * 2) / cropRect.width, (targetHeight * 2) / cropRect.height);
+    const workWidth = Math.max(1, Math.round(cropRect.width * prescale));
+    const workHeight = Math.max(1, Math.round(cropRect.height * prescale));
+    const workCanvas = document.createElement("canvas");
+    workCanvas.width = workWidth;
+    workCanvas.height = workHeight;
+    const workContext = workCanvas.getContext("2d", { willReadFrequently: true });
+    if (backgroundColour) {
+      workContext.fillStyle = backgroundColour;
+      workContext.fillRect(0, 0, workWidth, workHeight);
+    }
+    workContext.imageSmoothingEnabled = true;
+    workContext.imageSmoothingQuality = "high";
+    workContext.filter = filterValue;
+    workContext.drawImage(
+      drawSource,
+      cropRect.x,
+      cropRect.y,
+      cropRect.width,
+      cropRect.height,
+      0,
+      0,
+      workWidth,
+      workHeight
+    );
+    workContext.filter = "none";
+    try {
+      const resized = resizeLanczos(workContext.getImageData(0, 0, workWidth, workHeight), targetWidth, targetHeight);
+      ctx_source.putImageData(resized, 0, 0);
+    } catch (error) {
+      // Tainted canvases cannot be read back; keep the processed crop and let
+      // the browser finish the scale instead of breaking the preview.
+      ctx_source.imageSmoothingEnabled = true;
+      ctx_source.imageSmoothingQuality = "high";
+      ctx_source.drawImage(workCanvas, 0, 0, targetWidth, targetHeight);
+    }
+  }
+
+  applyPreprocessTone(ctx_source, gamma, autoLevels) {
+    const width = ctx_source.canvas.width;
+    const height = ctx_source.canvas.height;
+    let imageData;
+    try {
+      imageData = ctx_source.getImageData(0, 0, width, height);
+    } catch (error) {
+      return;
+    }
+    const data = imageData.data;
+    const levelLuts = [null, null, null];
+    if (autoLevels) {
+      const histograms = [new Uint32Array(256), new Uint32Array(256), new Uint32Array(256)];
+      let opaqueCount = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 128) continue;
+        histograms[0][data[i]]++;
+        histograms[1][data[i + 1]]++;
+        histograms[2][data[i + 2]]++;
+        opaqueCount++;
+      }
+      if (opaqueCount > 0) {
+        const lowTarget = opaqueCount * 0.005;
+        const highTarget = opaqueCount * 0.995;
+        for (let channel = 0; channel < 3; channel++) {
+          const histogram = histograms[channel];
+          let cumulative = 0;
+          let low = 0;
+          let high = 255;
+          for (let value = 0; value < 256; value++) {
+            cumulative += histogram[value];
+            if (cumulative >= lowTarget) {
+              low = value;
+              break;
+            }
+          }
+          cumulative = 0;
+          for (let value = 255; value >= 0; value--) {
+            cumulative += histogram[value];
+            if (cumulative >= opaqueCount - highTarget) {
+              high = value;
+              break;
+            }
+          }
+          if (high - low < 4) continue;
+          const lut = new Uint8ClampedArray(256);
+          const scale = 255 / (high - low);
+          for (let value = 0; value < 256; value++) {
+            lut[value] = Math.max(0, Math.min(255, Math.round((value - low) * scale)));
+          }
+          levelLuts[channel] = lut;
+        }
+      }
+    }
+
+    let gammaLut = null;
+    if (gamma !== 100) {
+      const exponent = 100 / Math.max(50, Math.min(200, gamma));
+      gammaLut = new Uint8ClampedArray(256);
+      for (let value = 0; value < 256; value++) {
+        gammaLut[value] = Math.round(255 * Math.pow(value / 255, exponent));
+      }
+    }
+    if (!levelLuts[0] && !levelLuts[1] && !levelLuts[2] && !gammaLut) return;
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 128) continue;
+      for (let channel = 0; channel < 3; channel++) {
+        let value = data[i + channel];
+        if (levelLuts[channel]) value = levelLuts[channel][value];
+        if (gammaLut) value = gammaLut[value];
+        data[i + channel] = value;
+      }
+    }
+    ctx_source.putImageData(imageData, 0, 0);
+  }
+
   updateCanvas_source() {
     const {
       selectedBlocks,
@@ -909,7 +1086,10 @@ class MapPreview extends Component {
       preProcessingValue_saturation,
       preProcessingValue_backgroundColourSelect,
       preProcessingValue_backgroundColour,
+      preProcessingValue_gamma,
+      preProcessingValue_autoLevels,
       uploadedImage,
+      optionValue_resizeMethod,
       optionValue_pixelPerfect,
       optionValue_autoDetectPixelScale,
       optionValue_mapSize_x,
@@ -924,8 +1104,13 @@ class MapPreview extends Component {
 
     const { canvasRef_source } = this;
     const ctx_source = canvasRef_source.current.getContext("2d");
+    const resizeMethod = ["pixel", "smooth", "lanczos"].includes(optionValue_resizeMethod)
+      ? optionValue_resizeMethod
+      : optionValue_pixelPerfect
+        ? "pixel"
+        : "smooth";
     const detectedScale =
-      optionValue_pixelPerfect && optionValue_autoDetectPixelScale ? detectPixelScale(uploadedImage) : 1;
+      resizeMethod === "pixel" && optionValue_autoDetectPixelScale ? detectPixelScale(uploadedImage) : 1;
     if (this.state.detectedPixelScale !== detectedScale) {
       this.setState({ detectedPixelScale: detectedScale });
       if (onPixelScaleDetected) onPixelScaleDetected(detectedScale);
@@ -933,17 +1118,10 @@ class MapPreview extends Component {
       onPixelScaleDetected(detectedScale);
     }
 
-    // Pixel-perfect uses nearest-neighbour everywhere. Smooth is an explicit
-    // opt-in for photos and deliberately keeps the old high-quality path.
-    const useNearest = optionValue_pixelPerfect;
-    ctx_source.imageSmoothingEnabled = !useNearest;
-    ctx_source.imageSmoothingQuality = useNearest ? "low" : "high";
-    ctx_source.clearRect(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
-
     let drawSource = uploadedImage;
     let sourceWidth = uploadedImage.width;
     let sourceHeight = uploadedImage.height;
-    if (useNearest && detectedScale > 1) {
+    if (resizeMethod === "pixel" && detectedScale > 1) {
       // Collapse the source's repeated pixel blocks to native art pixels first,
       // then let the canvas scale those native pixels to the map resolution.
       const nativeCanvas = document.createElement("canvas");
@@ -957,69 +1135,64 @@ class MapPreview extends Component {
       sourceHeight = nativeCanvas.height;
     }
 
-    if (optionValue_preprocessingEnabled) {
-      if (preProcessingValue_backgroundColourSelect !== BackgroundColourModes.OFF.uniqueId && /^#?[a-f\d]{6}$/i.test(preProcessingValue_backgroundColour)) {
-        let backgroundColour;
-        if (
-          preProcessingValue_backgroundColourSelect === BackgroundColourModes.SMOOTH.uniqueId &&
-          !Object.values(selectedBlocks).every((selectedBlockId) => selectedBlockId === "-1")
-        ) {
-          backgroundColour = this.closestSmoothColourTo(preProcessingValue_backgroundColour);
-        } else {
-          backgroundColour = preProcessingValue_backgroundColour;
-        }
+    let backgroundColour = null;
+    if (
+      optionValue_preprocessingEnabled &&
+      preProcessingValue_backgroundColourSelect !== BackgroundColourModes.OFF.uniqueId &&
+      /^#?[a-f\d]{6}$/i.test(preProcessingValue_backgroundColour)
+    ) {
+      if (
+        preProcessingValue_backgroundColourSelect === BackgroundColourModes.SMOOTH.uniqueId &&
+        !Object.values(selectedBlocks).every((selectedBlockId) => selectedBlockId === "-1")
+      ) {
+        backgroundColour = this.closestSmoothColourTo(preProcessingValue_backgroundColour);
+      } else {
+        backgroundColour = preProcessingValue_backgroundColour;
+      }
+    }
+    const filterValue = optionValue_preprocessingEnabled
+      ? `brightness(${preProcessingValue_brightness}%) contrast(${preProcessingValue_contrast}%) saturate(${preProcessingValue_saturation}%)`
+      : "none";
+    const cropRect = this.getSourceRect(
+      sourceWidth,
+      sourceHeight,
+      optionValue_mapSize_x,
+      optionValue_mapSize_y,
+      optionValue_cropImage,
+      optionValue_cropImage_zoom,
+      optionValue_cropImage_percent_x,
+      optionValue_cropImage_percent_y
+    );
+
+    ctx_source.clearRect(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
+    if (resizeMethod === "lanczos") {
+      ctx_source.filter = "none";
+      this.drawLanczosIntoSource(ctx_source, drawSource, cropRect, backgroundColour, filterValue);
+    } else {
+      ctx_source.imageSmoothingEnabled = resizeMethod !== "pixel";
+      ctx_source.imageSmoothingQuality = resizeMethod === "pixel" ? "low" : "high";
+      if (backgroundColour) {
         ctx_source.filter = "none"; // this needs to be present to stop filters affecting background colour
         ctx_source.fillStyle = backgroundColour;
         ctx_source.fillRect(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
       }
-      ctx_source.filter = `brightness(${preProcessingValue_brightness}%) contrast(${preProcessingValue_contrast}%) saturate(${preProcessingValue_saturation}%)`;
-    } else {
+      ctx_source.filter = filterValue;
+      ctx_source.drawImage(
+        drawSource,
+        cropRect.x,
+        cropRect.y,
+        cropRect.width,
+        cropRect.height,
+        0,
+        0,
+        ctx_source.canvas.width,
+        ctx_source.canvas.height
+      );
       ctx_source.filter = "none";
     }
 
-    switch (optionValue_cropImage) {
-      case CropModes.OFF.uniqueId: {
-        ctx_source.drawImage(drawSource, 0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
-        break;
-      }
-      case CropModes.CENTER.uniqueId:
-      case CropModes.MANUAL.uniqueId: {
-        const img_width = sourceWidth;
-        const img_height = sourceHeight;
-        let samplingWidth;
-        let samplingHeight;
-        let samplingOffset_x;
-        let samplingOffset_y;
-        if (img_width * optionValue_mapSize_y > img_height * optionValue_mapSize_x) {
-          // image w/h greater than canvas w/h
-          samplingWidth = Math.floor((10 * img_height * optionValue_mapSize_x) / (optionValue_mapSize_y * optionValue_cropImage_zoom));
-          // the 10 is because the input is from 10 to 50 in steps of 1; scale down by 10
-          samplingHeight = Math.floor((10 * img_height) / optionValue_cropImage_zoom);
-          samplingOffset_x = Math.floor((optionValue_cropImage_percent_x * (img_width - samplingWidth)) / 100);
-          samplingOffset_y = Math.floor((optionValue_cropImage_percent_y * (img_height - samplingHeight)) / 100);
-        } else {
-          // image w/h leq canvas w/h
-          samplingWidth = Math.floor((10 * img_width) / optionValue_cropImage_zoom);
-          samplingHeight = Math.floor((10 * img_width * optionValue_mapSize_y) / (optionValue_mapSize_x * optionValue_cropImage_zoom));
-          samplingOffset_x = Math.floor((optionValue_cropImage_percent_x * (img_width - samplingWidth)) / 100);
-          samplingOffset_y = Math.floor((optionValue_cropImage_percent_y * (img_height - samplingHeight)) / 100);
-        }
-        ctx_source.drawImage(
-          drawSource,
-          samplingOffset_x,
-          samplingOffset_y,
-          samplingWidth,
-          samplingHeight,
-          0,
-          0,
-          ctx_source.canvas.width,
-          ctx_source.canvas.height
-        );
-        break;
-      }
-      default: {
-        throw new Error("Unknown optionValue_cropImage");
-      }
+    if (optionValue_preprocessingEnabled && (preProcessingValue_gamma !== 100 || preProcessingValue_autoLevels)) {
+      this.applyPreprocessTone(ctx_source, preProcessingValue_gamma, preProcessingValue_autoLevels);
     }
   }
 
@@ -1050,6 +1223,8 @@ class MapPreview extends Component {
       optionValue_cleanup_despeckle,
       optionValue_cleanup_paletteIslands,
       optionValue_cleanup_colours,
+      optionValue_cleanup_coloursPerceptual,
+      optionValue_cleanup_islandsSmart,
       optionValue_cleanup_adaptiveDither,
       optionValue_style,
       pixelEdits,
@@ -1113,6 +1288,8 @@ class MapPreview extends Component {
         optionValue_cleanup_despeckle: optionValue_cleanup_despeckle,
         optionValue_cleanup_paletteIslands: optionValue_cleanup_paletteIslands,
         optionValue_cleanup_colours: optionValue_cleanup_colours,
+        optionValue_cleanup_coloursPerceptual: optionValue_cleanup_coloursPerceptual,
+        optionValue_cleanup_islandsSmart: optionValue_cleanup_islandsSmart,
         optionValue_cleanup_adaptiveDither: optionValue_cleanup_adaptiveDither,
         optionValue_style: optionValue_style,
         pixelEdits: pixelEdits || {},
@@ -1156,6 +1333,8 @@ class MapPreview extends Component {
         },
         this.drawEditorSelection
       );
+    } else {
+      this.drawEditorSelection();
     }
   };
 
@@ -1231,6 +1410,11 @@ class MapPreview extends Component {
       context.fillRect(x, y, 1, 1);
       return;
     }
+    if (colour === "protect") {
+      context.fillStyle = "rgba(96, 165, 250, 0.55)";
+      context.fillRect(x, y, 1, 1);
+      return;
+    }
     if (colour) {
       context.fillStyle = colour;
       context.fillRect(x, y, 1, 1);
@@ -1254,7 +1438,10 @@ class MapPreview extends Component {
     const height = canvas.height;
     const size = Math.max(1, this.state.editorBrushSize || 1);
     const offset = Math.floor((size - 1) / 2);
-    const colour = this.strokeTool === "mask" ? "mask" : this.state.editorColour || this.state.editorColours[0];
+    const colour =
+      this.strokeTool === "mask" || this.strokeTool === "protect"
+        ? this.strokeTool
+        : this.state.editorColour || this.state.editorColours[0];
     if (this.strokeTool !== "erase" && !colour) return;
     for (let dy = 0; dy < size; dy++) {
       const ny = y - offset + dy;
@@ -1518,7 +1705,13 @@ class MapPreview extends Component {
 
     event.preventDefault();
     this.strokeTool =
-      event.button === 2 ? "erase" : this.state.editorTool === "erase" ? "erase" : this.state.editorTool === "mask" ? "mask" : "paint";
+      event.button === 2
+        ? "erase"
+        : this.state.editorTool === "erase"
+          ? "erase"
+          : this.state.editorTool === "mask" || this.state.editorTool === "protect"
+            ? this.state.editorTool
+            : "paint";
     if (this.strokeTool === "paint" && !this.state.editorColour && !this.state.editorColours[0]) return;
     this.strokeStartMap = { ...this.editorMap };
     this.strokeMap = { ...this.editorMap };
@@ -1701,10 +1894,13 @@ class MapPreview extends Component {
     this.editorMap = {};
     this.clearEditorOverlay();
     if (this.props.onPixelEditsChange) this.props.onPixelEditsChange({});
-    this.setState({
-      editorHistoryDepth: this.editorUndo.length,
-      editorRedoDepth: 0,
-    });
+    this.setState(
+      {
+        editorHistoryDepth: this.editorUndo.length,
+        editorRedoDepth: 0,
+      },
+      this.drawEditorSelection
+    );
   };
 
   increasePreviewScale = () => {
@@ -1752,7 +1948,7 @@ class MapPreview extends Component {
       optionValue_showGridOverlay,
       optionValue_showPixelGrid,
       optionValue_previewScale,
-      optionValue_pixelPerfect,
+      optionValue_resizeMethod,
       onFileDialogEvent,
       uploadedImage,
       pixelEdits,
@@ -1772,10 +1968,12 @@ class MapPreview extends Component {
     } = this.state;
     let editedPixelCount = 0;
     let maskedPixelCount = 0;
+    let protectedPixelCount = 0;
     if (editorEnabled) {
       for (const value of Object.values(pixelEdits || {})) {
         editedPixelCount += 1;
         if (value === "mask") maskedPixelCount += 1;
+        if (value === "protect") protectedPixelCount += 1;
       }
     }
     const mapPreviewSizeScale = Math.max(1, Math.round(optionValue_previewScale || 2));
@@ -1853,7 +2051,11 @@ class MapPreview extends Component {
                 <span className="pixelEditorCoords" ref={this.coordsRef}>X: – Y: –</span>
                 <span className="pixelEditorCount">
                   {editedPixelCount
-                    ? `${editedPixelCount} px${maskedPixelCount ? ` · ${this.t("PIXEL-EDITOR/COUNT-MASK", "mask:")} ${maskedPixelCount}` : ""}`
+                    ? `${editedPixelCount} px${maskedPixelCount ? ` · ${this.t("PIXEL-EDITOR/COUNT-MASK", "mask:")} ${maskedPixelCount}` : ""}${
+                        protectedPixelCount
+                          ? ` · ${this.t("PIXEL-EDITOR/COUNT-PROTECT", "protect:")} ${protectedPixelCount}`
+                          : ""
+                      }`
                     : this.t("PIXEL-EDITOR/COUNT-EMPTY", "no edits")}
                 </span>
               </React.Fragment>
@@ -2015,7 +2217,13 @@ class MapPreview extends Component {
               <small>{`${(128 * optionValue_mapSize_x).toString()}x${(128 * optionValue_mapSize_y).toString()}`}</small>
             </Tooltip>{" "}
             <small className="pixelModeHint">
-              {optionValue_pixelPerfect ? (detectedPixelScale > 1 ? `pixel x${detectedPixelScale}` : "pixel 1:1") : "smooth"}
+              {optionValue_resizeMethod === "pixel"
+                ? detectedPixelScale > 1
+                  ? `pixel x${detectedPixelScale}`
+                  : "pixel 1:1"
+                : optionValue_resizeMethod === "lanczos"
+                  ? "Lanczos"
+                  : "smooth"}
             </small>
             <Tooltip tooltipText={getLocaleString("MAP-PREVIEW/ASPECT-RATIO-MISMATCH-TT")}>
               <small

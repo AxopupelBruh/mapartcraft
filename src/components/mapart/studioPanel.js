@@ -16,8 +16,8 @@ class StudioPanel extends Component {
       stylePreset,
       optionValue_style,
       onApplyStyle,
-      optionValue_pixelPerfect,
-      onOptionChange_pixelPerfect,
+      optionValue_resizeMethod,
+      onOptionChange_resizeMethod,
       optionValue_autoDetectPixelScale,
       onOptionChange_autoDetectPixelScale,
       optionValue_showPixelGrid,
@@ -32,6 +32,8 @@ class StudioPanel extends Component {
       optionValue_cleanup_despeckle,
       optionValue_cleanup_paletteIslands,
       optionValue_cleanup_colours,
+      optionValue_cleanup_coloursPerceptual,
+      optionValue_cleanup_islandsSmart,
       optionValue_cleanup_adaptiveDither,
       onOptionChange_cleanup_enabled,
       onOptionChange_cleanup_denoise,
@@ -40,6 +42,8 @@ class StudioPanel extends Component {
       onOptionChange_cleanup_despeckle,
       onOptionChange_cleanup_paletteIslands,
       onOptionChange_cleanup_colours,
+      onOptionChange_cleanup_coloursPerceptual,
+      onOptionChange_cleanup_islandsSmart,
       onOptionChange_cleanup_adaptiveDither,
       onApplyCleanupPreset,
       detectedPixelScale,
@@ -177,6 +181,15 @@ class StudioPanel extends Component {
               <label className="studioCheck studioCleanupWide">
                 <input
                   type="checkbox"
+                  checked={optionValue_cleanup_islandsSmart}
+                  onChange={onOptionChange_cleanup_islandsSmart}
+                  disabled={!optionValue_cleanup_enabled || optionValue_cleanup_despeckle === 0}
+                />
+                <span>{this.t("STUDIO/ISLANDS-SMART", "Smart islands: keep lines, eyes and highlights")}</span>
+              </label>
+              <label className="studioCheck studioCleanupWide">
+                <input
+                  type="checkbox"
                   checked={optionValue_cleanup_paletteIslands}
                   onChange={onOptionChange_cleanup_paletteIslands}
                   disabled={!optionValue_cleanup_enabled || optionValue_cleanup_despeckle === 0}
@@ -201,6 +214,15 @@ class StudioPanel extends Component {
               <label className="studioCheck studioCleanupWide">
                 <input
                   type="checkbox"
+                  checked={optionValue_cleanup_coloursPerceptual}
+                  onChange={onOptionChange_cleanup_coloursPerceptual}
+                  disabled={!optionValue_cleanup_enabled || optionValue_cleanup_colours === 0}
+                />
+                <span>{this.t("STUDIO/SIMPLIFY-PERCEPTUAL", "Perceptual colours (Lab), protect small accents")}</span>
+              </label>
+              <label className="studioCheck studioCleanupWide">
+                <input
+                  type="checkbox"
                   checked={optionValue_cleanup_adaptiveDither}
                   onChange={onOptionChange_cleanup_adaptiveDither}
                   disabled={!optionValue_cleanup_enabled}
@@ -213,12 +235,21 @@ class StudioPanel extends Component {
             </small>
           </details>
           <div className="studioToggleRow">
-            <label className="studioCheck">
-              <input type="checkbox" checked={optionValue_pixelPerfect} onChange={onOptionChange_pixelPerfect} />
-              <span>{this.t("STUDIO/PIXEL-PERFECT", "Pixel-perfect")}</span>
+            <label className="studioCheck studioResizeSelect">
+              <span>{this.t("STUDIO/RESIZE", "Scaling")}</span>
+              <select value={optionValue_resizeMethod} onChange={onOptionChange_resizeMethod}>
+                <option value="pixel">{this.t("STUDIO/RESIZE-PIXEL", "Pixel (nearest)")}</option>
+                <option value="smooth">{this.t("STUDIO/RESIZE-SMOOTH", "Smooth")}</option>
+                <option value="lanczos">{this.t("STUDIO/RESIZE-LANCZOS", "High quality (Lanczos)")}</option>
+              </select>
             </label>
             <label className="studioCheck">
-              <input type="checkbox" checked={optionValue_autoDetectPixelScale} onChange={onOptionChange_autoDetectPixelScale} />
+              <input
+                type="checkbox"
+                checked={optionValue_autoDetectPixelScale}
+                onChange={onOptionChange_autoDetectPixelScale}
+                disabled={optionValue_resizeMethod !== "pixel"}
+              />
               <span>{this.t("STUDIO/AUTO-SCALE", "Auto scale")}</span>
             </label>
             <label className="studioCheck">
@@ -226,11 +257,13 @@ class StudioPanel extends Component {
               <span>{this.t("STUDIO/PIXEL-GRID", "Pixel grid")}</span>
             </label>
             <span className="studioScaleHint">
-              {optionValue_pixelPerfect
+              {optionValue_resizeMethod === "pixel"
                 ? detectedPixelScale > 1
                   ? `${this.t("STUDIO/SCALE-DETECTED", "detected x")}${detectedPixelScale}`
                   : this.t("STUDIO/SCALE-1TO1", "1:1 pixels")
-                : this.t("STUDIO/SMOOTH", "smooth")}
+                : optionValue_resizeMethod === "lanczos"
+                  ? this.t("STUDIO/SCALE-LANCZOS", "Lanczos")
+                  : this.t("STUDIO/SMOOTH", "smooth")}
             </span>
           </div>
         </div>
