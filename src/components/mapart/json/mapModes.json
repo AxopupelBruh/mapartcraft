@@ -1,0 +1,104 @@
+{
+  "SCHEMATIC_NBT": {
+    "uniqueId": 0,
+    "name": "Schematic (NBT)",
+    "staircaseModes": {
+      "OFF": {
+        "uniqueId": 0,
+        "localeKey": "MAP-SETTINGS/3D/OFF",
+        "toneKeys": ["normal"],
+        "extra": false
+      },
+      "CLASSIC": {
+        "uniqueId": 1,
+        "localeKey": "MAP-SETTINGS/3D/CLASSIC",
+        "toneKeys": ["dark", "normal", "light"],
+        "extra": false
+      },
+      "VALLEY": {
+        "uniqueId": 2,
+        "localeKey": "MAP-SETTINGS/3D/VALLEY",
+        "toneKeys": ["dark", "normal", "light"],
+        "extra": false
+      },
+      "FULL_DARK": {
+        "uniqueId": 3,
+        "localeKey": "MAP-SETTINGS/3D/FULL-DARK",
+        "toneKeys": ["dark"],
+        "extra": true
+      },
+      "FULL_LIGHT": {
+        "uniqueId": 4,
+        "localeKey": "MAP-SETTINGS/3D/FULL-LIGHT",
+        "toneKeys": ["light"],
+        "extra": true
+      },
+      "REVERSE_UPWARDS_ONLY": {
+        "uniqueId": 12,
+        "localeKey": "MAP-SETTINGS/3D/REVERSE-UPWARDS-ONLY",
+        "toneKeys": ["dark", "normal"],
+        "extra": true
+      },
+      "UPWARDS_ONLY": {
+        "uniqueId": 11,
+        "localeKey": "MAP-SETTINGS/3D/UPWARDS-ONLY",
+        "toneKeys": ["normal", "light"],
+        "extra": true
+      }
+    }
+  },
+  "MAPDAT": {
+    "uniqueId": 1,
+    "name": "Datafile (map.dat)",
+    "staircaseModes": {
+      "OFF": {
+        "uniqueId": 5,
+        "localeKey": "MAP-SETTINGS/3D/OFF",
+        "toneKeys": ["normal"],
+        "extra": false
+      },
+      "ON": {
+        "uniqueId": 6,
+        "localeKey": "MAP-SETTINGS/3D/ON",
+        "toneKeys": ["dark", "normal", "light"],
+        "extra": false
+      },
+      "ON_UNOBTAINABLE": {
+        "uniqueId": 7,
+        "localeKey": "MAP-SETTINGS/3D/ON-UNOBTAINABLE",
+        "toneKeys": ["dark", "normal", "light", "unobtainable"],
+        "extra": false
+      },
+      "FULL_DARK": {
+        "uniqueId": 8,
+        "localeKey": "MAP-SETTINGS/3D/FULL-DARK",
+        "toneKeys": ["dark"],
+        "extra": true
+      },
+      "FULL_LIGHT": {
+        "uniqueId": 9,
+        "localeKey": "MAP-SETTINGS/3D/FULL-LIGHT",
+        "toneKeys": ["light"],
+        "extra": true
+      },
+      "FULL_UNOBTAINABLE": {
+        "uniqueId": 10,
+        "localeKey": "MAP-SETTINGS/3D/FULL-UNOBTAINABLE",
+        "toneKeys": ["unobtainable"],
+        "extra": true
+      },
+      "REVERSE_UPWARDS_ONLY": {
+        "uniqueId": 13,
+        "localeKey": "MAP-SETTINGS/3D/REVERSE-UPWARDS-ONLY",
+        "toneKeys": ["dark", "normal"],
+        "extra": true
+      },
+      "UPWARDS_ONLY": {
+        "uniqueId": 14,
+        "localeKey": "MAP-SETTINGS/3D/UPWARDS-ONLY",
+        "toneKeys": ["normal", "light"],
+        "extra": true
+      }
+    }
+  }
+}

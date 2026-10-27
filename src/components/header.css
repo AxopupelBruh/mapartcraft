@@ -1,0 +1,5 @@
+.FAQTextButton {
+  color: var(--rebaneGreen);
+  cursor: pointer;
+  text-decoration: underline;
+}

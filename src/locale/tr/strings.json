@@ -1,0 +1,194 @@
+{
+  "TRANSLATION": {
+    "NAME": "Türkçe",
+    "CREDITS": "Çevirmen: cherryKaffn"
+  },
+  "HEAD-META-TAGS": {
+    "DESCRIPTION": "Minecraft mapart şematiği ve map.dat oluşturucusu"
+  },
+  "FAQ": {
+    "FAQ": "SSS",
+    "PLEASE-READ-1": "Lütfen herhangi bir yerde soru sormadan önce ",
+    "PLEASE-READ-2": " sayfasını okuyunuz!",
+    "VIDEO-TUTORIAL": "Videolu anlatım"
+  },
+  "DESCRIPTION": {
+    "1": "Minecraft mapart şematiği ve map.dat oluşturucusu, sunucu sahipleri hem de oyuncuları için ",
+    "2": ", gibi sunucular için tasarlanmış, tarayıcında çalışır.",
+    "3": "",
+    "4": "Redstonehelper's map art program",
+    "5": "'dan esinlenilerek tavsiye edilen özelliklerin ve programı indirme zorunluğunun ortadan kalkması için yapılmıştır",
+    "6": "Bu, rebane2001 tarafından yapılan",
+    "7": "'ın forkudur. İstek, öneri ve şikayetler için; "
+  },
+  "BLOCK-SELECTION": {
+    "TITLE": "Blok seçimi",
+    "PRESETS": {
+      "TITLE": "Hazır Ayarlar",
+      "DELETE": "Sil",
+      "DELETE-CONFIRM": "Bu hazır ayarı silmek istiyor musun:",
+      "DELETE-ERROR-DEFAULT": "Bu varsayılan hazır ayardır ve değiştirilemez/silinemez.",
+      "SAVE": "Kaydet",
+      "SAVE-PROMPT-ENTER-NAME": "Hazır ayarın için isim seç:",
+      "SHARE": "Paylaş",
+      "SHARE-TT": "Seçtiğin blokları hazır ayar olarak kaydeder",
+      "SHARE-WARNING-NONE-SELECTED": "Paylaşmadan önce blokları seç!",
+      "SHARE-LINK": "Seçtiğin blokları paylaşmak için bu bağlantıyı kopyala",
+      "DOWNLOAD": "Paleti dışa aktar",
+      "DOWNLOAD-TT": "Paint.NET'de kullanmak için renk paletini indirir",
+      "DOWNLOAD-WARNING-NONE-SELECTED": "Paleti indirmeden önce blokları seç!",
+      "DOWNLOAD-WARNING-MAX-COLOURS-1": "Hata, paletindeki renk sayısı",
+      "DOWNLOAD-WARNING-MAX-COLOURS-2": " , ama Paint.NET'deki maksimum renk sayısı96. Bazı renkler Paint.NET'de kullanılamayacak",
+      "IMPORT-ERROR-CORRUPTED": "Hazır ayar bağlantısı bozuk!",
+      "NONE": "Hiç biri",
+      "EVERYTHING": "Her şey",
+      "CARPETS": "Halılar",
+      "GREYSCALE": "Gri tonları",
+      "PISTON-CLEARABLE": "Piston ile temizlenebilir"
+    },
+    "UNSUPPORTED-PAST": "Unsupported past",
+    "ADD-CUSTOM": {
+      "TITLE": "Özel ekle",
+      "BLOCK-NAME": "Blok adı",
+      "NEEDS-SUPPORT": "Desteğe ihtiyacı var",
+      "FLAMMABLE": "Tutuşabilir",
+      "VERSIONS": "Versiyonlar",
+      "COLOUR-SET": "Renk seti",
+      "NBT-TAGS": "NBT etiketleri",
+      "ADD": "ekle",
+      "ERROR-NONE-SELECTED": "Eklemeden önce sürüm(ler)i seçin",
+      "ERROR-NO-NAME": "Eklemeden önce blok ismi seçin",
+      "EXAMPLES": "Örnekler",
+      "DELETE": "Sil",
+      "NO-EXPORT": "Not: özel bloklar dışa aktarılmayacaktır."
+    }
+  },
+  "MAP-PREVIEW": {
+    "TITLE": "Harita önizlemesi",
+    "BEST-RESOLUTION-TT": "Bu çözünürlüğe sahip kaynak fotoğraf en iyi şekilde çalışacaktır",
+    "ASPECT-RATIO-MISMATCH-TT": "Fotoğraf haritanın en-boy oranı ile uyuşmuyor",
+    "SCALE-MINUS-TT": "Önizlemeyi küçült",
+    "SCALE-PLUS-TT": "Önizlemeyi büyült"
+  },
+  "MAP-SETTINGS": {
+    "TITLE": "Ayarlar",
+    "MODE": "Mod",
+    "MODE-TT": "Kullanacağın modu seç",
+    "MODE-VISUAL": "Visual",
+    "MODE-VISUAL-NA": "Visual (not available)",
+    "VERSION": "Sürüm",
+    "VERSION-TT": "Kullandığın sürüme en yakın sürümü seç",
+    "MAP-SIZE": "Harita büyüklüğü",
+    "CROP": {
+      "TITLE": "Kırp",
+      "TITLE-TT": "Fotoğrafı genişletmek yerine kırpar",
+      "OFF": "Kapalı",
+      "CENTER": "Merkez",
+      "MANUAL": "Manuel",
+      "ZOOM": "Yakınlaştırma"
+    },
+    "GRID-OVERLAY": "Izgara",
+    "GRID-OVERLAY-TT": "16x16 chunkları ve 1x1 kesimleri gösteren bir ızgara oluşturur",
+    "3D": {
+      "TITLE": "Merdiven",
+      "TITLE-TT": "Haritayı 3D yapar. İnşaası daha zor ama 3 kat daha fazla renk!",
+      "OFF": "Kapalı (2D)",
+      "CLASSIC": "Açık (Klasik)",
+      "VALLEY": "Açık (Vadi Modu)",
+      "FULL-DARK": "Full-Karanlık",
+      "FULL-LIGHT": "Full-Aydınlık",
+      "ON": "Açık",
+      "ON-UNOBTAINABLE": "Açık (Elde edilemez)",
+      "FULL-UNOBTAINABLE": "Full-Elde edilemez"
+    },
+    "NBT-SPECIFIC": {
+      "WHERE-SUPPORT-BLOCKS": {
+        "TITLE": "Alta blok ekle",
+        "NONE": "Blok ekleme",
+        "IMPORTANT": "Önemli bloklar",
+        "ALL": "Bütün bloklar",
+        "ALL-OPTIMIZED": "Bütün bloklar (optimize)",
+        "ALL-DOUBLE": "Bütün bloklar iki tane",
+        "ALL-DOUBLE-OPTIMIZED": "Bütün bloklar iki tane (optimize)"
+      },
+      "SUPPORT-BLOCK-TO-ADD": "Eklenecek bloklar",
+      "SUPPORT-BLOCK-TO-ADD-TT": "Önceki seçenenkle ilgili"
+    },
+    "MAPDAT-SPECIFIC": {
+      "UNOBTAINABLE-COLOURS": "Elde edilemez renkler",
+      "UNOBTAINABLE-COLOURS-TT": "Şematiklerde map.dat renklerini etkinleştirir",
+      "TRANSPARENCY": "Transparanlık",
+      "TRANSPARENCY-TT": "map.dat için transparanlığı etkinleştirir",
+      "TRANSPARENCY-TOLERANCE": "Tolerans",
+      "MAPDAT-FILENAME-USE-ID": "Sayısal dosya adı",
+      "MAPDAT-FILENAME-USE-ID-TT": "Mapdat'ları 'map_#.dat' olarak kaydet",
+      "MAPDAT-FILENAME-ID-RANGE": "Aralık"
+    },
+    "BETTER-COLOUR": "Daha iyi renk",
+    "BETTER-COLOUR-TT": "Daha isabetli renk seçenekleri sunar",
+    "DITHERING": {
+      "TITLE": "Ditherleştirme",
+      "TITLE-TT": "Daha fazla renk yanılsaması oluşturmak için farklı renklerde pikseller ekler",
+      "NONE": "Hiç",
+      "PROPAGATION-RED": "Kırmızı yayılımı",
+      "PROPAGATION-GREEN": "Yeşil yayılımı",
+      "PROPAGATION-BLUE": "Mavi yayılımı"
+    },
+    "PREPROCESSING": {
+      "TITLE": "Resim ön işlemesi",
+      "ENABLE": "Açık",
+      "BRIGHTNESS": "Parlaklık",
+      "CONTRAST": "Kontrast",
+      "SATURATION": "Doygunluk",
+      "BACKGROUND": {
+        "TITLE": "Arkaplan",
+        "TITLE-TT": "Transparan fotoğraflar için",
+        "OFF": "Kapalı",
+        "DITHERED": "Açık (ditherli)",
+        "SMOOTH": "Açık (pürüzsüz)"
+      },
+      "BACKGROUND-COLOUR": "Renk"
+    },
+    "EXTRAS": {
+      "TITLE": "Ekstralar",
+      "MORE-STAIRCASING-OPTIONS": "Daha fazla merdiven seçenekleri",
+      "MORE-STAIRCASING-OPTIONS-TT": "Full-koyu, Full-açık, ve Full-elde edilemez seçenekleri "
+    }
+  },
+  "DOWNLOAD": {
+    "ERROR-NONE-SELECTED": "İndirmeden önce blokları seç!!",
+    "NBT-SPECIFIC": {
+      "DOWNLOAD": "NBT'Yİ İNDİR",
+      "DOWNLOAD-TT": "Nbt'yi indir",
+      "DOWNLOAD-SPLIT": "1x1 PARÇA OLARAK İNDİR",
+      "DOWNLOAD-SPLIT-TT": "Nbt'yi 1x1 parçalar halinde indirir"
+    },
+    "MAPDAT-SPECIFIC": {
+      "DOWNLOAD": "MAPDAT İNDİR",
+      "DOWNLOAD-TT": "map.dat'ı 1x1 parçalar halinde indirir"
+    },
+    "ZIPPING": "Zip dosyası"
+  },
+  "MATERIALS": {
+    "TITLE": "Materyaller",
+    "BLOCK": "Blok",
+    "AMOUNT": "Miktar",
+    "PLACEHOLDER-BLOCK-TT": "Destek bloğu",
+    "SHOW-PER-SPLIT": "Sadece bölme başına mat sayısını göster",
+    "SHOW-PER-SPLIT-TT": "Kilitli haritalarda materyali tekrar kullanmak için (ben de pek çözemedim ;3)",
+    "REFRESH-MATERIALS": "MATERYALLERİ YENİLE",
+    "REFRESH-MATERIALS-TT": "Materyal listesini yenile",
+    "COPY-CLIPBOARD": "Panoya kopyala"
+  },
+  "VIEW-ONLINE": {
+    "TITLE": "WEB'DE GÖSTER",
+    "TITLE-TT": "Şematiği indirmeden web üzerinden gösterir",
+    "TOO-BIG-FOR-SINGLE": "Tek bir şematik için fazla büyük; 1x1 parça olarak indir",
+    "CONTROLS": "Kontroller",
+    "TO-EXIT": "Çıkış",
+    "SIZE": "Boyut"
+  },
+  "LITEMATICA-WARNING": "Uyarı! Litematica 1.15.2 sürümünü iyi desteklemiyor; 1.16.5'e geçmek önerilir.",
+  "EDGE-WARNING": "Not: Microsoft Edge desteklenmemektetir.\\nLütfen MapartCraft için Chrome (tercih edilir) veya Firefox kullanın",
+  "NONE": "Hiç"
+}

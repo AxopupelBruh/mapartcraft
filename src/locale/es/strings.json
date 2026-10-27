@@ -1,0 +1,194 @@
+{
+  "TRANSLATION": {
+    "NAME": "Spanish",
+    "CREDITS": "Traducción hecha por: Jalvaviel"
+  },
+  "HEAD-META-TAGS": {
+    "DESCRIPTION": "Un generador de schematics y map.dat para maparts de Minecraft"
+  },
+  "FAQ": {
+    "FAQ": "Preguntas frecuentes",
+    "PLEASE-READ-1": "Por favor, ¡Echa un vistazo a ",
+    "PLEASE-READ-2": " antes de realizar cualquier pregunta!",
+    "VIDEO-TUTORIAL": "Video tutorial"
+  },
+  "DESCRIPTION": {
+    "1": "Un generador de map.dat y .schematic para Minecraft. Diseñado para ser utilizado tanto por administradores de servidores, como por jugadores en modo supervivencia en servidores como ",
+    "2": ", ejecutándose en tu buscador.",
+    "3": "Inspirado por el ",
+    "4": "programa para map art de Redstonehelper",
+    "5": ", con el objetivo de añadir nuevas caraterísticas y para eliminar la necesidad de descargar un programa.",
+    "6": null,
+    "7": null
+  },
+  "BLOCK-SELECTION": {
+    "TITLE": "Selección de bloques",
+    "PRESETS": {
+      "TITLE": "Plantillas",
+      "DELETE": "Borrar",
+      "DELETE-CONFIRM": "¿Quieres borrar esta plantilla? ",
+      "DELETE-ERROR-DEFAULT": "Esta es una platilla por defecto y no se puede editar/borrar.",
+      "SAVE": "Guardar",
+      "SAVE-PROMPT-ENTER-NAME": "Inserta un nombre para la plantilla:",
+      "SHARE": "Comparte",
+      "SHARE-TT": "Comparte los bloques que has seleccionado en forma de enlace",
+      "SHARE-WARNING-NONE-SELECTED": "¡Selecciona los bloques antes de compartirlos!",
+      "SHARE-LINK": "Copia este link para compartir tus bloques seleccionados",
+      "DOWNLOAD": "Descargar",
+      "DOWNLOAD-TT": "Descarga la paleta de colores para Paint.NET",
+      "DOWNLOAD-WARNING-NONE-SELECTED": "¡Selecciona los bloques antes de descargar la paleta!",
+      "DOWNLOAD-WARNING-MAX-COLOURS-1": "Cuidado, tu paleta tiene ",
+      "DOWNLOAD-WARNING-MAX-COLOURS-2": " colores, mientras que el máximo para Paint.NET es 96. Algunos colores no estarán disponibles en Paint.NET",
+      "IMPORT-ERROR-CORRUPTED": "¡El enlace de la plantilla está corrupto!",
+      "NONE": "Vacío",
+      "EVERYTHING": "Todo",
+      "CARPETS": "Alfombras",
+      "GREYSCALE": "Grises",
+      "PISTON-CLEARABLE": null
+    },
+    "UNSUPPORTED-PAST": "Sin soporte a partir de",
+    "ADD-CUSTOM": {
+      "TITLE": "Añadir bloques personalizados",
+      "BLOCK-NAME": "Nombre del bloque",
+      "NEEDS-SUPPORT": "Necesita soportes",
+      "FLAMMABLE": "Inflamable",
+      "VERSIONS": "Versiones",
+      "COLOUR-SET": "Set de colores",
+      "NBT-TAGS": "Etiquetas NBT",
+      "ADD": "Añadir",
+      "ERROR-NONE-SELECTED": "Selecciona las versiones disponibles primero",
+      "ERROR-NO-NAME": "Inserta el nombre del bloque primero",
+      "EXAMPLES": "Ejemplos",
+      "DELETE": "Borrar",
+      "NO-EXPORT": "Nota: Los bloques personalizados no serán exportados."
+    }
+  },
+  "MAP-PREVIEW": {
+    "TITLE": "Vista previa del Mapa",
+    "BEST-RESOLUTION-TT": "Una imagen original con esta resolución funcionará mejor",
+    "ASPECT-RATIO-MISMATCH-TT": "La imagen no concuerda con la relación de aspecto del mapa",
+    "SCALE-MINUS-TT": "Disminuir vista previa",
+    "SCALE-PLUS-TT": "Ampliar vista previa"
+  },
+  "MAP-SETTINGS": {
+    "TITLE": "Opciones",
+    "MODE": "Modo",
+    "MODE-TT": "Selecciona el modo de operación",
+    "MODE-VISUAL": "Visualización",
+    "MODE-VISUAL-NA": "Visualización (no disponible)",
+    "VERSION": "Versión",
+    "VERSION-TT": "Selecciona la versión de Minecraft más cercana a la tuya",
+    "MAP-SIZE": "Tamaño del Mapa",
+    "CROP": {
+      "TITLE": "Recorte",
+      "TITLE-TT": "Recorta la imagen en vez de extenderla",
+      "OFF": "Apagado",
+      "CENTER": "Centrado",
+      "MANUAL": "Manual",
+      "ZOOM": "Zoom"
+    },
+    "GRID-OVERLAY": "Cuadrícula",
+    "GRID-OVERLAY-TT": "Muestra una cuadrícula con bordes cada 16x16 y 1x1 chunks",
+    "3D": {
+      "TITLE": "Escalonado",
+      "TITLE-TT": "Hace el mapa 3D. Más difícil de construir, ¡Pero con 3 veces los colores!",
+      "OFF": "Apagado (2D)",
+      "CLASSIC": "Encendido (clásico)",
+      "VALLEY": "Encendido (valle)",
+      "FULL-DARK": "Oscuro (Creciente Sur-Norte)",
+      "FULL-LIGHT": "Claro (Creciente Norte-Sur)",
+      "ON": "Encendido",
+      "ON-UNOBTAINABLE": "Encendido (No obtenibles)",
+      "FULL-UNOBTAINABLE": "Solo colores no obtenibles"
+    },
+    "NBT-SPECIFIC": {
+      "WHERE-SUPPORT-BLOCKS": {
+        "TITLE": "Añadir bloques de soporte",
+        "NONE": "Sin bloques",
+        "IMPORTANT": "Bloques importantes",
+        "ALL": "Todos los bloques",
+        "ALL-OPTIMIZED": "Todos los bloques (optimizado)",
+        "ALL-DOUBLE": "Doble soporte",
+        "ALL-DOUBLE-OPTIMIZED": "Doble soporte (optimizado)"
+      },
+      "SUPPORT-BLOCK-TO-ADD": "Bloque a añadir",
+      "SUPPORT-BLOCK-TO-ADD-TT": "Relacionado con la opción anterior"
+    },
+    "MAPDAT-SPECIFIC": {
+      "UNOBTAINABLE-COLOURS": "Colores no obtenibles",
+      "UNOBTAINABLE-COLOURS-TT": "Permite colores para map.dat no obtenibles en .schematic",
+      "TRANSPARENCY": "Transparencia",
+      "TRANSPARENCY-TT": "Permite la transparencia para map.dat",
+      "TRANSPARENCY-TOLERANCE": "Tolerancia",
+      "MAPDAT-FILENAME-USE-ID": "Identificador numérico",
+      "MAPDAT-FILENAME-USE-ID-TT": "Genera los archivos a partir del identificador numérico (map_#.dat)",
+      "MAPDAT-FILENAME-ID-RANGE": "Rango"
+    },
+    "BETTER-COLOUR": "Mejores colores",
+    "BETTER-COLOUR-TT": "Da mayor precisión respecto a los colores de la imagen",
+    "DITHERING": {
+      "TITLE": "Gradiente (dithering)",
+      "TITLE-TT": "Añade píxeles aleatorios para dar mayor sensación de color",
+      "NONE": "Sin gradiente (dithering)",
+      "PROPAGATION-RED": null,
+      "PROPAGATION-GREEN": null,
+      "PROPAGATION-BLUE": null
+    },
+    "PREPROCESSING": {
+      "TITLE": "Preprocesamiento de imagen",
+      "ENABLE": "Habilitado",
+      "BRIGHTNESS": "Brillo",
+      "CONTRAST": "Contraste",
+      "SATURATION": "Saturación",
+      "BACKGROUND": {
+        "TITLE": "Fondo",
+        "TITLE-TT": "Color para los pixeles con transparencia",
+        "OFF": "Apagado",
+        "DITHERED": "Encendido (gradiente)",
+        "SMOOTH": "Encendido (suavizado)"
+      },
+      "BACKGROUND-COLOUR": "Color de fondo"
+    },
+    "EXTRAS": {
+      "TITLE": "Extras",
+      "MORE-STAIRCASING-OPTIONS": "Más opciones de escalonado",
+      "MORE-STAIRCASING-OPTIONS-TT": "Para escalonado oscuro, claro y colores no obtenibles."
+    }
+  },
+  "DOWNLOAD": {
+    "ERROR-NONE-SELECTED": "¡Selecciona los bloques antes de descargar!",
+    "NBT-SPECIFIC": {
+      "DOWNLOAD": "DESCARGAR NBT",
+      "DOWNLOAD-TT": "Descarga el nbt",
+      "DOWNLOAD-SPLIT": "DESCARGAR EN 1X1",
+      "DOWNLOAD-SPLIT-TT": "Descarga el nbt en fragmentos de 128x128 bloques"
+    },
+    "MAPDAT-SPECIFIC": {
+      "DOWNLOAD": "DESCARGAR DAT",
+      "DOWNLOAD-TT": "Descarga el map.dat en fragmentos de 128x128 bloques"
+    },
+    "ZIPPING": "Juntar"
+  },
+  "MATERIALS": {
+    "TITLE": "Materiales",
+    "BLOCK": "Bloque",
+    "AMOUNT": "Cantidad",
+    "PLACEHOLDER-BLOCK-TT": "Bloque de soporte",
+    "SHOW-PER-SPLIT": "Muestra el máximo de materiales por sección",
+    "SHOW-PER-SPLIT-TT": "Para reutilizar materiales con mapas bloqueados de 128x128 bloques",
+    "REFRESH-MATERIALS": "RECARGA",
+    "REFRESH-MATERIALS-TT": "Recarga la lista de materiales",
+    "COPY-CLIPBOARD": null
+  },
+  "VIEW-ONLINE": {
+    "TITLE": "Mirar online",
+    "TITLE-TT": "Mira el schematic desde el buscador",
+    "TOO-BIG-FOR-SINGLE": "Demasiado grande para un schematic; descarga en fragmentos",
+    "CONTROLS": "Controles",
+    "TO-EXIT": "Volver",
+    "SIZE": "Tamaño"
+  },
+  "LITEMATICA-WARNING": "Cuidado, Litematica no soporta 1.15.2 muy bien; se recomienda actualizar a la 1.16.5",
+  "EDGE-WARNING": "Nota: Sin soporte para Microsoft Edge.\\nPor favor utiliza Chrome o Firefox para MapartCraft",
+  "NONE": "Vacío"
+}

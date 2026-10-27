@@ -1,0 +1,35 @@
+.mapartController,
+.sectionsPreviewSettingsMaterials {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.sectionsPreviewSettingsMaterials {
+  flex: 1;
+}
+
+.section {
+  padding: 0.3em;
+}
+
+@media (max-width: 720px) {
+  /* Let the side-by-side sections stack without their min-content width
+     forcing the whole document to scroll horizontally. */
+  .sectionsPreviewSettingsMaterials {
+    min-width: 0;
+  }
+
+  .sectionsPreviewSettingsMaterials > .section,
+  .sectionsPreviewSettingsMaterials > div {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .section.settingsDiv select {
+    max-width: 100%;
+  }
+}

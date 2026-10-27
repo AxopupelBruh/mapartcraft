@@ -1,0 +1,74 @@
+.greenButton {
+  display: block;
+  font-family: "kenpixel_mini_square";
+  color: #333333;
+  cursor: pointer;
+  position: relative;
+  width: 300px;
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+}
+
+.greenButton_text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+
+  line-height: 29px;
+  z-index: 10;
+}
+
+.greenButton_text_dummy {
+  position: unset;
+  visibility: hidden;
+  width: 100%;
+  text-align: center;
+  display: block;
+
+  line-height: 29px;
+  z-index: 10;
+}
+
+.greenButton_large_text {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  text-align: center;
+
+  line-height: 50px;
+  z-index: 10;
+  font-size: 26px ;
+}
+
+.greenButton_large_text_dummy {
+  position: unset;
+  visibility: hidden;
+  width: 100%;
+  text-align: center;
+  display: block;
+
+  line-height: 50px;
+  z-index: 10;
+  font-size: 26px ;
+}
+
+.greenButton_progressDiv {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background-color: #688e6b;
+  height: 100%;
+}
+
+.greenButton_status {
+  width: 300px;
+  margin-top: 0.15em;
+  color: var(--rebaneGreen);
+  font-family: Lato, Open Sans, Arial, sans-serif;
+  font-size: 0.72em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
