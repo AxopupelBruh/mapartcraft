@@ -12,12 +12,90 @@ import "./blockSelection.css";
 class BlockSelection extends Component {
   state = {
     lastSelectedCustomBlock: null, // {colourSetId, blockId}
+    paletteOpen: false,
+    paletteSearch: "",
+    paletteFocusColourSetId: null,
   };
+
+  constructor(props) {
+    super(props);
+    this.paletteBodyRef = React.createRef();
+  }
+
+  componentDidMount() {
+    document.addEventListener("keydown", this.handleGlobalKeyDown);
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener("keydown", this.handleGlobalKeyDown);
+    this.unlockBodyScroll();
+  }
 
   cssRGB(RGBArray) {
     // RGB array to css compatible string
     return `rgb(${RGBArray.join(", ")})`;
   }
+
+  handleGlobalKeyDown = (event) => {
+    if (event.key === "Escape" && this.state.paletteOpen) {
+      this.closePalette();
+    }
+  };
+
+  lockBodyScroll = () => {
+    document.body.classList.add("paletteModalOpen");
+  };
+
+  unlockBodyScroll = () => {
+    document.body.classList.remove("paletteModalOpen");
+  };
+
+  openPalette = (colourSetId = null) => {
+    this.setState(
+      {
+        paletteOpen: true,
+        paletteSearch: "",
+        paletteFocusColourSetId: colourSetId,
+      },
+      () => {
+        this.lockBodyScroll();
+        if (colourSetId !== null) {
+          this.scrollToColourSet(colourSetId);
+        }
+      }
+    );
+  };
+
+  closePalette = () => {
+    this.unlockBodyScroll();
+    this.setState({
+      paletteOpen: false,
+      paletteSearch: "",
+      paletteFocusColourSetId: null,
+    });
+  };
+
+  handlePaletteOverlayMouseDown = (event) => {
+    if (event.target === event.currentTarget) {
+      this.closePalette();
+    }
+  };
+
+  handlePaletteSearch = (event) => {
+    this.setState({ paletteSearch: event.target.value });
+  };
+
+  scrollToColourSet = (colourSetId) => {
+    window.requestAnimationFrame(() => {
+      const body = this.paletteBodyRef.current;
+      if (!body) return;
+      const row = body.querySelector(`[data-colour-set="${colourSetId}"]`);
+      if (!row) return;
+      const bodyRect = body.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      body.scrollTop += rowRect.top - bodyRect.top - bodyRect.height / 2 + rowRect.height / 2;
+    });
+  };
 
   getColourSetBox = (colourSet) => {
     const { optionValue_staircasing } = this.props;
@@ -98,6 +176,9 @@ class BlockSelection extends Component {
                   cursor: "pointer",
                   ...(!disabledTones[colourSetId].has("dark") && {
                     filter: "drop-shadow(0 0 4px #658968)"
+                  }),
+                  ...(disabledTones[colourSetId].has("dark") && {
+                    opacity: 0.28,
                   })
                 }}
               />
@@ -111,6 +192,9 @@ class BlockSelection extends Component {
                   cursor: "pointer",
                   ...(!disabledTones[colourSetId].has("normal") && {
                     filter: "drop-shadow(0 0 4px #658968)"
+                  }),
+                  ...(disabledTones[colourSetId].has("normal") && {
+                    opacity: 0.28,
                   })
                 }}
               />
@@ -124,6 +208,9 @@ class BlockSelection extends Component {
                   cursor: "pointer",
                   ...(!disabledTones[colourSetId].has("light") && {
                     filter: "drop-shadow(0 0 4px #658968)"
+                  }),
+                  ...(disabledTones[colourSetId].has("light") && {
+                    opacity: 0.28,
                   })
                 }}
               />
@@ -142,6 +229,9 @@ class BlockSelection extends Component {
                   cursor: "pointer",
                   ...(!disabledTones[colourSetId].has("normal") && {
                     filter: "drop-shadow(0 0 4px #658968)"
+                  }),
+                  ...(disabledTones[colourSetId].has("normal") && {
+                    opacity: 0.28,
                   })
                 }}
               />
@@ -155,6 +245,9 @@ class BlockSelection extends Component {
                   cursor: "pointer",
                   ...(!disabledTones[colourSetId].has("light") && {
                     filter: "drop-shadow(0 0 4px #658968)"
+                  }),
+                  ...(disabledTones[colourSetId].has("light") && {
+                    opacity: 0.28,
                   })
                 }}
               />
@@ -173,6 +266,9 @@ class BlockSelection extends Component {
                   cursor: "pointer",
                   ...(!disabledTones[colourSetId].has("dark") && {
                     filter: "drop-shadow(0 0 4px #658968)"
+                  }),
+                  ...(disabledTones[colourSetId].has("dark") && {
+                    opacity: 0.28,
                   })
                 }}
               />
@@ -186,6 +282,9 @@ class BlockSelection extends Component {
                   cursor: "pointer",
                   ...(!disabledTones[colourSetId].has("normal") && {
                     filter: "drop-shadow(0 0 4px #658968)"
+                  }),
+                  ...(disabledTones[colourSetId].has("normal") && {
+                    opacity: 0.28,
                   })
                 }}
               />
@@ -197,15 +296,236 @@ class BlockSelection extends Component {
     }
   };
 
-  render() {
+  getAvailableColourSets = () => {
+    const { coloursJSON, optionValue_version } = this.props;
+    return Object.entries(coloursJSON).filter(([, colourSet]) =>
+      Object.values(colourSet.blocks).some((block) => Object.keys(block.validVersions).includes(optionValue_version.MCVersion))
+    );
+  };
+
+  getSelectedSummary = (availableColourSets) => {
+    const { selectedBlocks } = this.props;
+    return availableColourSets
+      .filter(([colourSetId]) => selectedBlocks[colourSetId] && selectedBlocks[colourSetId] !== "-1")
+      .map(([colourSetId]) => ({ colourSetId, blockId: selectedBlocks[colourSetId] }));
+  };
+
+  getFilteredColourSets = () => {
+    const { optionValue_version } = this.props;
+    const query = this.state.paletteSearch.trim().toLowerCase();
+    return this.getAvailableColourSets()
+      .map(([colourSetId, colourSet]) => {
+        const blocks = Object.entries(colourSet.blocks).filter(([, block]) =>
+          Object.keys(block.validVersions).includes(optionValue_version.MCVersion)
+        );
+        if (query === "") {
+          return { colourSetId, colourSet, blocks };
+        }
+        const colourMatches = colourSet.colourName.toLowerCase().includes(query);
+        const matchingBlocks = colourMatches
+          ? blocks
+          : blocks.filter(([, block]) => block.displayName.toLowerCase().includes(query));
+        return {
+          colourSetId,
+          colourSet,
+          blocks: matchingBlocks,
+          visible: colourMatches || matchingBlocks.length > 0,
+        };
+      })
+      .filter((row) => row.visible !== false);
+  };
+
+  renderPaletteSummary = (selectedSummary) => {
+    const { coloursJSON, getLocaleString } = this.props;
+    if (selectedSummary.length === 0) {
+      return <span className="paletteSummaryEmpty">{getLocaleString("BLOCK-SELECTION/PALETTE/EMPTY")}</span>;
+    }
+    return selectedSummary.map(({ colourSetId, blockId }) => {
+      const colourSet = coloursJSON[colourSetId];
+      const block = colourSet && colourSet.blocks[blockId];
+      if (!block) return null;
+      const label = `${colourSet.colourName}: ${block.displayName}`;
+      return (
+        <button
+          type="button"
+          key={colourSetId}
+          className="paletteSummaryItem"
+          title={label}
+          aria-label={label}
+          onClick={() => this.openPalette(colourSetId)}
+        >
+          <BlockImage
+            getLocaleString={getLocaleString}
+            coloursJSON={coloursJSON}
+            colourSetId={colourSetId}
+            blockId={blockId}
+            className="paletteSummaryBlock"
+            style={{ backgroundColor: this.cssRGB(colourSet.tonesRGB.normal) }}
+          />
+        </button>
+      );
+    });
+  };
+
+  renderColourSetRow = (colourSetId, colourSet, blocks) => {
     const {
       coloursJSON,
       getLocaleString,
       onChangeColourSetBlock,
-      onToggleColourTone,
-      optionValue_version,
       selectedBlocks,
       disabledTones,
+      onToggleColourTone,
+    } = this.props;
+    const { paletteFocusColourSetId } = this.state;
+    const latestVersion = Object.values(SupportedVersions)[Object.keys(SupportedVersions).length - 1].MCVersion;
+    return (
+      <div
+        key={colourSetId}
+        data-colour-set={colourSetId}
+        className={`colourSet${paletteFocusColourSetId === colourSetId ? " focused" : ""}`}
+      >
+        <div className="colourSetLabel" title={colourSet.colourName}>
+          {colourSet.colourName}
+        </div>
+        {this.getColourSetBox(colourSet)}
+        {this.getColourSetTones(colourSetId, colourSet, disabledTones, onToggleColourTone)}
+        <label>
+          <Tooltip tooltipText={getLocaleString("NONE")}>
+            <BlockImage
+              getLocaleString={getLocaleString}
+              coloursJSON={coloursJSON}
+              colourSetId={colourSetId}
+              blockId={"-1"}
+              onClick={() => {
+                onChangeColourSetBlock(colourSetId, "-1");
+                this.setState({ paletteFocusColourSetId: colourSetId });
+              }}
+              style={{
+                cursor: "pointer",
+                ...(selectedBlocks[colourSetId] === "-1" && {
+                  filter: "drop-shadow(0 0 4px #658968)",
+                  backgroundColor: "#658968",
+                }),
+              }}
+            />
+          </Tooltip>
+        </label>
+        <div className={"colourSetBlocks"}>
+          {blocks.map(([blockId, block]) => (
+            <label key={blockId}>
+              <Tooltip tooltipText={block.displayName}>
+                {selectedBlocks[colourSetId] === blockId && !(latestVersion in block.validVersions) && (
+                  // if doesn't support latest version
+                  <div
+                    style={{
+                      position: "absolute",
+                      paddingLeft: "28px",
+                      zIndex: 110,
+                    }}
+                  >
+                    <Tooltip
+                      tooltipText={`${getLocaleString("BLOCK-SELECTION/UNSUPPORTED-PAST")} ${
+                        Object.keys(block.validVersions)[Object.keys(block.validVersions).length - 1]
+                      }`}
+                      textStyleOverrides={{
+                        whiteSpace: "nowrap",
+                        backgroundColor: "red",
+                      }}
+                    >
+                      <h2 style={{ backgroundColor: "red", margin: "0" }}>{"!"}</h2>
+                    </Tooltip>
+                  </div>
+                )}
+                <BlockImage
+                  coloursJSON={coloursJSON}
+                  colourSetId={colourSetId}
+                  blockId={blockId}
+                  onClick={() => {
+                    onChangeColourSetBlock(colourSetId, blockId);
+                    this.setState({
+                      paletteFocusColourSetId: colourSetId,
+                      ...(block.presetIndex === "CUSTOM" && {
+                        lastSelectedCustomBlock: { colourSetId, blockId },
+                      }),
+                    });
+                  }}
+                  style={{
+                    cursor: "pointer",
+                    ...(selectedBlocks[colourSetId] === blockId && {
+                      filter: "drop-shadow(0 0 4px #658968)",
+                      ...(block.presetIndex !== "CUSTOM" && {
+                        backgroundColor: "#658968",
+                      }),
+                    }),
+                  }}
+                />
+              </Tooltip>
+            </label>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  renderPaletteModal = (availableColourSets) => {
+    const {
+      getLocaleString,
+      coloursJSON,
+      handleAddCustomBlock,
+      handleDeleteCustomBlock,
+    } = this.props;
+    const { paletteOpen, paletteSearch, lastSelectedCustomBlock } = this.state;
+    if (!paletteOpen) return null;
+    const filteredColourSets = this.getFilteredColourSets();
+    const selectedCount = this.getSelectedSummary(availableColourSets).length;
+    return (
+      <div className="paletteModalOverlay" onMouseDown={this.handlePaletteOverlayMouseDown}>
+        <div className="paletteModal" role="dialog" aria-modal="true" aria-labelledby="paletteModalTitle">
+          <div className="paletteModalHeader">
+            <div className="paletteModalHeading">
+              <h2 id="paletteModalTitle">{getLocaleString("BLOCK-SELECTION/PALETTE/TITLE")}</h2>
+              <span className="paletteModalCount">
+                {getLocaleString("BLOCK-SELECTION/PALETTE/COUNT")}: {selectedCount} / {availableColourSets.length}
+              </span>
+            </div>
+            <input
+              type="search"
+              className="paletteModalSearch"
+              value={paletteSearch}
+              onChange={this.handlePaletteSearch}
+              placeholder={getLocaleString("BLOCK-SELECTION/PALETTE/SEARCH")}
+              aria-label={getLocaleString("BLOCK-SELECTION/PALETTE/SEARCH")}
+              autoFocus
+            />
+            <button type="button" className="paletteModalClose" onClick={this.closePalette}>
+              {getLocaleString("BLOCK-SELECTION/PALETTE/DONE")}
+            </button>
+          </div>
+          <div className="paletteModalBody" ref={this.paletteBodyRef}>
+            {filteredColourSets.map(({ colourSetId, colourSet, blocks }) =>
+              this.renderColourSetRow(colourSetId, colourSet, blocks)
+            )}
+            {filteredColourSets.length === 0 && (
+              <p className="paletteModalEmpty">{getLocaleString("BLOCK-SELECTION/PALETTE/NO-RESULTS")}</p>
+            )}
+            <div className="paletteModalCustom">
+              <BlockSelectionAddCustom
+                getLocaleString={getLocaleString}
+                coloursJSON={coloursJSON}
+                onAddCustomBlock={handleAddCustomBlock}
+                onDeleteCustomBlock={handleDeleteCustomBlock}
+                lastSelectedCustomBlock={lastSelectedCustomBlock}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  render() {
+    const {
+      getLocaleString,
       presets,
       selectedPresetName,
       canDeletePreset,
@@ -214,13 +534,11 @@ class BlockSelection extends Component {
       onSavePreset,
       onSharePreset,
       onGetPDNPaletteClicked,
-      handleAddCustomBlock,
-      handleDeleteCustomBlock,
     } = this.props;
-    const { lastSelectedCustomBlock } = this.state;
+    const availableColourSets = this.getAvailableColourSets();
+    const selectedSummary = this.getSelectedSummary(availableColourSets);
     const presetsManagement = (
-      <React.Fragment>
-        <h2 id="blockselectiontitle">{getLocaleString("BLOCK-SELECTION/TITLE")}</h2>
+      <div className="blockSelectionPresets">
         <b>
           {getLocaleString("BLOCK-SELECTION/PRESETS/TITLE")}
           {":"}
@@ -249,102 +567,27 @@ class BlockSelection extends Component {
             {getLocaleString("BLOCK-SELECTION/PRESETS/DOWNLOAD")}
           </button>
         </Tooltip>
-      </React.Fragment>
-    );
-    const blockSelection = (
-      <React.Fragment>
-        {Object.entries(coloursJSON)
-          .filter(([, colourSet]) => Object.values(colourSet.blocks).some((block) => Object.keys(block.validVersions).includes(optionValue_version.MCVersion)))
-          .map(([colourSetId, colourSet]) => (
-            <div key={colourSetId} className="colourSet">
-              {this.getColourSetBox(colourSet)}
-              {this.getColourSetTones(colourSetId, colourSet, disabledTones, onToggleColourTone)}
-              <label>
-                <Tooltip tooltipText={getLocaleString("NONE")}>
-                  <BlockImage
-                    getLocaleString={getLocaleString}
-                    coloursJSON={coloursJSON}
-                    colourSetId={colourSetId}
-                    blockId={"-1"}
-                    onClick={() => onChangeColourSetBlock(colourSetId, "-1")}
-                    style={{
-                      cursor: "pointer",
-                      ...(selectedBlocks[colourSetId] === "-1" && {
-                        filter: "drop-shadow(0 0 4px #658968)",
-                        backgroundColor: "#658968",
-                      }),
-                    }}
-                  />
-                </Tooltip>
-              </label>
-              <div className={"colourSetBlocks"}>
-                {Object.entries(colourSet.blocks)
-                  .filter(([, block]) => Object.keys(block.validVersions).includes(optionValue_version.MCVersion))
-                  .map(([blockId, block]) => (
-                    <label key={blockId}>
-                      <Tooltip tooltipText={block.displayName}>
-                        {selectedBlocks[colourSetId] === blockId &&
-                          !(Object.values(SupportedVersions)[Object.keys(SupportedVersions).length - 1].MCVersion in block.validVersions) && (
-                            // if doesn't support latest version
-                            <div
-                              style={{
-                                position: "absolute",
-                                paddingLeft: "28px",
-                                zIndex: 110,
-                              }}
-                            >
-                              <Tooltip
-                                tooltipText={`${getLocaleString("BLOCK-SELECTION/UNSUPPORTED-PAST")} ${
-                                  Object.keys(block.validVersions)[Object.keys(block.validVersions).length - 1]
-                                }`}
-                                textStyleOverrides={{
-                                  whiteSpace: "nowrap",
-                                  backgroundColor: "red",
-                                }}
-                              >
-                                <h2 style={{ backgroundColor: "red", margin: "0" }}>{"!"}</h2>
-                              </Tooltip>
-                            </div>
-                          )}
-                        <BlockImage
-                          coloursJSON={coloursJSON}
-                          colourSetId={colourSetId}
-                          blockId={blockId}
-                          onClick={() => {
-                            onChangeColourSetBlock(colourSetId, blockId);
-                            if (block.presetIndex === "CUSTOM") {
-                              this.setState({ lastSelectedCustomBlock: { colourSetId, blockId } });
-                            }
-                          }}
-                          style={{
-                            cursor: "pointer",
-                            ...(selectedBlocks[colourSetId] === blockId && {
-                              filter: "drop-shadow(0 0 4px #658968)",
-                              ...(block.presetIndex !== "CUSTOM" && {
-                                backgroundColor: "#658968",
-                              }),
-                            }),
-                          }}
-                        />
-                      </Tooltip>
-                    </label>
-                  ))}
-              </div>
-            </div>
-          ))}
-      </React.Fragment>
+      </div>
     );
     return (
       <div className="section blockSelectionDiv">
+        <div className="blockSelectionToolbar">
+          <div className="blockSelectionHeading">
+            <h2 id="blockselectiontitle">{getLocaleString("BLOCK-SELECTION/TITLE")}</h2>
+            <span className="blockSelectionCount">
+              {getLocaleString("BLOCK-SELECTION/PALETTE/COUNT")}: {selectedSummary.length} / {availableColourSets.length}
+            </span>
+          </div>
+          <button type="button" className="blockSelectionOpenButton" onClick={() => this.openPalette()}>
+            {getLocaleString("BLOCK-SELECTION/PALETTE/OPEN")}
+          </button>
+        </div>
         {presetsManagement}
-        {blockSelection}
-        <BlockSelectionAddCustom
-          getLocaleString={getLocaleString}
-          coloursJSON={coloursJSON}
-          onAddCustomBlock={handleAddCustomBlock}
-          onDeleteCustomBlock={handleDeleteCustomBlock}
-          lastSelectedCustomBlock={lastSelectedCustomBlock}
-        />
+        <div className="blockSelectionSummary">
+          <span className="blockSelectionSummaryTitle">{getLocaleString("BLOCK-SELECTION/PALETTE/SELECTED")}</span>
+          <div className="paletteSummary">{this.renderPaletteSummary(selectedSummary)}</div>
+        </div>
+        {this.renderPaletteModal(availableColourSets)}
       </div>
     );
   }

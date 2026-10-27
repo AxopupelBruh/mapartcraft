@@ -60,6 +60,8 @@ class MapartController extends Component {
     optionValue_cleanup_despeckle: 0,
     optionValue_cleanup_paletteIslands: true,
     optionValue_cleanup_colours: 0,
+    optionValue_cleanup_coloursPerceptual: false,
+    optionValue_cleanup_islandsSmart: false,
     optionValue_cleanup_adaptiveDither: true,
     optionValue_preprocessingEnabled: false,
     preProcessingValue_brightness: 100,
@@ -67,7 +69,10 @@ class MapartController extends Component {
     preProcessingValue_saturation: 100,
     preProcessingValue_backgroundColourSelect: BackgroundColourModes.OFF.uniqueId,
     preProcessingValue_backgroundColour: "#151515",
+    preProcessingValue_gamma: 100,
+    preProcessingValue_autoLevels: false,
     optionValue_extras_moreStaircasingOptions: false,
+    optionValue_resizeMethod: "pixel",
     optionValue_pixelPerfect: true,
     optionValue_autoDetectPixelScale: true,
     optionValue_showPixelGrid: false,
@@ -268,6 +273,8 @@ class MapartController extends Component {
       "optionValue_cleanup_despeckle",
       "optionValue_cleanup_paletteIslands",
       "optionValue_cleanup_colours",
+      "optionValue_cleanup_coloursPerceptual",
+      "optionValue_cleanup_islandsSmart",
       "optionValue_cleanup_adaptiveDither",
       "optionValue_preprocessingEnabled",
       "preProcessingValue_brightness",
@@ -275,7 +282,10 @@ class MapartController extends Component {
       "preProcessingValue_saturation",
       "preProcessingValue_backgroundColourSelect",
       "preProcessingValue_backgroundColour",
+      "preProcessingValue_gamma",
+      "preProcessingValue_autoLevels",
       "optionValue_extras_moreStaircasingOptions",
+      "optionValue_resizeMethod",
       "optionValue_pixelPerfect",
       "optionValue_autoDetectPixelScale",
       "optionValue_showPixelGrid",
@@ -287,6 +297,15 @@ class MapartController extends Component {
     for (const key of keys) {
       if (settings[key] !== undefined) patch[key] = settings[key];
     }
+
+    const validResizeMethods = ["pixel", "smooth", "lanczos"];
+    if (!validResizeMethods.includes(patch.optionValue_resizeMethod)) {
+      // Older snapshots only stored the pixel-perfect toggle.
+      const pixelPerfect =
+        patch.optionValue_pixelPerfect !== undefined ? patch.optionValue_pixelPerfect : settings.optionValue_pixelPerfect;
+      patch.optionValue_resizeMethod = pixelPerfect === false ? "smooth" : "pixel";
+    }
+    patch.optionValue_pixelPerfect = patch.optionValue_resizeMethod === "pixel";
 
     if (settings.optionValue_version) {
       const version =
@@ -375,6 +394,8 @@ class MapartController extends Component {
       optionValue_cleanup_despeckle,
       optionValue_cleanup_paletteIslands,
       optionValue_cleanup_colours,
+      optionValue_cleanup_coloursPerceptual,
+      optionValue_cleanup_islandsSmart,
       optionValue_cleanup_adaptiveDither,
       optionValue_preprocessingEnabled,
       preProcessingValue_brightness,
@@ -382,7 +403,10 @@ class MapartController extends Component {
       preProcessingValue_saturation,
       preProcessingValue_backgroundColourSelect,
       preProcessingValue_backgroundColour,
+      preProcessingValue_gamma,
+      preProcessingValue_autoLevels,
       optionValue_extras_moreStaircasingOptions,
+      optionValue_resizeMethod,
       optionValue_pixelPerfect,
       optionValue_autoDetectPixelScale,
       optionValue_showPixelGrid,
@@ -425,6 +449,8 @@ class MapartController extends Component {
       optionValue_cleanup_despeckle,
       optionValue_cleanup_paletteIslands,
       optionValue_cleanup_colours,
+      optionValue_cleanup_coloursPerceptual,
+      optionValue_cleanup_islandsSmart,
       optionValue_cleanup_adaptiveDither,
       optionValue_preprocessingEnabled,
       preProcessingValue_brightness,
@@ -432,7 +458,10 @@ class MapartController extends Component {
       preProcessingValue_saturation,
       preProcessingValue_backgroundColourSelect,
       preProcessingValue_backgroundColour,
+      preProcessingValue_gamma,
+      preProcessingValue_autoLevels,
       optionValue_extras_moreStaircasingOptions,
+      optionValue_resizeMethod,
       optionValue_pixelPerfect,
       optionValue_autoDetectPixelScale,
       optionValue_showPixelGrid,
@@ -686,12 +715,33 @@ class MapartController extends Component {
       optionValue_dithering_propagation_green: style.propagation[1],
       optionValue_dithering_propagation_blue: style.propagation[2],
       optionValue_dithering_strength: 100,
+      optionValue_resizeMethod: "pixel",
       optionValue_pixelPerfect: true,
     });
   };
 
   onOptionChange_pixelPerfect = () => {
-    this.setState({ optionValue_pixelPerfect: !this.state.optionValue_pixelPerfect });
+    const pixelPerfect = !this.state.optionValue_pixelPerfect;
+    this.setState({
+      optionValue_pixelPerfect: pixelPerfect,
+      optionValue_resizeMethod: pixelPerfect ? "pixel" : "smooth",
+    });
+  };
+
+  onOptionChange_resizeMethod = (event) => {
+    const resizeMethod = event.target.value;
+    this.setState({
+      optionValue_resizeMethod: resizeMethod,
+      optionValue_pixelPerfect: resizeMethod === "pixel",
+    });
+  };
+
+  onOptionChange_PreProcessingGamma = (value) => {
+    this.setState({ preProcessingValue_gamma: Math.max(50, Math.min(200, value)) });
+  };
+
+  onOptionChange_PreProcessingAutoLevels = () => {
+    this.setState({ preProcessingValue_autoLevels: !this.state.preProcessingValue_autoLevels });
   };
 
   onOptionChange_autoDetectPixelScale = () => {
@@ -926,6 +976,14 @@ class MapartController extends Component {
 
   onOptionChange_cleanup_colours = (e) => {
     this.setState({ optionValue_cleanup_colours: parseInt(e.target.value) });
+  };
+
+  onOptionChange_cleanup_coloursPerceptual = () => {
+    this.setState({ optionValue_cleanup_coloursPerceptual: !this.state.optionValue_cleanup_coloursPerceptual });
+  };
+
+  onOptionChange_cleanup_islandsSmart = () => {
+    this.setState({ optionValue_cleanup_islandsSmart: !this.state.optionValue_cleanup_islandsSmart });
   };
 
   onOptionChange_cleanup_adaptiveDither = () => {
@@ -1417,6 +1475,8 @@ class MapartController extends Component {
       optionValue_cleanup_despeckle,
       optionValue_cleanup_paletteIslands,
       optionValue_cleanup_colours,
+      optionValue_cleanup_coloursPerceptual,
+      optionValue_cleanup_islandsSmart,
       optionValue_cleanup_adaptiveDither,
       optionValue_preprocessingEnabled,
       preProcessingValue_brightness,
@@ -1424,7 +1484,10 @@ class MapartController extends Component {
       preProcessingValue_saturation,
       preProcessingValue_backgroundColourSelect,
       preProcessingValue_backgroundColour,
+      preProcessingValue_gamma,
+      preProcessingValue_autoLevels,
       optionValue_extras_moreStaircasingOptions,
+      optionValue_resizeMethod,
       optionValue_pixelPerfect,
       optionValue_autoDetectPixelScale,
       optionValue_showPixelGrid,
@@ -1449,6 +1512,8 @@ class MapartController extends Component {
           stylePreset={stylePreset}
           optionValue_style={optionValue_style}
           onApplyStyle={this.applyStylePreset}
+          optionValue_resizeMethod={optionValue_resizeMethod}
+          onOptionChange_resizeMethod={this.onOptionChange_resizeMethod}
           optionValue_pixelPerfect={optionValue_pixelPerfect}
           onOptionChange_pixelPerfect={this.onOptionChange_pixelPerfect}
           optionValue_autoDetectPixelScale={optionValue_autoDetectPixelScale}
@@ -1465,6 +1530,8 @@ class MapartController extends Component {
           optionValue_cleanup_despeckle={optionValue_cleanup_despeckle}
           optionValue_cleanup_paletteIslands={optionValue_cleanup_paletteIslands}
           optionValue_cleanup_colours={optionValue_cleanup_colours}
+          optionValue_cleanup_coloursPerceptual={optionValue_cleanup_coloursPerceptual}
+          optionValue_cleanup_islandsSmart={optionValue_cleanup_islandsSmart}
           optionValue_cleanup_adaptiveDither={optionValue_cleanup_adaptiveDither}
           onOptionChange_cleanup_enabled={this.onOptionChange_cleanup_enabled}
           onOptionChange_cleanup_denoise={this.onOptionChange_cleanup_denoise}
@@ -1473,6 +1540,8 @@ class MapartController extends Component {
           onOptionChange_cleanup_despeckle={this.onOptionChange_cleanup_despeckle}
           onOptionChange_cleanup_paletteIslands={this.onOptionChange_cleanup_paletteIslands}
           onOptionChange_cleanup_colours={this.onOptionChange_cleanup_colours}
+          onOptionChange_cleanup_coloursPerceptual={this.onOptionChange_cleanup_coloursPerceptual}
+          onOptionChange_cleanup_islandsSmart={this.onOptionChange_cleanup_islandsSmart}
           onOptionChange_cleanup_adaptiveDither={this.onOptionChange_cleanup_adaptiveDither}
           onApplyCleanupPreset={this.applyCleanupPreset}
           detectedPixelScale={detectedPixelScale}
@@ -1534,6 +1603,8 @@ class MapartController extends Component {
             optionValue_cleanup_despeckle={optionValue_cleanup_despeckle}
             optionValue_cleanup_paletteIslands={optionValue_cleanup_paletteIslands}
             optionValue_cleanup_colours={optionValue_cleanup_colours}
+            optionValue_cleanup_coloursPerceptual={optionValue_cleanup_coloursPerceptual}
+            optionValue_cleanup_islandsSmart={optionValue_cleanup_islandsSmart}
             optionValue_cleanup_adaptiveDither={optionValue_cleanup_adaptiveDither}
             optionValue_preprocessingEnabled={optionValue_preprocessingEnabled}
             preProcessingValue_brightness={preProcessingValue_brightness}
@@ -1541,6 +1612,9 @@ class MapartController extends Component {
             preProcessingValue_saturation={preProcessingValue_saturation}
             preProcessingValue_backgroundColourSelect={preProcessingValue_backgroundColourSelect}
             preProcessingValue_backgroundColour={preProcessingValue_backgroundColour}
+            preProcessingValue_gamma={preProcessingValue_gamma}
+            preProcessingValue_autoLevels={preProcessingValue_autoLevels}
+            optionValue_resizeMethod={optionValue_resizeMethod}
             optionValue_pixelPerfect={optionValue_pixelPerfect}
             optionValue_autoDetectPixelScale={optionValue_autoDetectPixelScale}
             optionValue_showPixelGrid={optionValue_showPixelGrid}
@@ -1614,6 +1688,10 @@ class MapartController extends Component {
               onOptionChange_PreProcessingBackgroundColourSelect={this.onOptionChange_PreProcessingBackgroundColourSelect}
               preProcessingValue_backgroundColour={preProcessingValue_backgroundColour}
               onOptionChange_PreProcessingBackgroundColour={this.onOptionChange_PreProcessingBackgroundColour}
+              preProcessingValue_gamma={preProcessingValue_gamma}
+              onOptionChange_PreProcessingGamma={this.onOptionChange_PreProcessingGamma}
+              preProcessingValue_autoLevels={preProcessingValue_autoLevels}
+              onOptionChange_PreProcessingAutoLevels={this.onOptionChange_PreProcessingAutoLevels}
               optionValue_extras_moreStaircasingOptions={optionValue_extras_moreStaircasingOptions}
               onOptionChange_extras_moreStaircasingOptions={this.onOptionChange_extras_moreStaircasingOptions}
             />
