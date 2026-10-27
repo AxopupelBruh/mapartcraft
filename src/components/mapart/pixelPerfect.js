@@ -1,5 +1,34 @@
 const pixelScaleCache = new WeakMap();
 
+function isUniformGrid(data, width, height, scale, stepX = 1, stepY = 1) {
+  for (let blockY = 0; blockY < height / scale; blockY += stepY) {
+    for (let blockX = 0; blockX < width / scale; blockX += stepX) {
+      const baseX = blockX * scale;
+      const baseY = blockY * scale;
+      const base = (baseY * width + baseX) * 4;
+      const r = data[base];
+      const g = data[base + 1];
+      const b = data[base + 2];
+      const a = data[base + 3];
+
+      for (let y = 0; y < scale; y++) {
+        for (let x = 0; x < scale; x++) {
+          const pixel = ((baseY + y) * width + (baseX + x)) * 4;
+          if (
+            data[pixel] !== r ||
+            data[pixel + 1] !== g ||
+            data[pixel + 2] !== b ||
+            data[pixel + 3] !== a
+          ) {
+            return false;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 /**
  * Finds the largest integer block size (2..maxScale) used by a pixel-art
  * source. A clean 256x256 image made of 2x2 art pixels returns 2, so the
@@ -34,41 +63,14 @@ export function detectPixelScale(image, maxScale = 8) {
   // Check larger scales first. The first uniform grid is the native art grid.
   for (let scale = limit; scale >= 2; scale--) {
     if (width % scale !== 0 || height % scale !== 0) continue;
-    let uniform = true;
     const stepX = Math.max(1, Math.floor(width / scale / 160));
     const stepY = Math.max(1, Math.floor(height / scale / 160));
 
-    for (let blockY = 0; blockY < height / scale && uniform; blockY += stepY) {
-      for (let blockX = 0; blockX < width / scale && uniform; blockX += stepX) {
-        const baseX = blockX * scale;
-        const baseY = blockY * scale;
-        const base = (baseY * width + baseX) * 4;
-        const r = data[base];
-        const g = data[base + 1];
-        const b = data[base + 2];
-        const a = data[base + 3];
+    if (!isUniformGrid(data, width, height, scale, stepX, stepY)) continue;
+    if (!isUniformGrid(data, width, height, scale)) continue;
 
-        for (let y = 0; y < scale && uniform; y++) {
-          for (let x = 0; x < scale; x++) {
-            const pixel = ((baseY + y) * width + (baseX + x)) * 4;
-            if (
-              data[pixel] !== r ||
-              data[pixel + 1] !== g ||
-              data[pixel + 2] !== b ||
-              data[pixel + 3] !== a
-            ) {
-              uniform = false;
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    if (uniform) {
-      pixelScaleCache.set(image, scale);
-      return scale;
-    }
+    pixelScaleCache.set(image, scale);
+    return scale;
   }
 
   pixelScaleCache.set(image, 1);

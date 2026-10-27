@@ -27,12 +27,31 @@ class GreenButtons extends Component {
   };
 
   nbtWorker = new WorkerBuilder(NBTWorker);
+  litematicExportId = 0;
 
   t(key, fallback) {
     const { getLocaleString } = this.props;
     const value = getLocaleString ? getLocaleString(key) : null;
     return value || fallback;
   }
+
+  hasUsablePalette(currentMaterialsData) {
+    return (currentMaterialsData.maps || []).some((row) =>
+      row.some((map) => Object.keys(map.materials || {}).length > 0)
+    );
+  }
+
+  cancelNbtWorker = (updateState = true) => {
+    this.litematicExportId += 1;
+    this.nbtWorker.terminate();
+    if (updateState && this.state.litematicExportInProgress) {
+      this.setState({
+        buttonWidth_Litematic: 1,
+        litematicExportInProgress: false,
+        litematicStatus: "",
+      });
+    }
+  };
 
   resetButtonWidths() {
     this.setState({
@@ -66,11 +85,14 @@ class GreenButtons extends Component {
       this.setState({ mapPreviewWorker_onFinishCallback: () => this.getNBT_base(workerHeader) });
       return;
     }
-    if (Object.entries(currentMaterialsData.currentSelectedBlocks).every((elt) => elt[1] === "-1")) {
+    if (
+      Object.entries(currentMaterialsData.currentSelectedBlocks).every((elt) => elt[1] === "-1") ||
+      !this.hasUsablePalette(currentMaterialsData)
+    ) {
       alert(getLocaleString("DOWNLOAD/ERROR-NONE-SELECTED"));
       return;
     }
-    this.nbtWorker.terminate();
+    this.cancelNbtWorker();
     this.resetButtonWidths();
     let numberOfSplitsCalculated = 0;
     let zipFile = new JSZip();
@@ -173,25 +195,25 @@ class GreenButtons extends Component {
     });
   };
 
-  finishLitematicExport = async (litematicFiles, artName) => {
-    const { currentMaterialsData, optionValue_mapSize_x, optionValue_mapSize_y } = this.props;
-    const width = currentMaterialsData.pixelsWidth || 128 * optionValue_mapSize_x;
-    const height = currentMaterialsData.pixelsHeight || 128 * optionValue_mapSize_y;
+  finishLitematicExport = async (litematicFiles, artName, snapshot, exportId) => {
     try {
-      const canvas = pixelsToCanvas(currentMaterialsData.pixelsData, width, height);
+      const canvas = pixelsToCanvas(snapshot.pixelsData, snapshot.pixelsWidth, snapshot.pixelsHeight);
       const pngBlob = await canvasToBlob(canvas, "image/png");
+      if (exportId !== this.litematicExportId) return;
       const result = await exportArtZip({
         artName,
         litematicFiles,
         pngBlob,
         pngName: `${artName}.png`,
       });
+      if (exportId !== this.litematicExportId) return;
       this.setState({
         buttonWidth_Litematic: 1,
         litematicExportInProgress: false,
         litematicStatus: `ZIP: ${result.filename}`,
       });
     } catch (error) {
+      if (exportId !== this.litematicExportId) return;
       console.error("Could not export .litematic + PNG", error);
       this.setState({
         buttonWidth_Litematic: 1,
@@ -220,7 +242,10 @@ class GreenButtons extends Component {
       window.alert(this.t("STUDIO/WAIT-PREVIEW", "Wait for the preview first."));
       return;
     }
-    if (Object.entries(currentMaterialsData.currentSelectedBlocks).every((entry) => entry[1] === "-1")) {
+    if (
+      Object.entries(currentMaterialsData.currentSelectedBlocks).every((entry) => entry[1] === "-1") ||
+      !this.hasUsablePalette(currentMaterialsData)
+    ) {
       window.alert(this.t("STUDIO/NO-BLOCKS", "No blocks selected."));
       return;
     }
@@ -228,10 +253,18 @@ class GreenButtons extends Component {
 
     const artName = sanitizeFilename(uploadedImage_baseFilename || "MyArt");
     const expected = optionValue_mapSize_x * optionValue_mapSize_y;
+    const snapshot = {
+      pixelsData: currentMaterialsData.pixelsData,
+      pixelsWidth: currentMaterialsData.pixelsWidth || 128 * optionValue_mapSize_x,
+      pixelsHeight: currentMaterialsData.pixelsHeight || 128 * optionValue_mapSize_y,
+      maps: currentMaterialsData.maps,
+      currentSelectedBlocks: currentMaterialsData.currentSelectedBlocks,
+    };
     const files = [];
     let received = 0;
 
-    this.nbtWorker.terminate();
+    this.cancelNbtWorker();
+    const exportId = ++this.litematicExportId;
     this.resetButtonWidths();
     this.setState({
       litematicExportInProgress: true,
@@ -239,6 +272,7 @@ class GreenButtons extends Component {
     });
     this.nbtWorker = new WorkerBuilder(NBTWorker);
     this.nbtWorker.onmessage = (e) => {
+      if (exportId !== this.litematicExportId) return;
       switch (e.data.head) {
         case "PROGRESS_REPORT_CREATE_LITEMATIC_SPLIT": {
           this.setState({ buttonWidth_Litematic: (received + e.data.body) / expected });
@@ -251,18 +285,21 @@ class GreenButtons extends Component {
           const filename = expected > 1 ? `${artName}_${whichMap_x}_${whichMap_y}.litematic` : `${artName}.litematic`;
           files.push({ name: filename, bytes });
           this.setState({ buttonWidth_Litematic: (received - 1 + 0.98) / expected });
-          if (received === expected) {
-            this.finishLitematicExport(files, artName);
-          }
+          if (received === expected) this.finishLitematicExport(files, artName, snapshot, exportId);
           break;
         }
         default: {
-          if (e.data.head && e.data.head.startsWith("PROGRESS_REPORT")) {
-            break;
-          }
+          if (e.data.head && e.data.head.startsWith("PROGRESS_REPORT")) break;
           throw new Error("Unknown worker response header");
         }
       }
+    };
+    this.nbtWorker.onerror = (event) => {
+      if (exportId !== this.litematicExportId) return;
+      event.preventDefault();
+      this.cancelNbtWorker();
+      this.setState({ litematicStatus: this.t("STUDIO/EXPORT-ERROR", "Export failed") });
+      window.alert(this.t("STUDIO/EXPORT-ERROR", "Export failed"));
     };
     this.nbtWorker.postMessage({
       head: "CREATE_LITEMATIC_SPLIT",
@@ -274,9 +311,9 @@ class GreenButtons extends Component {
         optionValue_staircasing: this.props.optionValue_staircasing,
         optionValue_whereSupportBlocks: this.props.optionValue_whereSupportBlocks,
         optionValue_supportBlock: this.props.optionValue_supportBlock,
-        pixelsData: currentMaterialsData.pixelsData,
-        maps: currentMaterialsData.maps,
-        currentSelectedBlocks: currentMaterialsData.currentSelectedBlocks,
+        pixelsData: snapshot.pixelsData,
+        maps: snapshot.maps,
+        currentSelectedBlocks: snapshot.currentSelectedBlocks,
       },
     });
   };
@@ -368,7 +405,7 @@ class GreenButtons extends Component {
     const { mapPreviewWorker_inProgress } = this.props;
     if (this.componentDidUpdate_shouldNBTWorkerTerminate(prevProps)) {
       // reset callback if setting changed
-      this.nbtWorker.terminate();
+      this.cancelNbtWorker();
       this.resetButtonWidths();
       this.setState({ mapPreviewWorker_onFinishCallback: null });
     } else if (!mapPreviewWorker_inProgress && this.state.mapPreviewWorker_onFinishCallback !== null) {
@@ -378,7 +415,7 @@ class GreenButtons extends Component {
   }
 
   componentWillUnmount() {
-    this.nbtWorker.terminate();
+    this.cancelNbtWorker(false);
   }
 
   render() {

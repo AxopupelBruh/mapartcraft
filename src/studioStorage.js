@@ -123,7 +123,8 @@ export function pixelsToCanvas(pixelsData, width, height) {
   canvas.width = width;
   canvas.height = height;
   const context = canvas.getContext("2d");
-  const imageData = new ImageData(new Uint8ClampedArray(pixelsData), width, height);
+  const pixels = pixelsData instanceof Uint8ClampedArray ? pixelsData : new Uint8ClampedArray(pixelsData);
+  const imageData = new ImageData(pixels, width, height);
   context.putImageData(imageData, 0, 0);
   return canvas;
 }

@@ -138,18 +138,20 @@ class Materials extends Component {
   copyToClipboard(nonZeroMaterialsItems, supportBlockCount) {
     const { optionValue_supportBlock} = this.props;
 
-    const mergedList = new Array(nonZeroMaterialsItems.length);
+    const counts = {};
 
-    for (const [colourSetId, val] of Object.values(nonZeroMaterialsItems)) {
+    for (const [colourSetId, count] of nonZeroMaterialsItems) {
       const mcId = this.nbtNameToColourSetId(colourSetId);
-      mergedList[mcId] = val;
+      counts[mcId] = (counts[mcId] || 0) + count;
     }
 
-    mergedList[optionValue_supportBlock] += supportBlockCount;
+    if (supportBlockCount !== 0) {
+      counts[optionValue_supportBlock] = (counts[optionValue_supportBlock] || 0) + supportBlockCount;
+    }
 
-    const counts = Object.fromEntries(
-      Object.entries(mergedList.sort((first, second) => second - first))
-      .map(([k, v]) => [k, this.formatMaterialCount(v)]));
+    const sortedEntries = Object.entries(counts)
+      .sort((first, second) => second[1] - first[1])
+      .map(([key, count]) => [key, this.formatMaterialCount(count)]);
 
     const NBSP = String.fromCharCode(160); //non-breaking space
     const CRLF = String.fromCharCode(13, 10); //new line
@@ -159,13 +161,13 @@ class Materials extends Component {
     //calculate paddings
     let nameMaxLength = 0;
 
-    for (const key of Object.keys(counts)) {
+    for (const [key] of sortedEntries) {
       if (nameMaxLength < key.length)
         nameMaxLength = key.length;
     }
 
     //insert each entry
-    for (const [key, val] of Object.entries(counts)) {
+    for (const [key, val] of sortedEntries) {
       results.push(key.padEnd(nameMaxLength, NBSP) + " = " + val);
     }
 
@@ -179,7 +181,7 @@ class Materials extends Component {
     const { onlyMaxPerSplit, sortMaterials } = this.state;
     const nonZeroMaterialsItems = this.getMaterialsCount_nonZeroMaterialsItems();
     const supportBlockCount = this.getMaterialsCount_supportBlock();
-    const supportBlockIds = this.colourSetIdAndBlockIdFromNBTName(optionValue_supportBlock);
+    const supportBlockIds = supportBlockCount === 0 ? null : this.colourSetIdAndBlockIdFromNBTName(optionValue_supportBlock);
     return (
       <div className="section materialsDiv">
         <h2>{getLocaleString("MATERIALS/TITLE")}</h2>

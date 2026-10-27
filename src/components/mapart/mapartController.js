@@ -184,6 +184,8 @@ class MapartController extends Component {
     this.lastSessionSnapshot = null;
     this.lastSessionBlob = null;
     this.uploadedImageBlob = null;
+    this.imageLoadId = 0;
+    this.sessionRevision = 0;
     this.isMounted = false;
   }
 
@@ -309,6 +311,15 @@ class MapartController extends Component {
       patch.selectedBlocks = selectedBlocks;
     }
 
+    if (settings.disabledTones && typeof settings.disabledTones === "object") {
+      const restoredDisabledTones = {};
+      for (const colourSetId of Object.keys(colourSource)) {
+        const tones = settings.disabledTones[colourSetId];
+        restoredDisabledTones[colourSetId] = new Set(Array.isArray(tones) ? tones : []);
+      }
+      patch.disabledTones = restoredDisabledTones;
+    }
+
     if (
       patch.selectedPresetName &&
       patch.selectedPresetName !== "None" &&
@@ -333,6 +344,7 @@ class MapartController extends Component {
   getSettingsSnapshot() {
     const {
       selectedBlocks,
+      disabledTones,
       selectedPresetName,
       optionValue_version,
       optionValue_modeNBTOrMapdat,
@@ -380,6 +392,9 @@ class MapartController extends Component {
     } = this.state;
     return {
       selectedBlocks: { ...selectedBlocks },
+      disabledTones: Object.fromEntries(
+        Object.entries(disabledTones).map(([colourSetId, tones]) => [colourSetId, Array.from(tones || [])])
+      ),
       selectedPresetName,
       optionValue_version,
       optionValue_modeNBTOrMapdat,
@@ -461,12 +476,15 @@ class MapartController extends Component {
   }.bind(this);
 
   eventListener_paste = function (e) {
+    const target = e.target;
+    const tag = target && (target.tagName || "").toLowerCase();
+    if (["input", "textarea", "select"].includes(tag) || target?.isContentEditable) return;
+    const files = e.clipboardData?.files;
+    const imageFile = files && Array.from(files).find((file) => file.type.startsWith("image/"));
+    if (!imageFile) return;
     e.preventDefault();
     e.stopPropagation();
-    const files = e.clipboardData.files;
-    if (files.length) {
-      this.loadImageFile(files[0]);
-    }
+    this.loadImageFile(imageFile);
   }.bind(this);
 
   componentDidMount() {
@@ -483,17 +501,25 @@ class MapartController extends Component {
     window.addEventListener("pagehide", this.handlePageHide);
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps, prevState) {
     if (!this.settingsReady) return;
     const settingsSnapshot = this.getSettingsSnapshot();
     const serialized = JSON.stringify(settingsSnapshot);
-    if (serialized !== this.lastSavedSettingsJSON) {
+    const settingsChanged = serialized !== this.lastSavedSettingsJSON;
+    if (settingsChanged) {
       this.lastSavedSettingsJSON = serialized;
       window.clearTimeout(this.settingsSaveTimer);
       this.settingsSaveTimer = window.setTimeout(() => saveSettings(settingsSnapshot), 250);
     }
 
-    if (!this.state.uploadedImage_isPlaceholder && this.uploadedImageBlob) {
+    const sessionInputsChanged =
+      settingsChanged ||
+      prevState.pixelEdits !== this.state.pixelEdits ||
+      prevState.coloursJSON !== this.state.coloursJSON ||
+      prevState.uploadedImage_baseFilename !== this.state.uploadedImage_baseFilename ||
+      prevState.uploadedImage_isPlaceholder !== this.state.uploadedImage_isPlaceholder ||
+      this.uploadedImageBlob !== this.lastSessionBlob;
+    if (sessionInputsChanged && !this.state.uploadedImage_isPlaceholder && this.uploadedImageBlob) {
       const sessionSnapshot = JSON.stringify({
         imageBaseFilename: this.state.uploadedImage_baseFilename,
         settings: settingsSnapshot,
@@ -501,6 +527,7 @@ class MapartController extends Component {
         pixelEdits: this.state.pixelEdits,
       });
       if (sessionSnapshot !== this.lastSessionSnapshot || this.uploadedImageBlob !== this.lastSessionBlob) {
+        this.sessionRevision += 1;
         this.lastSessionSnapshot = sessionSnapshot;
         this.lastSessionBlob = this.uploadedImageBlob;
         window.clearTimeout(this.sessionSaveTimer);
@@ -527,6 +554,7 @@ class MapartController extends Component {
 
   saveSessionNow() {
     if (this.state.uploadedImage_isPlaceholder || !this.uploadedImageBlob) return;
+    const revision = this.sessionRevision;
     if (this.isMounted) this.setState({ sessionStatus: "saving" });
     saveSession({
       imageBlob: this.uploadedImageBlob,
@@ -536,17 +564,18 @@ class MapartController extends Component {
       pixelEdits: this.state.pixelEdits,
     })
       .then(() => {
-        if (this.isMounted) this.setState({ sessionStatus: "saved" });
+        if (this.isMounted && revision === this.sessionRevision) this.setState({ sessionStatus: "saved" });
       })
       .catch((error) => {
         console.warn("Could not save the current session", error);
-        if (this.isMounted) this.setState({ sessionStatus: "error" });
+        if (this.isMounted && revision === this.sessionRevision) this.setState({ sessionStatus: "error" });
       });
   }
 
   onResetSession = async () => {
     const { getLocaleString } = this.props;
     if (!window.confirm(getLocaleString("STUDIO/RESET-SESSION-CONFIRM"))) return;
+    this.sessionRevision += 1;
     window.clearTimeout(this.sessionSaveTimer);
     try {
       await clearSession();
@@ -612,25 +641,26 @@ class MapartController extends Component {
   }
 
   onFileDialogEvent = (e) => {
-    const files = e.target.files;
-    if (!files.length) return;
-    this.loadImageFile(files[0]);
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (file) this.loadImageFile(file);
   };
 
   loadImageFile(file) {
     if (!file || !file.type.startsWith("image/")) return;
     const baseFilename = file.name.replace(/\.[^/.]+$/, "");
-    this.uploadedImageBlob = file;
     const imageURL = URL.createObjectURL(file);
-    this.loadUploadedImageFromURL(imageURL, baseFilename, { placeholder: false, revokeObjectURL: true });
+    this.loadUploadedImageFromURL(imageURL, baseFilename, { placeholder: false, revokeObjectURL: true, imageBlob: file });
   }
 
   loadUploadedImageFromURL(imageURL, baseFilename, options = {}) {
-    const { placeholder = false, revokeObjectURL = false } = options;
+    const { placeholder = false, revokeObjectURL = false, imageBlob = null } = options;
+    const loadId = ++this.imageLoadId;
     const img = new Image();
     img.onload = () => {
       if (revokeObjectURL) URL.revokeObjectURL(imageURL);
-      if (!this.isMounted) return;
+      if (!this.isMounted || loadId !== this.imageLoadId) return;
+      this.uploadedImageBlob = placeholder ? null : imageBlob;
       this.setState({
         uploadedImage: img,
         uploadedImage_baseFilename: baseFilename || "MyArt",
@@ -638,7 +668,9 @@ class MapartController extends Component {
         detectedPixelScale: 1,
         pixelEdits: {},
       });
-      if (placeholder) this.uploadedImageBlob = null;
+    };
+    img.onerror = () => {
+      if (revokeObjectURL) URL.revokeObjectURL(imageURL);
     };
     img.src = imageURL;
   }
@@ -715,7 +747,8 @@ class MapartController extends Component {
   handleToggleColourTone = (colourSetId, tone) => {
     let disabledTones = { ...this.state.disabledTones };
 
-    const set = disabledTones[colourSetId];
+    const set = new Set(disabledTones[colourSetId] || []);
+    disabledTones[colourSetId] = set;
 
     if (set.has(tone))
       set.delete(tone);
