@@ -127,4 +127,5 @@ MapartCraft is a fork of the original tool by [rebane2001](https://rebane2001.co
 - [OpenMoji](https://github.com/hfg-gmuend/openmoji) for flags
 - Translation credits can be seen on the translated pages
 - [SelfAdjointOperator](https://github.com/SelfAdjointOperator) for some extra features
+- [OpenCode / DeepSeek V4.1 Flash](CONTRIBUTORS.md) for implementation assistance, testing and deployment
 - Code contributors can be seen on the [contributions page](https://github.com/mike2b2t/mapartcraft/graphs/contributors)
