@@ -873,67 +873,19 @@ class MapPreview extends Component {
   };
 
   closestSmoothColourTo(colourHex) {
-    const { coloursJSON, selectedBlocks, disabledTones, optionValue_staircasing } = this.props;
+    const { coloursJSON, selectedBlocks, disabledTones, optionValue_modeNBTOrMapdat, optionValue_staircasing } = this.props;
     const rgbGroups_input = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(colourHex);
     const colourRGB_input = [parseInt(rgbGroups_input[1], 16), parseInt(rgbGroups_input[2], 16), parseInt(rgbGroups_input[3], 16)];
+    const mapMode = Object.values(MapModes).find((mode) => mode.uniqueId === optionValue_modeNBTOrMapdat);
+    const staircaseMode = mapMode && Object.values(mapMode.staircaseModes).find((mode) => mode.uniqueId === optionValue_staircasing);
+    const toneKeys = staircaseMode ? staircaseMode.toneKeys : [];
     let smallestDistance = 9999999;
     let colourRGB_return = null;
     for (const [colourSetId, colourSet] of Object.entries(coloursJSON)) {
-      if (selectedBlocks[colourSetId] === "-1") {
-        continue;
-      }
-      let coloursRGB_colourSet = [];
-      switch (optionValue_staircasing) {
-        case MapModes.SCHEMATIC_NBT.staircaseModes.OFF.uniqueId:
-        case MapModes.SCHEMATIC_NBT.staircaseModes.CLASSIC.uniqueId:
-        case MapModes.SCHEMATIC_NBT.staircaseModes.VALLEY.uniqueId:
-        case MapModes.MAPDAT.staircaseModes.OFF.uniqueId: {
-          if (!disabledTones[colourSetId].has("normal"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.normal);
-          break;
-        }
-        case MapModes.SCHEMATIC_NBT.staircaseModes.FULL_DARK.uniqueId:
-        case MapModes.MAPDAT.staircaseModes.FULL_DARK.uniqueId: {
-          if (!disabledTones[colourSetId].has("dark"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.dark);
-          break;
-        }
-        case MapModes.SCHEMATIC_NBT.staircaseModes.FULL_LIGHT.uniqueId:
-        case MapModes.MAPDAT.staircaseModes.FULL_LIGHT.uniqueId: {
-          if (!disabledTones[colourSetId].has("light"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.light);
-          break;
-        }
-        case MapModes.MAPDAT.staircaseModes.FULL_UNOBTAINABLE.uniqueId: {
-          if (!disabledTones[colourSetId].has("unobtainable"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.unobtainable);
-          break;
-        }
-        case MapModes.MAPDAT.staircaseModes.ON.uniqueId: {
-          if (!disabledTones[colourSetId].has("dark"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.dark);
-          if (!disabledTones[colourSetId].has("normal"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.normal);
-          if (!disabledTones[colourSetId].has("light"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.light);
-          break;
-        }
-        case MapModes.MAPDAT.staircaseModes.ON_UNOBTAINABLE.uniqueId: {
-          if (!disabledTones[colourSetId].has("dark"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.dark);
-          if (!disabledTones[colourSetId].has("normal"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.normal);
-          if (!disabledTones[colourSetId].has("light"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.light);
-          if (!disabledTones[colourSetId].has("unobtainable"))
-            coloursRGB_colourSet.push(colourSet.tonesRGB.unobtainable);
-          break;
-        }
-        default: {
-          throw new Error("Unknown staircasing mode");
-        }
-      }
-      for (const colourRGB_colourSet of coloursRGB_colourSet) {
+      if (selectedBlocks[colourSetId] === "-1") continue;
+      for (const toneKey of toneKeys) {
+        if (disabledTones[colourSetId]?.has(toneKey)) continue;
+        const colourRGB_colourSet = colourSet.tonesRGB[toneKey];
         const colourDistance =
           Math.pow(colourRGB_input[0] - colourRGB_colourSet[0], 2) +
           Math.pow(colourRGB_input[1] - colourRGB_colourSet[1], 2) +
@@ -944,10 +896,8 @@ class MapPreview extends Component {
         }
       }
     }
-    const colourHex_return = `#${colourRGB_return[0].toString(16).padStart(2, "0")}${colourRGB_return[1].toString(16).padStart(2, "0")}${colourRGB_return[2]
-      .toString(16)
-      .padStart(2, "0")}`;
-    return colourHex_return;
+    if (colourRGB_return === null) return colourHex.startsWith("#") ? colourHex : `#${colourHex}`;
+    return `#${colourRGB_return.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
   }
 
   updateCanvas_source() {
@@ -1118,7 +1068,7 @@ class MapPreview extends Component {
         ctx_display.imageSmoothingEnabled = false;
         ctx_display.putImageData(e.data.body.pixels, 0, 0);
         this.clearEditorOverlay();
-        this.refreshEditorColours();
+        if (this.state.editorEnabled) this.refreshEditorColours(e.data.body.pixels.data);
         this.setState({ workerProgress: 1 });
         onGetMapMaterials({
           pixelsData: e.data.body.pixels.data,
@@ -1215,22 +1165,24 @@ class MapPreview extends Component {
     canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  refreshEditorColours = () => {
+  refreshEditorColours = (pixelsData = null) => {
     const canvas = this.canvasRef_display.current;
     if (!canvas) return;
-    let pixels;
-    try {
-      pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
-    } catch (error) {
-      return;
+    let pixels = pixelsData;
+    if (!pixels) {
+      try {
+        pixels = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+      } catch (error) {
+        return;
+      }
     }
     const unique = new Set();
     for (let i = 0; i < pixels.length; i += 4) {
       if (pixels[i + 3] < 128) continue;
-      unique.add(`#${pixels[i].toString(16).padStart(2, "0")}${pixels[i + 1].toString(16).padStart(2, "0")}${pixels[i + 2].toString(16).padStart(2, "0")}`);
+      unique.add((pixels[i] << 16) + (pixels[i + 1] << 8) + pixels[i + 2]);
       if (unique.size > 2048) break;
     }
-    const colours = Array.from(unique).sort();
+    const colours = Array.from(unique, (colour) => `#${colour.toString(16).padStart(6, "0")}`).sort();
     if (colours.join(",") === this.state.editorColours.join(",")) return;
     const current = this.state.editorColour;
     this.setState({
@@ -1818,9 +1770,14 @@ class MapPreview extends Component {
       editorClipboardInfo,
       editorStatus,
     } = this.state;
-    const editValues = Object.values(pixelEdits || {});
-    const editedPixelCount = editValues.length;
-    const maskedPixelCount = editValues.filter((value) => value === "mask").length;
+    let editedPixelCount = 0;
+    let maskedPixelCount = 0;
+    if (editorEnabled) {
+      for (const value of Object.values(pixelEdits || {})) {
+        editedPixelCount += 1;
+        if (value === "mask") maskedPixelCount += 1;
+      }
+    }
     const mapPreviewSizeScale = Math.max(1, Math.round(optionValue_previewScale || 2));
     const canvasWidth = mapPreviewSizeScale * 128 * optionValue_mapSize_x;
     const canvasHeight = mapPreviewSizeScale * 128 * optionValue_mapSize_y;

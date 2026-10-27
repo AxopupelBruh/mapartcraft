@@ -356,12 +356,18 @@ class Map_NBT {
   }
 
   getPhysicalLayout() {
+    let lastProgressPercent = 0;
     for (let columnNumber = 0; columnNumber < this.mapColoursLayout.length; columnNumber++) {
       this.getPhysicalLayout_individualColumn(columnNumber);
-      postMessage({
-        head: progressReportHead,
-        body: (columnNumber + 1) / this.mapColoursLayout.length,
-      });
+      const progress = (columnNumber + 1) / this.mapColoursLayout.length;
+      const progressPercent = Math.floor(progress * 100);
+      if (progressPercent > lastProgressPercent) {
+        postMessage({
+          head: progressReportHead,
+          body: progress,
+        });
+        lastProgressPercent = progressPercent;
+      }
     }
   }
 
@@ -639,7 +645,10 @@ class Map_NBT {
       }
     }
 
-    this.NBT_json.value.blocks.value.value = this.NBT_json.value.blocks.value.value.concat(physicalColumn);
+    const blocks = this.NBT_json.value.blocks.value.value;
+    for (let i = 0; i < physicalColumn.length; i++) {
+      blocks.push(physicalColumn[i]);
+    }
     this.columnHeightsCache.push(physicalColumn.reduce((a, b) => (a.pos.value.value[1] > b.pos.value.value[1] ? a : b)).pos.value.value[1]);
   }
 
@@ -891,6 +900,7 @@ class Map_Mapdat {
   }
 
   setNBT_json_colors() {
+    let lastProgressPercent = 0;
     for (let x = 0; x < 128; x++) {
       for (let z = 0; z < 128; z++) {
         const pixel = this.coloursLayout[x][z];
@@ -924,10 +934,15 @@ class Map_Mapdat {
         }
         this.NBT_json.value.data.value.colors.value[arrayOffset] = mapdatId;
       }
-      postMessage({
-        head: progressReportHead,
-        body: (x + 1) / 128,
-      });
+      const progress = (x + 1) / 128;
+      const progressPercent = Math.floor(progress * 100);
+      if (progressPercent > lastProgressPercent) {
+        postMessage({
+          head: progressReportHead,
+          body: progress,
+        });
+        lastProgressPercent = progressPercent;
+      }
     }
   }
 
@@ -977,16 +992,26 @@ function isSupportBlockMandatoryForColourSetIdAndTone(colourSetIdAndTone) {
 function mergeMaps() {
   // for when we want one big NBT instead of split 1x1s
   maps.forEach((rowOfMaps) => {
-    for (let whichMap_x = 1; whichMap_x < rowOfMaps.length; whichMap_x++) {
-      rowOfMaps[0].coloursLayout = rowOfMaps[0].coloursLayout.concat(rowOfMaps[whichMap_x].coloursLayout); // merge along x-axis
+    const mergedColoursLayout = [];
+    for (let whichMap_x = 0; whichMap_x < rowOfMaps.length; whichMap_x++) {
+      const coloursLayout = rowOfMaps[whichMap_x].coloursLayout;
+      for (let columnNumber = 0; columnNumber < coloursLayout.length; columnNumber++) {
+        mergedColoursLayout.push(coloursLayout[columnNumber]); // merge along x-axis
+      }
     }
+    rowOfMaps[0].coloursLayout = mergedColoursLayout;
   });
   for (let i = 0; i < maps[0][0].coloursLayout.length; i++) {
     // for each column in resulting map
-    for (let j = 1; j < maps.length; j++) {
+    const mergedColumn = [];
+    for (let j = 0; j < maps.length; j++) {
       // for each column needing to be merged into resulting map
-      maps[0][0].coloursLayout[i] = maps[0][0].coloursLayout[i].concat(maps[j][0].coloursLayout[i]);
+      const coloursLayoutColumn = maps[j][0].coloursLayout[i];
+      for (let rowNumber = 0; rowNumber < coloursLayoutColumn.length; rowNumber++) {
+        mergedColumn.push(coloursLayoutColumn[rowNumber]);
+      }
     }
+    maps[0][0].coloursLayout[i] = mergedColumn;
   }
   // Merge materials counts for lookup
   let materials_new = {};

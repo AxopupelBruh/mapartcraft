@@ -19,6 +19,7 @@ var optionValue_whereSupportBlocks;
 var optionValue_transparency;
 var optionValue_transparencyTolerance;
 var optionValue_betterColour;
+var chosenColourMethod;
 var optionValue_dithering;
 var optionValue_dithering_propagation_red;
 var optionValue_dithering_propagation_green;
@@ -229,9 +230,6 @@ function rgb2hct(rgb) {
 }
 
 function squaredEuclideanMetricColours(pixel1, pixel2) {
-  const chosenColourMethod =
-    ColourMethods[Object.keys(ColourMethods).find((colourMethodKey) => ColourMethods[colourMethodKey].uniqueId === optionValue_betterColour)];
-
   if (chosenColourMethod.uniqueId === ColourMethods.MapartCraftDefault.uniqueId) {
     //return deltaE(rgb2lab(pixel1),rgb2lab(pixel2))
     pixel1 = rgb2lab(pixel1);
@@ -410,13 +408,15 @@ function findClosest2ColourSetIdAndToneAndRGBTo(pixelRGB) {
         const toneRGB = colourSet.tonesRGB[toneKey];
         let squareDistance = squaredEuclideanMetricColours(toneRGB, pixelRGB);
         if (squareDistance < shortestDistance1) {
+          shortestDistance2 = shortestDistance1;
+          closestPixel2 = closestPixel1;
           shortestDistance1 = squareDistance;
           closestPixel1 = {
             colourSetId: colourSet.colourSetId,
             tone: toneKey,
           };
         }
-        if (squareDistance < shortestDistance2 && colourSetIdAndToneToRGB(closestPixel1.colourSetId, closestPixel1.tone) !== toneRGB) {
+        else if (squareDistance < shortestDistance2 && colourSetIdAndToneToRGB(closestPixel1.colourSetId, closestPixel1.tone) !== toneRGB) {
           shortestDistance2 = squareDistance;
           closestPixel2 = {
             colourSetId: colourSet.colourSetId,
@@ -1144,8 +1144,8 @@ function recomputeMaterialCounts() {
 }
 
 function getMapartImageDataAndMaterials() {
-  const edgeMask = cleanupApply();
   if (hasMaskEdits) sourceImageData = new Uint8ClampedArray(canvasImageData.data);
+  const edgeMask = cleanupApply();
 
   for (let y = 0; y < optionValue_mapSize_y; y++) {
     let mapsRowToAdd = [];
@@ -1199,24 +1199,36 @@ function getMapartImageDataAndMaterials() {
     ].includes(chosenDitherMethod.uniqueId)
   ) {
     divisor = chosenDitherMethod.ditherDivisor;
+    ditherMatrix = ditherMatrix.map((row) => row.map((weight) => weight / divisor));
   }
+  const multimapWidth = optionValue_mapSize_x * 128;
+  const ditherStrength = Math.max(0, optionValue_dithering_strength) / 100.0;
+  const ditherStrengthMultiplier = ditherStrength;
+  const ditheringPropagationRed = optionValue_dithering_propagation_red / 100.0;
+  const ditheringPropagationGreen = optionValue_dithering_propagation_green / 100.0;
+  const ditheringPropagationBlue = optionValue_dithering_propagation_blue / 100.0;
+  let lastProgressPercent = -1;
   for (let i = 0; i < canvasImageData.data.length; i += 4) {
     const indexR = i;
     const indexG = i + 1;
     const indexB = i + 2;
     const indexA = i + 3;
 
-    const multimapWidth = optionValue_mapSize_x * 128;
     const multimap_x = (i / 4) % multimapWidth;
     const multimap_y = (i / 4 - multimap_x) / multimapWidth;
     const whichMap_x = Math.floor(multimap_x / 128);
     const whichMap_y = Math.floor(multimap_y / 128);
     const individualMap_y = multimap_y % 128;
     if (multimap_x === 0) {
-      postMessage({
-        head: "PROGRESS_REPORT",
-        body: multimap_y / (128 * optionValue_mapSize_y),
-      });
+      const progress = multimap_y / (128 * optionValue_mapSize_y);
+      const progressPercent = Math.floor(progress * 100);
+      if (progressPercent !== lastProgressPercent) {
+        postMessage({
+          head: "PROGRESS_REPORT",
+          body: progress,
+        });
+        lastProgressPercent = progressPercent;
+      }
     }
 
     let closestColourSetIdAndTone;
@@ -1237,10 +1249,14 @@ function getMapartImageDataAndMaterials() {
         canvasImageData.data[indexB] = 0;
         canvasImageData.data[indexA] = 0;
       } else {
+        let alpha = originalAlpha;
+        if (alpha !== 0 || selectedBlocks[alphaColorIdx] < 0) {
+          alpha = 255;
+        }
+        canvasImageData.data[indexA] = alpha;
         const originalPixel = sourceImageData
           ? [sourceImageData[indexR], sourceImageData[indexG], sourceImageData[indexB]]
           : [canvasImageData.data[indexR], canvasImageData.data[indexG], canvasImageData.data[indexB]];
-        canvasImageData.data[indexA] = 255;
         closestColourSetIdAndTone = findClosestColourSetIdAndToneAndRGBTo(originalPixel);
         const closestColour = colourSetIdAndToneToRGB(closestColourSetIdAndTone.colourSetId, closestColourSetIdAndTone.tone);
         canvasImageData.data[indexR] = closestColour[0];
@@ -1300,7 +1316,6 @@ function getMapartImageDataAndMaterials() {
         case DitherMethods.VoidAndCluster1414.uniqueId: {
           const newPixels = findClosest2ColourSetIdAndToneAndRGBTo(oldPixel);
           // newPixels = [shortestDistance1, shortestDistance2, newPixel1, newPixel2]
-          const ditherStrength = Math.max(0, optionValue_dithering_strength) / 100.0;
           const ditherThreshold = ditherMatrix[multimap_x % ditherMatrix[0].length][multimap_y % ditherMatrix.length];
           if (
             ditherStrength > 0 &&
@@ -1341,23 +1356,22 @@ function getMapartImageDataAndMaterials() {
           canvasImageData.data[indexG] = closestColour[1];
           canvasImageData.data[indexB] = closestColour[2];
 
-          const ditherStrengthMultiplier = Math.max(0, optionValue_dithering_strength) / 100.0;
           const quant_error = [
-            ((oldPixel[0] - closestColour[0]) * optionValue_dithering_propagation_red / 100.0) * ditherStrengthMultiplier,
-            ((oldPixel[1] - closestColour[1]) * optionValue_dithering_propagation_green / 100.0) * ditherStrengthMultiplier,
-            ((oldPixel[2] - closestColour[2]) * optionValue_dithering_propagation_blue / 100.0) * ditherStrengthMultiplier
+            ((oldPixel[0] - closestColour[0]) * ditheringPropagationRed) * ditherStrengthMultiplier,
+            ((oldPixel[1] - closestColour[1]) * ditheringPropagationGreen) * ditherStrengthMultiplier,
+            ((oldPixel[2] - closestColour[2]) * ditheringPropagationBlue) * ditherStrengthMultiplier
           ];
 
           try {
             // ditherMatrix [0][0...2] should always be zero, and can thus be skipped
             if (multimap_x + 1 < multimapWidth) {
               // Make sure to not carry over error from one side to the other
-              const weight = ditherMatrix[0][3] / divisor; // 1 right
+              const weight = ditherMatrix[0][3]; // 1 right
               canvasImageData.data[i + 4] += quant_error[0] * weight;
               canvasImageData.data[i + 5] += quant_error[1] * weight;
               canvasImageData.data[i + 6] += quant_error[2] * weight;
               if (multimap_x + 2 < multimapWidth) {
-                const weight = ditherMatrix[0][4] / divisor; // 2 right
+                const weight = ditherMatrix[0][4]; // 2 right
                 canvasImageData.data[i + 8] += quant_error[0] * weight;
                 canvasImageData.data[i + 9] += quant_error[1] * weight;
                 canvasImageData.data[i + 10] += quant_error[2] * weight;
@@ -1367,28 +1381,28 @@ function getMapartImageDataAndMaterials() {
             // First row below
             if (multimap_x > 0) {
               // Order reversed, to allow nesting of 'if' blocks
-              const weight = ditherMatrix[1][1] / divisor; // 1 down, 1 left
+              const weight = ditherMatrix[1][1]; // 1 down, 1 left
               canvasImageData.data[i + multimapWidth * 4 - 4] += quant_error[0] * weight;
               canvasImageData.data[i + multimapWidth * 4 - 3] += quant_error[1] * weight;
               canvasImageData.data[i + multimapWidth * 4 - 2] += quant_error[2] * weight;
               if (multimap_x > 1) {
-                const weight = ditherMatrix[1][0] / divisor; // 1 down, 2 left
+                const weight = ditherMatrix[1][0]; // 1 down, 2 left
                 canvasImageData.data[i + multimapWidth * 4 - 8] += quant_error[0] * weight;
                 canvasImageData.data[i + multimapWidth * 4 - 7] += quant_error[1] * weight;
                 canvasImageData.data[i + multimapWidth * 4 - 6] += quant_error[2] * weight;
               }
             }
-            let weight = ditherMatrix[1][2] / divisor; // 1 down
+            let weight = ditherMatrix[1][2]; // 1 down
             canvasImageData.data[i + multimapWidth * 4 + 0] += quant_error[0] * weight;
             canvasImageData.data[i + multimapWidth * 4 + 1] += quant_error[1] * weight;
             canvasImageData.data[i + multimapWidth * 4 + 2] += quant_error[2] * weight;
             if (multimap_x + 1 < multimapWidth) {
-              const weight = ditherMatrix[1][3] / divisor; // 1 down, 1 right
+              const weight = ditherMatrix[1][3]; // 1 down, 1 right
               canvasImageData.data[i + multimapWidth * 4 + 4] += quant_error[0] * weight;
               canvasImageData.data[i + multimapWidth * 4 + 5] += quant_error[1] * weight;
               canvasImageData.data[i + multimapWidth * 4 + 6] += quant_error[2] * weight;
               if (multimap_x + 2 < multimapWidth) {
-                const weight = ditherMatrix[1][4] / divisor; // 1 down, 2 right
+                const weight = ditherMatrix[1][4]; // 1 down, 2 right
                 canvasImageData.data[i + multimapWidth * 4 + 8] += quant_error[0] * weight;
                 canvasImageData.data[i + multimapWidth * 4 + 9] += quant_error[1] * weight;
                 canvasImageData.data[i + multimapWidth * 4 + 10] += quant_error[2] * weight;
@@ -1397,28 +1411,28 @@ function getMapartImageDataAndMaterials() {
 
             // Second row below
             if (multimap_x > 0) {
-              const weight = ditherMatrix[2][1] / divisor; // 2 down, 1 left
+              const weight = ditherMatrix[2][1]; // 2 down, 1 left
               canvasImageData.data[i + multimapWidth * 8 - 4] += quant_error[0] * weight;
               canvasImageData.data[i + multimapWidth * 8 - 3] += quant_error[1] * weight;
               canvasImageData.data[i + multimapWidth * 8 - 2] += quant_error[2] * weight;
               if (multimap_x > 1) {
-                const weight = ditherMatrix[2][0] / divisor; // 2 down, 2 left
+                const weight = ditherMatrix[2][0]; // 2 down, 2 left
                 canvasImageData.data[i + multimapWidth * 8 - 8] += quant_error[0] * weight;
                 canvasImageData.data[i + multimapWidth * 8 - 7] += quant_error[1] * weight;
                 canvasImageData.data[i + multimapWidth * 8 - 6] += quant_error[2] * weight;
               }
             }
-            weight = ditherMatrix[2][2] / divisor; // 2 down
+            weight = ditherMatrix[2][2]; // 2 down
             canvasImageData.data[i + multimapWidth * 8 + 0] += quant_error[0] * weight;
             canvasImageData.data[i + multimapWidth * 8 + 1] += quant_error[1] * weight;
             canvasImageData.data[i + multimapWidth * 8 + 2] += quant_error[2] * weight;
             if (multimap_x + 1 < multimapWidth) {
-              const weight = ditherMatrix[2][3] / divisor; // 2 down, 1 right
+              const weight = ditherMatrix[2][3]; // 2 down, 1 right
               canvasImageData.data[i + multimapWidth * 8 + 4] += quant_error[0] * weight;
               canvasImageData.data[i + multimapWidth * 8 + 5] += quant_error[1] * weight;
               canvasImageData.data[i + multimapWidth * 8 + 6] += quant_error[2] * weight;
               if (multimap_x + 2 < multimapWidth) {
-                const weight = ditherMatrix[2][4] / divisor; // 2 down, 2 right
+                const weight = ditherMatrix[2][4]; // 2 down, 2 right
                 canvasImageData.data[i + multimapWidth * 8 + 8] += quant_error[0] * weight;
                 canvasImageData.data[i + multimapWidth * 8 + 9] += quant_error[1] * weight;
                 canvasImageData.data[i + multimapWidth * 8 + 10] += quant_error[2] * weight;
@@ -1630,6 +1644,8 @@ onmessage = (e) => {
   optionValue_transparency = e.data.body.optionValue_transparency;
   optionValue_transparencyTolerance = e.data.body.optionValue_transparencyTolerance;
   optionValue_betterColour = e.data.body.optionValue_betterColour;
+  chosenColourMethod =
+    ColourMethods[Object.keys(ColourMethods).find((colourMethodKey) => ColourMethods[colourMethodKey].uniqueId === optionValue_betterColour)];
   optionValue_dithering = e.data.body.optionValue_dithering;
   optionValue_dithering_propagation_red = e.data.body.optionValue_dithering_propagation_red;
   optionValue_dithering_propagation_green = e.data.body.optionValue_dithering_propagation_green;
