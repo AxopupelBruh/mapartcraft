@@ -127,4 +127,5 @@ MapartCraft — форк оригинального инструмента [reba
 - [OpenMoji](https://github.com/hfg-gmuend/openmoji) за флаги
 - Благодарности переводчикам можно увидеть на переведённых страницах
 - [SelfAdjointOperator](https://github.com/SelfAdjointOperator) за некоторые дополнительные функции
+- [OpenCode / DeepSeek V4.1 Flash](CONTRIBUTORS.ru.md) за помощь с реализацией, тестированием и публикацией
 - Список контрибьюторов кода есть на [странице вкладов](https://github.com/mike2b2t/mapartcraft/graphs/contributors)
