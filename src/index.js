@@ -10,7 +10,7 @@ import "./index.css";
 // The app is served both from the domain root (local/Tailscale) and from a
 // GitHub Pages project subdirectory. Derive the router basename from the
 // current document URL instead of hard-coding either case.
-const appBasePath = new URL(document.baseURI).pathname.replace(/\/+$/, "");
+const appBasePath = new URL(".", document.baseURI).pathname.replace(/\/+$/, "");
 const basename = appBasePath || "/";
 const appBaseUrl = `${window.location.origin}${basename === "/" ? "/" : basename + "/"}`;
 

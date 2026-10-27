@@ -225,15 +225,13 @@
   "SESSION-ERROR": "Ошибка сохранения сессии",
   "RESET-SESSION": "Сбросить сессию",
   "RESET-SESSION-CONFIRM": "Сбросить текущую сессию? Изображение и ручные правки будут удалены.",
-  "EXPORT-SAVED": "Сохранено: ",
-  "EXPORT-CANCELLED": "Экспорт отменён",
   "EXPORT-ERROR": "Ошибка экспорта",
-  "EXPORT-FAILED": "Не удалось сохранить .litematic + PNG: ",
+  "EXPORT-FAILED": "Не удалось экспортировать .litematic + PNG: ",
   "WAIT-PREVIEW": "Сначала дождитесь построения превью.",
   "NO-BLOCKS": "Не выбрано ни одного блока.",
   "PREPARING-LITEMATIC": "Готовлю .litematic...",
   "LITEMATIC-BUTTON": "Скачать .litematic + PNG",
-  "LITEMATIC-TT": "Сохранить .litematic и PNG в папку Arts&litematic"
+  "LITEMATIC-TT": "Скачать .litematic и PNG ZIP-архивом"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Пиксельный редактор",
