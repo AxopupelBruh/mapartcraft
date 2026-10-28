@@ -1,0 +1,27 @@
+{
+  "name": "MapartCraft Local Studio",
+  "short_name": "MapartCraft",
+  "description": "Local-first Minecraft map art studio with pixel-perfect preview and .litematic export.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#333333",
+  "theme_color": "#333333",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
