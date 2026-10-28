@@ -2,7 +2,7 @@
  * App shell + runtime cache. No user projects or art files ever leave the
  * browser; this only keeps the app itself available offline.
  */
-const CACHE_NAME = "mapartcraft-local-studio-v19";
+const CACHE_NAME = "mapartcraft-local-studio-v20";
 const APP_SHELL = [
   "./",
   "./index.html",

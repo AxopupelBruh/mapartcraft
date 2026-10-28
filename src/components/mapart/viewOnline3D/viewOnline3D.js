@@ -621,7 +621,7 @@ class ViewOnline3D extends Component {
       canvasRef: canvasRef,
       coloursJSON: coloursJSON,
       tileSize: 32,
-      tileTextureWidth: 608,
+      tileTextureWidth: 992, // width of src/images/textures.png
       tileTextureHeight: 2080,
       camera_x: 0,
       camera_y: size_y + 1,
