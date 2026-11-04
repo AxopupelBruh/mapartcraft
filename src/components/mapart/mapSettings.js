@@ -63,6 +63,10 @@ class MapSettings extends Component {
       onOptionChange_dithering_propagation_green,
       optionValue_dithering_propagation_blue,
       onOptionChange_dithering_propagation_blue,
+      optionValue_improvedPatternDithering,
+      onOptionChange_improvedPatternDithering,
+      optionValue_patternPairMode,
+      onOptionChange_patternPairMode,
       optionValue_preprocessingEnabled,
       onOptionChange_PreProcessingEnabled,
       preProcessingValue_brightness,
@@ -82,6 +86,11 @@ class MapSettings extends Component {
       optionValue_extras_moreStaircasingOptions,
       onOptionChange_extras_moreStaircasingOptions,
     } = this.props;
+    // Pattern dithers (Bayer, Ordered, etc.) are the matrix-only methods:
+    // they have a ditherMatrix but no ditherDivisor, unlike error diffusion.
+    const chosenDitherMethod = Object.values(DitherMethods).find((ditherMethod) => ditherMethod.uniqueId === optionValue_dithering);
+    const isPatternDithering =
+      chosenDitherMethod !== undefined && chosenDitherMethod.ditherMatrix !== undefined && chosenDitherMethod.ditherDivisor === undefined;
     const setting_mode = (
       <React.Fragment>
         <Tooltip tooltipText={getLocaleString("MAP-SETTINGS/MODE-TT")}>
@@ -485,7 +494,27 @@ class MapSettings extends Component {
                 : DitherMethods[ditherMethodKey]["name"]}
             </option>
           ))}
-        </select>
+        </select>{" "}
+        {isPatternDithering ? (
+          <Tooltip tooltipText={getLocaleString("MAP-SETTINGS/DITHERING/IMPROVED-TT")}>
+            <label>
+              <input
+                type="checkbox"
+                checked={optionValue_improvedPatternDithering}
+                onChange={onOptionChange_improvedPatternDithering}
+              />{" "}
+              {getLocaleString("MAP-SETTINGS/DITHERING/IMPROVED")}
+            </label>
+          </Tooltip>
+        ) : null}{" "}
+        {isPatternDithering && optionValue_improvedPatternDithering ? (
+          <React.Fragment>
+            <select value={optionValue_patternPairMode} onChange={onOptionChange_patternPairMode}>
+              <option value="nearest">{getLocaleString("MAP-SETTINGS/DITHERING/PAIR-NEAREST")}</option>
+              <option value="reflect">{getLocaleString("MAP-SETTINGS/DITHERING/PAIR-REFLECT")}</option>
+            </select>
+          </React.Fragment>
+        ) : null}
         <br />
       </React.Fragment>
     );

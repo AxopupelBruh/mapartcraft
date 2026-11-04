@@ -23,6 +23,8 @@ export const STYLE_PRESETS = [
     dithering: DitherMethods.Bayer44.uniqueId,
     colourMethod: ColourMethods.MapartCraftDefault.uniqueId,
     propagation: [100, 100, 100],
+    improvedPattern: true,
+    patternPairMode: "nearest",
   },
   {
     id: "retro1bit",

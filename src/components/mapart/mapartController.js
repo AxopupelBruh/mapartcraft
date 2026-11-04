@@ -53,6 +53,8 @@ class MapartController extends Component {
     optionValue_dithering_propagation_green: 100,
     optionValue_dithering_propagation_blue: 100,
     optionValue_dithering_strength: 100,
+    optionValue_improvedPatternDithering: false,
+    optionValue_patternPairMode: "nearest",
     optionValue_cleanup_enabled: false,
     optionValue_cleanup_denoise: 40,
     optionValue_cleanup_denoiseMethod: "median",
@@ -266,6 +268,8 @@ class MapartController extends Component {
       "optionValue_dithering_propagation_green",
       "optionValue_dithering_propagation_blue",
       "optionValue_dithering_strength",
+      "optionValue_improvedPatternDithering",
+      "optionValue_patternPairMode",
       "optionValue_cleanup_enabled",
       "optionValue_cleanup_denoise",
       "optionValue_cleanup_denoiseMethod",
@@ -387,6 +391,8 @@ class MapartController extends Component {
       optionValue_dithering_propagation_green,
       optionValue_dithering_propagation_blue,
       optionValue_dithering_strength,
+      optionValue_improvedPatternDithering,
+      optionValue_patternPairMode,
       optionValue_cleanup_enabled,
       optionValue_cleanup_denoise,
       optionValue_cleanup_denoiseMethod,
@@ -442,6 +448,8 @@ class MapartController extends Component {
       optionValue_dithering_propagation_green,
       optionValue_dithering_propagation_blue,
       optionValue_dithering_strength,
+      optionValue_improvedPatternDithering,
+      optionValue_patternPairMode,
       optionValue_cleanup_enabled,
       optionValue_cleanup_denoise,
       optionValue_cleanup_denoiseMethod,
@@ -715,6 +723,8 @@ class MapartController extends Component {
       optionValue_dithering_propagation_green: style.propagation[1],
       optionValue_dithering_propagation_blue: style.propagation[2],
       optionValue_dithering_strength: 100,
+      optionValue_improvedPatternDithering: style.improvedPattern === true,
+      optionValue_patternPairMode: style.patternPairMode || "nearest",
       optionValue_resizeMethod: "pixel",
       optionValue_pixelPerfect: true,
     });
@@ -948,6 +958,22 @@ class MapartController extends Component {
 
   onOptionChange_dithering_strength = (value) => {
     this.setState({ optionValue_dithering_strength: value });
+  };
+
+  onOptionChange_improvedPatternDithering = () => {
+    this.setState({
+      optionValue_improvedPatternDithering: !this.state.optionValue_improvedPatternDithering,
+      optionValue_style: "custom",
+      stylePreset: "custom",
+    });
+  };
+
+  onOptionChange_patternPairMode = (e) => {
+    this.setState({
+      optionValue_patternPairMode: e.target.value,
+      optionValue_style: "custom",
+      stylePreset: "custom",
+    });
   };
 
   onOptionChange_cleanup_enabled = () => {
@@ -1468,6 +1494,8 @@ class MapartController extends Component {
       optionValue_dithering_propagation_green,
       optionValue_dithering_propagation_blue,
       optionValue_dithering_strength,
+      optionValue_improvedPatternDithering,
+      optionValue_patternPairMode,
       optionValue_cleanup_enabled,
       optionValue_cleanup_denoise,
       optionValue_cleanup_denoiseMethod,
@@ -1596,6 +1624,8 @@ class MapartController extends Component {
             optionValue_dithering_propagation_green={optionValue_dithering_propagation_green}
             optionValue_dithering_propagation_blue={optionValue_dithering_propagation_blue}
             optionValue_dithering_strength={optionValue_dithering_strength}
+            optionValue_improvedPatternDithering={optionValue_improvedPatternDithering}
+            optionValue_patternPairMode={optionValue_patternPairMode}
             optionValue_cleanup_enabled={optionValue_cleanup_enabled}
             optionValue_cleanup_denoise={optionValue_cleanup_denoise}
             optionValue_cleanup_denoiseMethod={optionValue_cleanup_denoiseMethod}
@@ -1676,6 +1706,10 @@ class MapartController extends Component {
               onOptionChange_dithering_propagation_green={this.onOptionChange_dithering_propagation_green}
               optionValue_dithering_propagation_blue={optionValue_dithering_propagation_blue}
               onOptionChange_dithering_propagation_blue={this.onOptionChange_dithering_propagation_blue}
+              optionValue_improvedPatternDithering={optionValue_improvedPatternDithering}
+              onOptionChange_improvedPatternDithering={this.onOptionChange_improvedPatternDithering}
+              optionValue_patternPairMode={optionValue_patternPairMode}
+              onOptionChange_patternPairMode={this.onOptionChange_patternPairMode}
               optionValue_preprocessingEnabled={optionValue_preprocessingEnabled}
               onOptionChange_PreProcessingEnabled={this.onOptionChange_PreProcessingEnabled}
               preProcessingValue_brightness={preProcessingValue_brightness}
