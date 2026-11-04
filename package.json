@@ -1,6 +1,7 @@
 {
   "name": "mapartcraft-react",
   "version": "0.1.0",
+  "description": "Fork of mike2b2t/mapartcraft: local-first Minecraft map art studio with pixel editor, cleanup and .litematic export.",
   "private": true,
   "homepage": ".",
   "dependencies": {

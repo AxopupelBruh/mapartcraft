@@ -1,7 +1,7 @@
 {
-  "name": "MapartCraft Local Studio",
+  "name": "MapartCraft Local Studio (fork)",
   "short_name": "MapartCraft",
-  "description": "Local-first Minecraft map art studio with pixel-perfect preview and .litematic export.",
+  "description": "Fork of mike2b2t/mapartcraft: local-first map art studio with pixel editor, cleanup, palettes up to 26.3 and .litematic export.",
   "id": "./",
   "start_url": "./",
   "scope": "./",

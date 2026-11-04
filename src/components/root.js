@@ -65,6 +65,12 @@ class Root extends Component {
             <h1>
               MapartCraft <small className="titleSubtitle">Local Studio</small>
             </h1>
+            <small className="forkCredit">
+              {this.getLocaleString("FORK-LABEL")}
+              <a href="https://github.com/mike2b2t/mapartcraft" target="_blank" rel="noopener noreferrer">
+                mike2b2t/mapartcraft
+              </a>
+            </small>
             {this.props.match.params.countryCode && this.props.match.params.countryCode !== "en" && <small>{this.getLocaleString("TRANSLATION/CREDITS")}</small>}
           </span>
           <Languages />
