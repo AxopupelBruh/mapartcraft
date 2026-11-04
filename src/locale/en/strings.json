@@ -144,6 +144,10 @@
       "TITLE-TT": "Adds seemingly random pixels for the illusion of more colors",
       "NONE": "None",
       "EDGE-AWARE": "Floyd-Steinberg (edge-aware, serpentine)",
+      "IMPROVED": "Improved pattern dithering",
+      "IMPROVED-TT": "Projects the pixel onto the two nearest colours and fixes the second-best selection. Significantly better pattern dithering than the MapartCraft legacy method.",
+      "PAIR-NEAREST": "Nearest pair",
+      "PAIR-REFLECT": "Reflected pair",
       "PROPAGATION-RED": "Red propagation",
       "PROPAGATION-GREEN": "Green propagation",
       "PROPAGATION-BLUE": "Blue propagation"

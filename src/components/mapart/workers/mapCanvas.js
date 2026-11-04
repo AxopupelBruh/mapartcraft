@@ -25,6 +25,8 @@ var optionValue_dithering_propagation_red;
 var optionValue_dithering_propagation_green;
 var optionValue_dithering_propagation_blue;
 var optionValue_dithering_strength = 100;
+var optionValue_improvedPatternDithering = false;
+var optionValue_patternPairMode = "nearest";
 var optionValue_cleanup_enabled = false;
 var optionValue_cleanup_denoise = 0;
 var optionValue_cleanup_denoiseMethod = "median";
@@ -46,6 +48,8 @@ var colourSetsToUse = []; // colourSetIds and shades to use in map
 var exactColourCache = new Map(); // for mapping RGB that exactly matches in coloursJSON to colourSetId and tone
 var colourCache = new Map(); // cache for reusing nearest single colours
 var colourCache2 = new Map(); // cache for nearest two colours (Bayer dithering)
+var colourCache2Improved = new Map(); // cache for nearest two colours with fixed second-best selection
+var colourCache2Reflect = new Map(); // cache for nearest colour + its reflected pair
 var labCache = new Map();
 var lab50Cache = new Map();
 var lab65Cache = new Map();
@@ -444,6 +448,120 @@ function findClosest2ColourSetIdAndToneAndRGBTo(pixelRGB) {
     colourCache2.set(RGBBinary, newPixels);
     return newPixels;
   }
+}
+
+// Fixed pair selection: the second colour is a true second-nearest, unlike the
+// MapartCraft original where the runner-up can be silently replaced.
+function findClosest2Improved(pixelRGB) {
+  let RGBBinary = (pixelRGB[0] << 16) + (pixelRGB[1] << 8) + pixelRGB[2];
+  if (colourCache2Improved.has(RGBBinary)) {
+    return colourCache2Improved.get(RGBBinary);
+  }
+  let shortestDistance1 = 9999999;
+  let shortestDistance2 = 9999999;
+  let closestPixel1 = { colourSetId: null, tone: null };
+  let closestPixel2 = { colourSetId: null, tone: null };
+
+  colourSetsToUse.forEach((colourSet) => {
+    Object.keys(colourSet.tonesRGB).forEach((toneKey) => {
+      const toneRGB = colourSet.tonesRGB[toneKey];
+      let squareDistance = squaredEuclideanMetricColours(toneRGB, pixelRGB);
+      if (squareDistance < shortestDistance1) {
+        shortestDistance2 = shortestDistance1;
+        closestPixel2 = closestPixel1;
+        shortestDistance1 = squareDistance;
+        closestPixel1 = {
+          colourSetId: colourSet.colourSetId,
+          tone: toneKey,
+        };
+      } else if (squareDistance < shortestDistance2) {
+        shortestDistance2 = squareDistance;
+        closestPixel2 = {
+          colourSetId: colourSet.colourSetId,
+          tone: toneKey,
+        };
+      }
+    });
+  });
+  if (!closestPixel2 || closestPixel2.colourSetId === null || closestPixel2.tone === null) {
+    closestPixel2 = closestPixel1;
+  }
+  let pair = [closestPixel1, closestPixel2];
+  colourCache2Improved.set(RGBBinary, pair);
+  return pair;
+}
+
+// Reflect pair selection: the second colour is the closest to the pixel
+// mirrored through the first choice, giving a contrasting pair instead of two
+// neighbours.
+function findClosest2Reflect(pixelRGB) {
+  let RGBBinary = (pixelRGB[0] << 16) + (pixelRGB[1] << 8) + pixelRGB[2];
+  if (colourCache2Reflect.has(RGBBinary)) {
+    return colourCache2Reflect.get(RGBBinary);
+  }
+  const closestPixel1 = findClosestColourSetIdAndToneAndRGBTo(pixelRGB);
+  const rgb1 = colourSetIdAndToneToRGB(closestPixel1.colourSetId, closestPixel1.tone);
+  const reflectedTarget = [2 * pixelRGB[0] - rgb1[0], 2 * pixelRGB[1] - rgb1[1], 2 * pixelRGB[2] - rgb1[2]];
+  let shortestDistance2 = 9999999;
+  let closestPixel2 = { colourSetId: null, tone: null };
+
+  colourSetsToUse.forEach((colourSet) => {
+    Object.keys(colourSet.tonesRGB).forEach((toneKey) => {
+      const toneRGB = colourSet.tonesRGB[toneKey];
+      let squareDistance = squaredEuclideanMetricColours(toneRGB, reflectedTarget);
+      if (squareDistance < shortestDistance2) {
+        shortestDistance2 = squareDistance;
+        closestPixel2 = {
+          colourSetId: colourSet.colourSetId,
+          tone: toneKey,
+        };
+      }
+    });
+  });
+  if (!closestPixel2 || closestPixel2.colourSetId === null || closestPixel2.tone === null) {
+    closestPixel2 = closestPixel1;
+  }
+  let pair = [closestPixel1, closestPixel2];
+  colourCache2Reflect.set(RGBBinary, pair);
+  return pair;
+}
+
+// Improved pattern discriminator: project the pixel colour onto the segment
+// between the two chosen palette colours, then compare the position with the
+// pattern threshold. Brightness ordering prevents the pattern from flipping
+// depending on which colour happens to be closest.
+function findBestPatternImproved(pixelRGB, threshold, ditherStrength, patsize) {
+  if (ditherStrength <= 0) {
+    return findClosestColourSetIdAndToneAndRGBTo(pixelRGB);
+  }
+  let pair =
+    optionValue_patternPairMode === "reflect" ? findClosest2Reflect(pixelRGB) : findClosest2Improved(pixelRGB);
+  let colour1 = pair[0];
+  let colour2 = pair[1];
+  const rgb1 = colourSetIdAndToneToRGB(colour1.colourSetId, colour1.tone);
+  const rgb2 = colourSetIdAndToneToRGB(colour2.colourSetId, colour2.tone);
+
+  const tvecR = pixelRGB[0] - rgb1[0];
+  const tvecG = pixelRGB[1] - rgb1[1];
+  const tvecB = pixelRGB[2] - rgb1[2];
+  const cvecR = rgb2[0] - rgb1[0];
+  const cvecG = rgb2[1] - rgb1[1];
+  const cvecB = rgb2[2] - rgb1[2];
+  const colourDot = cvecR * cvecR + cvecG * cvecG + cvecB * cvecB;
+  let projected = colourDot !== 0 ? (tvecR * cvecR + tvecG * cvecG + tvecB * cvecB) / colourDot : 0;
+
+  if (projected <= 0) {
+    return colour1; // no point between the two choices is closer than colour1
+  }
+  // always put the lower brightness colour on the lower end of the threshold,
+  // to prevent the pattern flipping depending on which colour is closer
+  if (rgb1[0] + rgb1[1] + rgb1[2] > rgb2[0] + rgb2[1] + rgb2[2]) {
+    const swap = colour1;
+    colour1 = colour2;
+    colour2 = swap;
+    projected = 1.0 - projected;
+  }
+  return projected * (patsize + 1) * ditherStrength > threshold ? colour2 : colour1;
 }
 
 function setupColourSetsToUse() {
@@ -1686,17 +1804,26 @@ function getMapartImageDataAndMaterials() {
         case DitherMethods.ClusterDot44.uniqueId:
         case DitherMethods.Halftone88.uniqueId:
         case DitherMethods.VoidAndCluster1414.uniqueId: {
-          const newPixels = findClosest2ColourSetIdAndToneAndRGBTo(oldPixel);
-          // newPixels = [shortestDistance1, shortestDistance2, newPixel1, newPixel2]
           const ditherThreshold = ditherMatrix[multimap_x % ditherMatrix[0].length][multimap_y % ditherMatrix.length];
-          if (
-            ditherStrength > 0 &&
-            (newPixels[0] * (ditherMatrix[0].length * ditherMatrix.length + 1)) / newPixels[1] >
-              ditherThreshold / ditherStrength
-          ) {
-            closestColourSetIdAndTone = newPixels[3];
+          if (optionValue_improvedPatternDithering) {
+            closestColourSetIdAndTone = findBestPatternImproved(
+              oldPixel,
+              ditherThreshold,
+              ditherStrength,
+              ditherMatrix[0].length * ditherMatrix.length
+            );
           } else {
-            closestColourSetIdAndTone = newPixels[2];
+            const newPixels = findClosest2ColourSetIdAndToneAndRGBTo(oldPixel);
+            // newPixels = [shortestDistance1, shortestDistance2, newPixel1, newPixel2]
+            if (
+              ditherStrength > 0 &&
+              (newPixels[0] * (ditherMatrix[0].length * ditherMatrix.length + 1)) / newPixels[1] >
+                ditherThreshold / ditherStrength
+            ) {
+              closestColourSetIdAndTone = newPixels[3];
+            } else {
+              closestColourSetIdAndTone = newPixels[2];
+            }
           }
           const closestColour = colourSetIdAndToneToRGB(closestColourSetIdAndTone.colourSetId, closestColourSetIdAndTone.tone);
           canvasImageData.data[indexR] = closestColour[0];
@@ -2039,6 +2166,8 @@ onmessage = (e) => {
   optionValue_dithering_propagation_green = e.data.body.optionValue_dithering_propagation_green;
   optionValue_dithering_propagation_blue = e.data.body.optionValue_dithering_propagation_blue;
   optionValue_dithering_strength = e.data.body.optionValue_dithering_strength === undefined ? 100 : e.data.body.optionValue_dithering_strength;
+  optionValue_improvedPatternDithering = e.data.body.optionValue_improvedPatternDithering === true;
+  optionValue_patternPairMode = e.data.body.optionValue_patternPairMode === "reflect" ? "reflect" : "nearest";
   optionValue_cleanup_enabled = !!e.data.body.optionValue_cleanup_enabled;
   optionValue_cleanup_denoise = e.data.body.optionValue_cleanup_denoise || 0;
   optionValue_cleanup_denoiseMethod = e.data.body.optionValue_cleanup_denoiseMethod || "median";
