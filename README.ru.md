@@ -126,6 +126,7 @@ MapartCraft Local Studio — форк [mike2b2t/mapartcraft](https://github.com/
 - [OpenMoji](https://github.com/hfg-gmuend/openmoji) за флаги
 - Благодарности переводчикам можно увидеть на переведённых страницах
 - [SelfAdjointOperator](https://github.com/SelfAdjointOperator) за некоторые дополнительные функции
+- jkascpkmc (Discord) за улучшенный алгоритм Байера/паттерн-дизеринга
 - [OpenCode / DeepSeek V4.1 Flash](CONTRIBUTORS.ru.md) за помощь с реализацией, тестированием и публикацией
 - [Контрибьюторы апстрима](https://github.com/mike2b2t/mapartcraft/graphs/contributors)
 - [Контрибьюторы этого форка](https://github.com/AxopupelBruh/mapartcraft/graphs/contributors)
