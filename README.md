@@ -4,10 +4,7 @@
 
 **MapartCraft Local Studio is a community fork of [mike2b2t/mapartcraft](https://github.com/mike2b2t/mapartcraft)**, which is based on the original [MapartCraft by rebane2001](https://rebane2001.com/mapartcraft). It keeps the upstream NBT / map.dat workflow and adds a local-first studio, newer Minecraft palettes, extra image processing and a built-in pixel editor. It is not a separate map-art format or a from-scratch replacement.
 
-**Live site:** <https://axopupelbruh.github.io/mapartcraft/>  
-**This fork:** <https://github.com/AxopupelBruh/mapartcraft>  
-**Upstream:** <https://github.com/mike2b2t/mapartcraft>  
-**Original:** <https://rebane2001.com/mapartcraft>
+**Live site:** <https://axopupelbruh.github.io/mapartcraft/>
 
 ## What this fork adds
 
