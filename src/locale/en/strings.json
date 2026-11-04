@@ -4,7 +4,7 @@
     "CREDITS": "Translated by: (Your Name Here)"
   },
   "HEAD-META-TAGS": {
-    "DESCRIPTION": "A Minecraft mapart schematic and map.dat generator"
+    "DESCRIPTION": "Fork of mike2b2t/mapartcraft: local-first Minecraft map art studio with pixel editor, cleanup, palettes up to 26.3, .litematic and PNG export."
   },
   "FAQ": {
     "FAQ": "FAQ",
@@ -13,14 +13,15 @@
     "VIDEO-TUTORIAL": "Video tutorial"
   },
   "DESCRIPTION": {
-    "1": "A Minecraft mapart schematic and map.dat generator, designed to be feasible for both server admins and survival players on servers like ",
-    "2": ", running in your browser.",
-    "3": "Inspired by ",
+    "1": "A local-first Minecraft mapart schematic and .map.dat generator with a pixel editor, cleanup tools, palettes up to 26.3 and .litematic export. It is built for server admins and survival players on servers like ",
+    "2": ", and runs entirely in your browser.",
+    "3": "The studio keeps the original MapartCraft workflow and adds newer blocks, image processing and editing tools. Inspired by ",
     "4": "Redstonehelper's map art program",
-    "5": ", with the goal to add much-requested features and removing the need to download a program.",
-    "6": "This is a fork of the original ",
-    "7": " by rebane2001. Feature requests and bug reports go on "
+    "5": ".",
+    "6": "Based on the original ",
+    "7": " by rebane2001. Feature requests and bug reports go to "
   },
+  "FORK-LABEL": "Fork of ",
   "BLOCK-SELECTION": {
     "TITLE": "Block selection",
     "PRESETS": {

@@ -2,25 +2,27 @@
 
 [Russian version](README.ru.md)
 
-A Minecraft map art schematic and map.dat generator, designed to be feasible for both server admins and survival players on servers like 2b2t, running entirely in your browser.
+**MapartCraft Local Studio is a community fork of [mike2b2t/mapartcraft](https://github.com/mike2b2t/mapartcraft)**, which is based on the original [MapartCraft by rebane2001](https://rebane2001.com/mapartcraft). It keeps the upstream NBT / map.dat workflow and adds a local-first studio, newer Minecraft palettes, extra image processing and a built-in pixel editor. It is not a separate map-art format or a from-scratch replacement.
 
-**Live site:** <https://axopupelbruh.github.io/mapartcraft/>
+**Live site:** <https://axopupelbruh.github.io/mapartcraft/>  
+**This fork:** <https://github.com/AxopupelBruh/mapartcraft>  
+**Upstream:** <https://github.com/mike2b2t/mapartcraft>  
+**Original:** <https://rebane2001.com/mapartcraft>
 
-This fork adds a local-first studio on top of the original MapartCraft interface:
+## What this fork adds
 
-- Installable PWA with offline app-shell caching.
-- Pixel-perfect 2D preview with nearest-neighbour sampling, integer zoom and an optional pixel grid.
-- Automatic 2x/3x/4x/5x source-pixel detection.
+- Installable PWA with offline app-shell caching; all processing stays in the browser.
+- Pixel-perfect 2D preview: Pixel (nearest), Smooth and High quality (Lanczos), integer zoom, optional pixel grid and auto-scale for pixel mode.
 - Style presets: Clean Pixel, Retro Grid, Retro 1-bit, Soft Gradient and Low-Block.
-- Palette presets including a built-in 56-block palette and `Piston clearable` (32 blocks).
-- Manual pixel editor with brush, eraser, eyedropper, drag painting, undo/redo and a colour palette taken from the current preview.
-- Dithering mask, flood fill, brush size, line/rectangle/ellipse tools, magic wand, lasso, rectangular selection, copy/paste, flip/rotate and editor hotkeys.
-- Editor zoom controls (including Fit) plus Ctrl+wheel zoom.
-- Cleanup/improvement pass: denoise, speckle removal, colour simplification and edge-aware dithering.
-- One-slot recovery of the current image, settings and manual edits after a reload, with a session status indicator and reset action.
-- New studio/editor UI localized in English and Russian (other languages fall back to English).
-- Direct `.litematic` export with a shared PNG preview.
+- Compact palette modal with search by block/colour, tone toggles, "no block" entries and custom blocks. Built-in 56-block and `Piston clearable` (32-block) presets are included.
+- Minecraft palette versions from 1.12.2 through 1.21.5, plus 1.21.11, 26.2 and 26.3. Newer blocks include copper shelves/chests/statues/lanterns/lightning rods, sulfur, cinnabar, poplar wood and leaves, wool/concrete stairs and slabs, and more.
+- Manual pixel editor with brush, eraser, eyedropper, fill, line/rectangle/ellipse, magic wand, lasso, rectangular selection, copy/paste, move, flip/rotate, mask and protect tools, undo/redo, brush sizes, zoom/Fit and hotkeys.
+- Cleanup/improvement pass: median/bilateral/guided denoise, preserve edges, remove islands (size-only or Smart), simplify colours (RGB or perceptual Lab), adaptive dithering and edge-aware Floyd–Steinberg with serpentine order.
+- Image preprocessing: gamma and auto levels.
+- One-slot recovery of the current image, settings and manual edits in IndexedDB.
+- Direct `.litematic` export with a shared PNG preview in a regular ZIP.
 - Existing `.nbt` and `.map.dat` exports remain available.
+- Studio/editor UI localized in English and Russian; other languages fall back to English.
 
 Nothing is uploaded. Settings and custom palettes are stored in the browser. The current image, settings and manual edits are kept in a single IndexedDB recovery slot and restored after a reload; uploading another image replaces that slot.
 
@@ -118,7 +120,7 @@ The generated files are not committed to `main`; `npm run build` output is deplo
 
 ## Credits and license
 
-MapartCraft is a fork of the original tool by [rebane2001](https://rebane2001.com/mapartcraft); the original project and this fork are distributed under the [GNU General Public License v3.0](LICENSE).
+MapartCraft Local Studio is a fork of [mike2b2t/mapartcraft](https://github.com/mike2b2t/mapartcraft), which is based on the original [MapartCraft by rebane2001](https://rebane2001.com/mapartcraft). The original project, the upstream fork and this fork are distributed under the [GNU General Public License v3.0](LICENSE).
 
 - Minecraft for the block textures
 - [KenPixel Mini Square](https://opengameart.org/content/kenney-fonts) font by [Kenney](https://www.kenney.nl/)
@@ -128,4 +130,5 @@ MapartCraft is a fork of the original tool by [rebane2001](https://rebane2001.co
 - Translation credits can be seen on the translated pages
 - [SelfAdjointOperator](https://github.com/SelfAdjointOperator) for some extra features
 - [OpenCode / DeepSeek V4.1 Flash](CONTRIBUTORS.md) for implementation assistance, testing and deployment
-- Code contributors can be seen on the [contributions page](https://github.com/mike2b2t/mapartcraft/graphs/contributors)
+- [Upstream contributors](https://github.com/mike2b2t/mapartcraft/graphs/contributors)
+- [Contributors to this fork](https://github.com/AxopupelBruh/mapartcraft/graphs/contributors)

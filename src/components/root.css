@@ -18,6 +18,19 @@
     white-space: nowrap;
 }
 
+.forkCredit {
+    display: block;
+    margin-top: -0.15em;
+    margin-bottom: 0.45em;
+    color: #b9b9b9;
+    font-family: Lato, Open Sans, Arial, sans-serif;
+    font-size: 0.76em;
+}
+
+.forkCredit a {
+    color: var(--rebaneGreen);
+}
+
 .fixedMessages {
     position: fixed;
     bottom: 0.1em;

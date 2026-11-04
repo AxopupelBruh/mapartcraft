@@ -17,7 +17,7 @@ class Header extends Component {
             {getLocaleString("FAQ/VIDEO-TUTORIAL")}
           </a>
           <span> | </span>
-          <a href="https://github.com/mike2b2t/mapartcraft" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/AxopupelBruh/mapartcraft" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
           <span> | </span>
@@ -43,7 +43,7 @@ class Header extends Component {
             MapartCraft
           </a>
           {getLocaleString("DESCRIPTION/7")}
-          <a href="https://github.com/mike2b2t/mapartcraft/issues" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/AxopupelBruh/mapartcraft/issues" target="_blank" rel="noopener noreferrer">
             GitHub
           </a>
           {"."}
