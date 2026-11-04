@@ -126,6 +126,7 @@ MapartCraft Local Studio is a fork of [mike2b2t/mapartcraft](https://github.com/
 - [OpenMoji](https://github.com/hfg-gmuend/openmoji) for flags
 - Translation credits can be seen on the translated pages
 - [SelfAdjointOperator](https://github.com/SelfAdjointOperator) for some extra features
+- jkascpkmc (Discord) for the improved Bayer/pattern dithering algorithm
 - [OpenCode / DeepSeek V4.1 Flash](CONTRIBUTORS.md) for implementation assistance, testing and deployment
 - [Upstream contributors](https://github.com/mike2b2t/mapartcraft/graphs/contributors)
 - [Contributors to this fork](https://github.com/AxopupelBruh/mapartcraft/graphs/contributors)
