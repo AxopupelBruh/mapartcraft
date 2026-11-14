@@ -37,7 +37,11 @@ var optionValue_cleanup_colours = 0;
 var optionValue_cleanup_coloursPerceptual = false;
 var optionValue_cleanup_islandsSmart = false;
 var optionValue_cleanup_adaptiveDither = true;
-var optionValue_style;
+// How many tones of the palette the style may use. The worker works with
+// these numbers, not with the style name, so a new style does not need
+// changes here.
+var optionValue_paletteStrategy = "all";
+var optionValue_maxTones = 0;
 var pixelEdits;
 var hasPixelEdits = false;
 var hasMaskEdits = false;
@@ -683,14 +687,16 @@ function groupColourTones(entries) {
 }
 
 function applyStyleColourLimit() {
-  if (optionValue_style !== "retro1bit" && optionValue_style !== "lowBlock") {
+  /* Сколько тонов палитры разрешено использовать, решают числа, а не
+     название стиля: новый стиль не требует правок воркера. */
+  if (optionValue_paletteStrategy === "all") {
     return;
   }
 
   const entries = flattenColourTones();
   if (entries.length === 0) return;
 
-  if (optionValue_style === "retro1bit") {
+  if (optionValue_paletteStrategy === "twoTones") {
     const sorted = [...entries].sort((a, b) => a.luminance - b.luminance);
     const dark = sorted[0];
     let light = sorted[sorted.length - 1];
@@ -705,7 +711,9 @@ function applyStyleColourLimit() {
     return;
   }
 
-  const target = Math.min(16, entries.length);
+  /* "luminance": берём тоны по яркости, каждый раз самый далёкий от уже
+     выбранных. */
+  const target = Math.min(optionValue_maxTones > 0 ? optionValue_maxTones : entries.length, entries.length);
   const sorted = [...entries].sort((a, b) => a.luminance - b.luminance);
   const chosen = [sorted[0]];
   while (chosen.length < target) {
@@ -2482,7 +2490,8 @@ function renderPixels(body, requestId) {
   optionValue_cleanup_coloursPerceptual = !!body.optionValue_cleanup_coloursPerceptual;
   optionValue_cleanup_islandsSmart = !!body.optionValue_cleanup_islandsSmart;
   optionValue_cleanup_adaptiveDither = body.optionValue_cleanup_adaptiveDither !== false;
-  optionValue_style = body.optionValue_style;
+  optionValue_paletteStrategy = body.optionValue_paletteStrategy || "all";
+  optionValue_maxTones = body.optionValue_maxTones || 0;
   pixelEdits = body.pixelEdits || {};
   sourceImageData = null;
 

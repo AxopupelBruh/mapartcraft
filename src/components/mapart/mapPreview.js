@@ -125,6 +125,8 @@ const DISPLAY_PROPS = [
   "optionValue_pixelPerfect",
   "optionValue_autoDetectPixelScale",
   "optionValue_style",
+  "optionValue_paletteStrategy",
+  "optionValue_maxTones",
   "uploadedImage",
   "pixelEdits",
 ];
@@ -1410,6 +1412,8 @@ class MapPreview extends Component {
       optionValue_cleanup_islandsSmart,
       optionValue_cleanup_adaptiveDither,
       optionValue_style,
+      optionValue_paletteStrategy,
+      optionValue_maxTones,
       pixelEdits,
       onMapPreviewWorker_begin,
     } = this.props;
@@ -1495,6 +1499,8 @@ class MapPreview extends Component {
           optionValue_cleanup_islandsSmart: optionValue_cleanup_islandsSmart,
           optionValue_cleanup_adaptiveDither: optionValue_cleanup_adaptiveDither,
           optionValue_style: optionValue_style,
+          optionValue_paletteStrategy: optionValue_paletteStrategy,
+          optionValue_maxTones: optionValue_maxTones,
           pixelEdits: pixelEdits || {},
         },
         requestId: requestId,

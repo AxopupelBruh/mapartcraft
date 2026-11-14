@@ -79,6 +79,8 @@ const LEGACY_PERSISTED_KEYS = [
   "optionValue_showPixelGrid",
   "optionValue_previewScale",
   "optionValue_style",
+  "optionValue_paletteStrategy",
+  "optionValue_maxTones",
   "stylePreset",
   "selectedPresetName",
 ];

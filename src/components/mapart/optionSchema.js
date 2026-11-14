@@ -455,6 +455,36 @@ export const OPTION_SCHEMA = [
     showIf: (values) => isPatternDithering(values.optionValue_dithering) && !!values.optionValue_improvedPatternDithering,
   },
   {
+    /* Сколько тонов палитры разрешено использовать. Задаётся пресетом
+       стиля, в форме не показывается, но обязано сохраняться вместе с
+       остальными настройками. */
+    key: "optionValue_paletteStrategy",
+    handler: "onOptionChange_paletteStrategy",
+    type: "select",
+    valueType: "event",
+    group: "dithering",
+    labelKey: "MAP-SETTINGS/DITHERING/TITLE",
+    options: () => [
+      { value: "all", label: "all" },
+      { value: "twoTones", label: "twoTones" },
+      { value: "luminance", label: "luminance" },
+    ],
+    form: false,
+  },
+  {
+    key: "optionValue_maxTones",
+    handler: "onOptionChange_maxTones",
+    type: "number",
+    valueType: "value",
+    group: "dithering",
+    labelKey: "MAP-SETTINGS/DITHERING/TITLE",
+    min: 0,
+    max: 256,
+    step: 1,
+    validators: rangeValidator(0, 256),
+    form: false,
+  },
+  {
     key: "optionValue_dithering_propagation_red",
     handler: "onOptionChange_dithering_propagation_red",
     type: "range",

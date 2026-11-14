@@ -96,6 +96,8 @@ class MapartController extends Component {
     optionValue_showPixelGrid: false,
     optionValue_previewScale: 2,
     optionValue_style: "clean",
+    optionValue_paletteStrategy: "all",
+    optionValue_maxTones: 0,
     stylePreset: "clean",
     uploadedImage: null,
     uploadedImage_baseFilename: null,
@@ -665,6 +667,15 @@ class MapartController extends Component {
     img.src = imageURL;
   }
 
+  /* Ручная правка настроек превращает стиль в «свой». Ограничения палитры,
+     которые задавал пресет стиля, при этом снимаются: пользователь выбрал
+     метод дизеринга сам, значит и палитру он хочет всю. */
+  customStyleState = () => ({
+    optionValue_style: "custom",
+    optionValue_paletteStrategy: "all",
+    optionValue_maxTones: 0,
+  });
+
   applyStylePreset = (styleId) => {
     const style = getStylePreset(styleId);
     this.setState({
@@ -677,6 +688,10 @@ class MapartController extends Component {
       optionValue_dithering_propagation_blue: style.propagation[2],
       optionValue_improvedPatternDithering: style.improvedPattern === true,
       optionValue_patternPairMode: style.patternPairMode || "nearest",
+      /* Сколько тонов палитры разрешено — числами, а не названием стиля:
+         новый стиль не требует правок воркера. */
+      optionValue_paletteStrategy: style.paletteStrategy || "all",
+      optionValue_maxTones: style.maxTones || 0,
       /* Сила дизеринга и способ масштабирования — отдельные настройки
          пользователя. Раньше пресет стиля молча их сбрасывал. */
     });
@@ -937,7 +952,7 @@ class MapartController extends Component {
     const ditheringValue = parseInt(e.target.value);
     this.setState({
       optionValue_dithering: ditheringValue,
-      optionValue_style: "custom",
+      ...this.customStyleState(),
     });
   };
 
@@ -960,15 +975,25 @@ class MapartController extends Component {
   onOptionChange_improvedPatternDithering = () => {
     this.setState({
       optionValue_improvedPatternDithering: !this.state.optionValue_improvedPatternDithering,
-      optionValue_style: "custom",
+      ...this.customStyleState(),
     });
   };
 
   onOptionChange_patternPairMode = (e) => {
     this.setState({
       optionValue_patternPairMode: e.target.value,
-      optionValue_style: "custom",
+      ...this.customStyleState(),
     });
+  };
+
+  /* Ограничения палитры меняет только пресет стиля, но обработчики в схеме
+     нужны для полноты: без них опция не была бы в реестре. */
+  onOptionChange_paletteStrategy = (e) => {
+    this.setState({ optionValue_paletteStrategy: e.target.value });
+  };
+
+  onOptionChange_maxTones = (value) => {
+    this.setState({ optionValue_maxTones: value });
   };
 
   onOptionChange_cleanup_enabled = () => {
@@ -1504,6 +1529,8 @@ class MapartController extends Component {
       optionValue_dithering_strength,
       optionValue_improvedPatternDithering,
       optionValue_patternPairMode,
+      optionValue_paletteStrategy,
+      optionValue_maxTones,
       optionValue_cleanup_enabled,
       optionValue_cleanup_denoise,
       optionValue_cleanup_denoiseMethod,
@@ -1629,6 +1656,8 @@ class MapartController extends Component {
             optionValue_dithering_strength={optionValue_dithering_strength}
             optionValue_improvedPatternDithering={optionValue_improvedPatternDithering}
             optionValue_patternPairMode={optionValue_patternPairMode}
+            optionValue_paletteStrategy={optionValue_paletteStrategy}
+            optionValue_maxTones={optionValue_maxTones}
             optionValue_cleanup_enabled={optionValue_cleanup_enabled}
             optionValue_cleanup_denoise={optionValue_cleanup_denoise}
             optionValue_cleanup_denoiseMethod={optionValue_cleanup_denoiseMethod}

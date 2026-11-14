@@ -84,6 +84,7 @@ class StudioPanel extends Component {
           <div className="studioStyleGrid">
             {STYLE_PRESETS.map((style) => {
               const description = this.t(style.descriptionKey, style.description);
+              const name = this.t(style.nameKey, style.name);
               return (
                 <button
                   key={style.id}
@@ -94,7 +95,7 @@ class StudioPanel extends Component {
                   aria-pressed={activeStyle === style.id}
                 >
                   <b>
-                    {style.name}
+                    {name}
                     {activeStyle === style.id && styleModified ? (
                       <em className="studioStyleModified">{this.t("STUDIO/STYLE-MODIFIED", "modified")}</em>
                     ) : null}
