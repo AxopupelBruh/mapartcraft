@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 
 import AutoCompleteInputBlockToAdd from "./autoCompleteInputBlockToAdd/autoCompleteInputBlockToAdd";
 import BufferedNumberInput from "./bufferedNumberInput/bufferedNumberInput";
@@ -42,7 +42,6 @@ const fitsInMemory = (sizeX, sizeY) => {
 const MapSizeField = ({ values, handlers, getLocaleString }) => {
   const [invalidValue, setInvalidValue] = useState(null);
   const [noMemory, setNoMemory] = useState(false);
-  const wheelAreaRef = useRef(null);
   const maxMapSize = getMaxMapSize();
 
   /* Размер по обеим осям после применения значения по одной из них. */
@@ -78,46 +77,9 @@ const MapSizeField = ({ values, handlers, getLocaleString }) => {
     applyValue(key, next);
   };
 
-  /* Колесо мыши над полем меняет размер на шаг. Слушатель ставится вручную:
-     React подписывается на wheel как на passive-событие, и preventDefault
-     внутри обработчика не сработал бы — страница прокрутилась бы вместо
-     изменения размера. */
-  const latestRef = useRef({ values, handlers });
-  latestRef.current = { values, handlers };
-
-  useEffect(() => {
-    const node = wheelAreaRef.current;
-    if (!node) return undefined;
-    const onWheel = (event) => {
-      if (!event.target || event.target.tagName !== "INPUT") return;
-      event.preventDefault();
-      const current = latestRef.current;
-      const key = event.target.id === SIZE_Y_ID ? SIZE_Y_KEY : SIZE_X_KEY;
-      const currentValue = parseInt(current.values[key], 10);
-      const next = (isNaN(currentValue) ? MAP_SIZE_MIN : currentValue) + (event.deltaY < 0 ? 1 : -1);
-      const number = parseInt(next, 10);
-      if (isNaN(number) || number < MAP_SIZE_MIN || number > getMaxMapSize()) {
-        setInvalidValue(number);
-        return;
-      }
-      const otherKey = key === SIZE_X_KEY ? SIZE_Y_KEY : SIZE_X_KEY;
-      const other = parseInt(current.values[otherKey], 10);
-      const nextSize = {
-        x: key === SIZE_X_KEY ? number : isNaN(other) ? MAP_SIZE_MIN : other,
-        y: key === SIZE_Y_KEY ? number : isNaN(other) ? MAP_SIZE_MIN : other,
-      };
-      if (!fitsInMemory(nextSize.x, nextSize.y)) {
-        setInvalidValue(null);
-        setNoMemory(true);
-        return;
-      }
-      setInvalidValue(null);
-      setNoMemory(false);
-      current.handlers[key](number);
-    };
-    node.addEventListener("wheel", onWheel, { passive: false });
-    return () => node.removeEventListener("wheel", onWheel);
-  }, []);
+  /* Колесо мыши над полем меняет размер на шаг. Обработчик живёт в
+     BufferedNumberInput — он общий для всех числовых полей, поэтому
+     здесь он был бы вторым шагом поверх первого. */
 
   const estimate = estimateMapSize(values.optionValue_mapSize_x, values.optionValue_mapSize_y);
   const isBig = estimate.megabytes >= 512;
@@ -158,7 +120,7 @@ const MapSizeField = ({ values, handlers, getLocaleString }) => {
 
   return (
     <React.Fragment>
-      <span className="mapSizeStepper" ref={wheelAreaRef}>
+      <span className="mapSizeStepper">
         {renderDimension(SIZE_X_KEY, "X", SIZE_X_ID)}
         {renderDimension(SIZE_Y_KEY, "Y", SIZE_Y_ID)}
       </span>

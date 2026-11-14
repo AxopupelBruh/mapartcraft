@@ -1,6 +1,6 @@
 .blockImage {
-  width: 32px;
-  height: 32px;
+  width: var(--block-cell);
+  height: var(--block-cell);
   margin-top: 3px;
   margin-bottom: 3px;
   margin-right: 3px;

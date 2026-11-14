@@ -119,3 +119,40 @@ test("оценка размера карты считает блоки по 128 
   expect(size.height).toBe(512);
   expect(getMaxMapSize()).toBeGreaterThan(16);
 });
+
+test("колесо мыши работает на всех ползунках и числовых полях", () => {
+  const helper = readFile("wheelValue.js");
+  const field = readFile("optionField.js");
+  const input = readFile("bufferedNumberInput/bufferedNumberInput.js");
+  const studio = readFile("studioPanel.js");
+  const preview = readFile("mapPreview.js");
+  /* Слушатель ставится вручную, иначе preventDefault внутри
+     React-обработчика не сработал бы (React подписывается на wheel как
+     на passive-событие) и страница прокручивалась бы вместо изменения. */
+  expect(helper).toContain("addEventListener(\"wheel\"");
+  expect(helper).toContain("passive: false");
+  expect(helper).toContain("preventDefault");
+  /* Значение не выходит за min/max. */
+  expect(helper).toContain("if (min !== undefined && next < min) next = min;");
+  expect(helper).toContain("if (max !== undefined && next > max) next = max;");
+  /* Ползунок настроек, числовое поле рядом с ним, сила дизеринга в
+     Studio-панели и допуск в редакторе пикселей. */
+  expect(field).toContain("attachWheel(");
+  expect(field).toContain("ref={rangeRef}");
+  expect(input).toContain("attachWheel(");
+  expect(studio).toContain("attachWheel(");
+  expect(preview).toContain("attachWheel(");
+});
+
+test("текстуры блоков в списке материалов не съезжают", () => {
+  const materials = readFile("materials.css");
+  const blockImage = readFile("blockImage.css");
+  const index = readFile("../../index.css");
+  /* Спрайт-лист: 31 колонка и 65 строк. Ячейка выбирается процентами в
+     background-position, и проценты попадают в ячейку только когда размер
+     фона кратен размеру картинки. */
+  expect(materials).toContain("--block-cell: 26px;");
+  expect(materials).toContain("background-size: calc(31 * var(--block-cell)) calc(65 * var(--block-cell));");
+  expect(blockImage).toContain("width: var(--block-cell);");
+  expect(index).toContain("--block-cell: 32px;");
+});
