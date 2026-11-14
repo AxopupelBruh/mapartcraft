@@ -1,6 +1,7 @@
 {
   "None": {
     "uniqueId": 0,
+    "sortOrder": 0,
     "name": "None",
     "algorithm": "none",
     "category": "none",
@@ -8,6 +9,7 @@
   },
   "FloydSteinberg": {
     "uniqueId": 1,
+    "sortOrder": 10,
     "name": "Floyd-Steinberg Default (/16 sharpen)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -39,6 +41,7 @@
   },
   "FloydSteinberg_20": {
     "uniqueId": 13,
+    "sortOrder": 11,
     "name": "Floyd-Steinberg Custom (/20 sharpen)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -70,6 +73,7 @@
   },
   "FloydSteinberg_24": {
     "uniqueId": 14,
+    "sortOrder": 12,
     "name": "Floyd-Steinberg Custom (/24 sharpen)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -101,6 +105,7 @@
   },
   "FloydSteinbergEdge": {
     "uniqueId": 25,
+    "sortOrder": 13,
     "name": "Floyd-Steinberg (edge-aware, serpentine)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -132,6 +137,7 @@
   },
   "Atkinson": {
     "uniqueId": 9,
+    "sortOrder": 20,
     "name": "Atkinson Default (/8 sharpen)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -163,6 +169,7 @@
   },
   "Atkinson_6": {
     "uniqueId": 12,
+    "sortOrder": 21,
     "name": "Atkinson Custom (/6 sharpen)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -194,6 +201,7 @@
   },
   "Atkinson_10": {
     "uniqueId": 10,
+    "sortOrder": 22,
     "name": "Atkinson Custom (/10 sharpen)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -225,6 +233,7 @@
   },
   "Atkinson_12": {
     "uniqueId": 11,
+    "sortOrder": 23,
     "name": "Atkinson Custom (/12 sharpen)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -256,6 +265,7 @@
   },
   "SierraFilterLite": {
     "uniqueId": 7,
+    "sortOrder": 32,
     "name": "Sierra (Filter Lite)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -287,6 +297,7 @@
   },
   "Fan": {
     "uniqueId": 15,
+    "sortOrder": 50,
     "name": "Fan",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -318,6 +329,7 @@
   },
   "ShiauFan": {
     "uniqueId": 16,
+    "sortOrder": 51,
     "name": "Shiau–Fan",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -349,6 +361,7 @@
   },
   "ShiauFan2": {
     "uniqueId": 17,
+    "sortOrder": 52,
     "name": "Shiau–Fan 2",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -380,6 +393,7 @@
   },
   "JarvisJudiceNinke": {
     "uniqueId": 5,
+    "sortOrder": 40,
     "name": "Jarvis-Judice-Ninke",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -411,6 +425,7 @@
   },
   "Stucki": {
     "uniqueId": 8,
+    "sortOrder": 41,
     "name": "Stucki",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -442,6 +457,7 @@
   },
   "Burkes": {
     "uniqueId": 6,
+    "sortOrder": 42,
     "name": "Burkes",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -473,6 +489,7 @@
   },
   "Sierra": {
     "uniqueId": 18,
+    "sortOrder": 30,
     "name": "Sierra",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -504,6 +521,7 @@
   },
   "SierraTworow": {
     "uniqueId": 19,
+    "sortOrder": 31,
     "name": "Sierra (Two-row)",
     "algorithm": "errorDiffusion",
     "category": "errorDiffusion",
@@ -535,6 +553,7 @@
   },
   "Bayer22": {
     "uniqueId": 3,
+    "sortOrder": 10,
     "name": "Bayer (2x2)",
     "algorithm": "ordered",
     "category": "ordered",
@@ -552,6 +571,7 @@
   },
   "Bayer33": {
     "uniqueId": 20,
+    "sortOrder": 11,
     "name": "Bayer (3x3)",
     "algorithm": "ordered",
     "category": "ordered",
@@ -576,6 +596,7 @@
   },
   "Bayer44": {
     "uniqueId": 2,
+    "sortOrder": 12,
     "name": "Bayer (4x4)",
     "algorithm": "ordered",
     "category": "ordered",
@@ -609,6 +630,7 @@
   },
   "Bayer88": {
     "uniqueId": 21,
+    "sortOrder": 13,
     "name": "Bayer (8x8)",
     "algorithm": "ordered",
     "category": "ordered",
@@ -698,6 +720,7 @@
   },
   "Ordered33": {
     "uniqueId": 4,
+    "sortOrder": 20,
     "name": "Ordered (3x3)",
     "algorithm": "ordered",
     "category": "ordered",
@@ -722,6 +745,7 @@
   },
   "ClusterDot44": {
     "uniqueId": 22,
+    "sortOrder": 30,
     "name": "Cluster Dot (4x4)",
     "algorithm": "ordered",
     "category": "ordered",
@@ -755,6 +779,7 @@
   },
   "Halftone88": {
     "uniqueId": 23,
+    "sortOrder": 10,
     "name": "Halftone (8x8)",
     "algorithm": "ordered",
     "category": "halftone",
@@ -844,6 +869,7 @@
   },
   "VoidAndCluster1414": {
     "uniqueId": 24,
+    "sortOrder": 10,
     "name": "Void-and-cluster (14x14)",
     "algorithm": "ordered",
     "category": "blueNoise",

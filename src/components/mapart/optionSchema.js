@@ -59,9 +59,12 @@ const localeOptions = (collection) =>
 
 const rangeValidator = (min, max) => [(value) => !isNaN(value), (value) => value >= min, (value) => value <= max];
 
-/* Все методы дизеринга, отсортированные по category, а внутри — по uniqueId.
-   uniqueId в JSON идут в произвольном порядке (0, 1, 13, 14, 25, 9, …),
-   поэтому сортировка по ним обязательна. */
+/* Все методы дизеринга, отсортированные по category, а внутри — по sortOrder.
+   uniqueId в JSON идут в произвольном порядке (0, 1, 13, 14, 25, 9, …), и
+   сортировка по ним разбрасывала варианты одного алгоритма по списку:
+   Atkinson (/6) оказывался после Atkinson (/12), а «Sierra (Filter Lite)» —
+   в начале, отдельно от «Sierra». sortOrder задаёт порядок явно: сначала
+   базовый метод, потом его варианты по возрастанию параметра. */
 export const DITHER_CATEGORY_ORDER = ["none", "errorDiffusion", "ordered", "halftone", "blueNoise"];
 
 export const DITHER_CATEGORY_LABELS = {
@@ -74,7 +77,13 @@ export const DITHER_CATEGORY_LABELS = {
 
 export const ditherMethodsByCategory = () => {
   const methods = Object.values(DitherMethods);
-  const sorted = methods.slice().sort((first, second) => first.uniqueId - second.uniqueId);
+  const sorted = methods.slice().sort((first, second) => {
+    /* У нового метода может не быть sortOrder — тогда он встаёт в конец. */
+    const firstOrder = typeof first.sortOrder === "number" ? first.sortOrder : Number.MAX_SAFE_INTEGER;
+    const secondOrder = typeof second.sortOrder === "number" ? second.sortOrder : Number.MAX_SAFE_INTEGER;
+    if (firstOrder !== secondOrder) return firstOrder - secondOrder;
+    return first.uniqueId - second.uniqueId;
+  });
   const groups = [];
   for (const category of DITHER_CATEGORY_ORDER) {
     const inCategory = sorted.filter((method) => (method.category || method.algorithm) === category);

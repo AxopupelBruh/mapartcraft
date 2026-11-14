@@ -3,6 +3,8 @@ import path from "path";
 
 import { BIG_MAP_MEGABYTES, isBigMap, estimateMapSize, getMaxMapSize } from "./canvasLimits";
 import { optionControlId } from "./optionControl";
+import { ditherMethodsByCategory } from "./optionSchema";
+import DitherMethods from "./json/ditherMethods.json";
 import enStrings from "../../locale/en/strings.json";
 import ruStrings from "../../locale/ru/strings.json";
 
@@ -155,4 +157,28 @@ test("текстуры блоков в списке материалов не с
   expect(materials).toContain("background-size: calc(31 * var(--block-cell)) calc(65 * var(--block-cell));");
   expect(blockImage).toContain("width: var(--block-cell);");
   expect(index).toContain("--block-cell: 32px;");
+});
+
+test("методы дизеринга идут по порядку, а не вперемешку", () => {
+  const groups = ditherMethodsByCategory();
+  const errorDiffusion = groups.find((group) => group.category === "errorDiffusion").methods.map((method) => method.name);
+  const ordered = groups.find((group) => group.category === "ordered").methods.map((method) => method.name);
+  /* Варианты одного алгоритма стоят рядом, базовый — первым. */
+  const atkinson = errorDiffusion.filter((name) => name.startsWith("Atkinson"));
+  expect(atkinson).toEqual(["Atkinson Default (/8 sharpen)", "Atkinson Custom (/6 sharpen)", "Atkinson Custom (/10 sharpen)", "Atkinson Custom (/12 sharpen)"]);
+  const sierra = errorDiffusion.filter((name) => name.startsWith("Sierra"));
+  expect(sierra).toEqual(["Sierra", "Sierra (Two-row)", "Sierra (Filter Lite)"]);
+  const floyd = errorDiffusion.filter((name) => name.startsWith("Floyd-Steinberg"));
+  expect(floyd).toEqual([
+    "Floyd-Steinberg Default (/16 sharpen)",
+    "Floyd-Steinberg Custom (/20 sharpen)",
+    "Floyd-Steinberg Custom (/24 sharpen)",
+    "Floyd-Steinberg (edge-aware, serpentine)",
+  ]);
+  /* Матрицы Байера — по размеру. */
+  expect(ordered.filter((name) => name.startsWith("Bayer"))).toEqual(["Bayer (2x2)", "Bayer (3x3)", "Bayer (4x4)", "Bayer (8x8)"]);
+  /* У каждого метода есть явный порядок. */
+  for (const method of Object.values(DitherMethods)) {
+    expect(typeof method.sortOrder).toBe("number");
+  }
 });
