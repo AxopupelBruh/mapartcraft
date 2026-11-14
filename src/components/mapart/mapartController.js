@@ -7,7 +7,7 @@ import MapPreview from "./mapPreview";
 import MapSettings from "./mapSettings";
 import Materials from "./materials";
 import StudioPanel from "./studioPanel";
-import { getStylePreset } from "./stylePresets";
+import { getStylePreset, STYLE_PRESET_IDS } from "./stylePresets";
 import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
 import coloursJSON from "./json/coloursJSON.json";
 import ViewOnline2D from "./viewOnline2D/viewOnline2D";
@@ -354,11 +354,11 @@ class MapartController extends Component {
     if (patch.optionValue_style === undefined) {
       patch.optionValue_style = patch.stylePreset || this.state.optionValue_style || "clean";
     }
-    if (!["clean", "retroGrid", "retro1bit", "softGradient", "lowBlock", "custom"].includes(patch.optionValue_style)) {
+    if (!STYLE_PRESET_IDS.includes(patch.optionValue_style)) {
       patch.optionValue_style = "clean";
       patch.stylePreset = "clean";
     }
-    if (!["clean", "retroGrid", "retro1bit", "softGradient", "lowBlock", "custom"].includes(patch.stylePreset)) {
+    if (!STYLE_PRESET_IDS.includes(patch.stylePreset)) {
       patch.stylePreset = patch.optionValue_style || "clean";
     }
     return patch;
