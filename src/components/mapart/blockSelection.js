@@ -20,6 +20,8 @@ class BlockSelection extends Component {
   constructor(props) {
     super(props);
     this.paletteBodyRef = React.createRef();
+    this.paletteModalRef = React.createRef();
+    this.previouslyFocusedElement = null;
   }
 
   componentDidMount() {
@@ -51,6 +53,8 @@ class BlockSelection extends Component {
   };
 
   openPalette = (colourSetId = null) => {
+    /* Запоминаем, где был фокус — вернём его при закрытии модалки. */
+    this.previouslyFocusedElement = document.activeElement;
     this.setState(
       {
         paletteOpen: true,
@@ -73,6 +77,31 @@ class BlockSelection extends Component {
       paletteSearch: "",
       paletteFocusColourSetId: null,
     });
+    /* Возвращаем фокус на элемент, который открыл модалку. */
+    if (this.previouslyFocusedElement && typeof this.previouslyFocusedElement.focus === "function") {
+      this.previouslyFocusedElement.focus();
+    }
+    this.previouslyFocusedElement = null;
+  };
+
+  /* Ловушка фокуса: Tab не должен уводить фокус за пределы модалки. */
+  handlePaletteKeyDown = (event) => {
+    if (event.key !== "Tab") return;
+    const modal = this.paletteModalRef.current;
+    if (!modal) return;
+    const focusable = modal.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   handlePaletteOverlayMouseDown = (event) => {
@@ -480,7 +509,14 @@ class BlockSelection extends Component {
     const selectedCount = this.getSelectedSummary(availableColourSets).length;
     return (
       <div className="paletteModalOverlay" onMouseDown={this.handlePaletteOverlayMouseDown}>
-        <div className="paletteModal" role="dialog" aria-modal="true" aria-labelledby="paletteModalTitle">
+        <div
+          className="paletteModal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="paletteModalTitle"
+          ref={this.paletteModalRef}
+          onKeyDown={this.handlePaletteKeyDown}
+        >
           <div className="paletteModalHeader">
             <div className="paletteModalHeading">
               <h2 id="paletteModalTitle">{getLocaleString("BLOCK-SELECTION/PALETTE/TITLE")}</h2>

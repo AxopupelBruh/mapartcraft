@@ -58,14 +58,22 @@ class AutoCompleteInputBlockToAdd extends Component {
   };
 
   render() {
-    const { coloursJSON, value } = this.props;
+    const { coloursJSON, value, id, ariaLabel } = this.props;
     const { suggestionSelected } = this.state;
 
     const relevantSuggestions = this.getRelevantSuggestions();
 
     return (
       <React.Fragment>
-        <input type="text" value={value} onChange={this.handleTextChange} onFocus={this.onFocus} onClick={this.onFocus} />
+        <input
+          type="text"
+          id={id}
+          aria-label={ariaLabel}
+          value={value}
+          onChange={this.handleTextChange}
+          onFocus={this.onFocus}
+          onClick={this.onFocus}
+        />
         <table className={"blockToAddSuggestions"} style={{ display: suggestionSelected || relevantSuggestions.length === 0 ? "none" : "table" }}>
           <tbody>
             {relevantSuggestions.map((suggestion) => (

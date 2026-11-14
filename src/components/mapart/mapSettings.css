@@ -1,6 +1,312 @@
+.settingsDiv {
+  min-width: 0;
+}
+
+.settingsDiv > h2 {
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  color: var(--accent);
+  font-size: var(--fs-2xl);
+  font-weight: normal;
+  margin-bottom: var(--sp-2);
+}
+
+/* ------------------------------- Табы ------------------------------- */
+
+.settingsTabs {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--border-2);
+  padding-bottom: 2px;
+  margin-bottom: var(--sp-2);
+}
+
+.settingsTab {
+  border: 1px solid var(--border-2);
+  border-bottom: none;
+  background: var(--surface-1);
+  color: var(--text-4);
+  padding: 0.3em 0.6em;
+  cursor: pointer;
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: var(--fs-xs);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  white-space: nowrap;
+}
+
+.settingsTab:hover {
+  color: var(--text-1);
+  border-color: var(--accent);
+}
+
+.settingsTab.active {
+  background: var(--surface-2);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.settingsTabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+/* ------------------------------ Группы ------------------------------ */
+
 .settingsGroup {
-  margin-block-start: 0.2em;
-  margin-block-end: 0.2em;
-  padding: 0.2em;
-  outline: 0.1em solid white;
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-md);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  margin: 0;
+  min-width: 0;
+}
+
+.settingsGroup legend {
+  color: var(--accent);
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: var(--fs-sm);
+  padding: 0 var(--sp-1);
+}
+
+/* ------------------------------ Поля ------------------------------- */
+
+.optionField {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.3em 0.6em;
+  padding: 0.22em 0;
+  min-width: 0;
+}
+
+.optionField_label {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 0.3em;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  min-width: 0;
+}
+
+.optionField_help {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 1.05em;
+  height: 1.05em;
+  line-height: 1em;
+  text-align: center;
+  font-size: 0.8em;
+  color: var(--text-5);
+  border: 1px solid var(--border-3);
+  border-radius: 50%;
+  cursor: help;
+}
+
+.optionField_help:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.optionField_control {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35em;
+  min-width: 0;
+}
+
+/* Select с длинными названиями (методы дизеринга, версии) не влезает в
+   одну строку с подписью: колонка с подписью сжималась, и текст
+   наезжал на список. Поэтому подпись и список стоят друг под другом. */
+.optionField_select {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.optionField_select .optionField_control {
+  width: 100%;
+}
+
+.optionField_select select {
+  width: 100%;
+  min-width: 0;
+}
+
+.optionField_range input[type="range"] {
+  width: 108px;
+  accent-color: var(--accent);
+}
+
+.optionField_checkbox {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.optionField_checkboxLabel {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35em;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.optionField_checkboxLabel input {
+  accent-color: var(--accent);
+}
+
+.optionField_pairLabel {
+  color: var(--text-5);
+  font-size: var(--fs-xs);
+}
+
+/* --------------------------- Элементы формы ------------------------ */
+
+.settingsDiv select,
+.optionField select {
+  background-color: var(--surface-3);
+  color: var(--text-1);
+  border: 1px solid var(--border-3);
+  padding: 0.15em 0.3em;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  max-width: 100%;
+}
+
+.optionField input[type="number"] {
+  background-color: var(--surface-0);
+  color: var(--text-1);
+  border: 1px solid var(--border-3);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.25em;
+  width: 4em;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  /* Нативные стрелки браузера светлые и выбиваются из тёмной темы. */
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.optionField input[type="number"]::-webkit-inner-spin-button,
+.optionField input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.optionField input[type="color"] {
+  width: 3em;
+  height: 1.7em;
+  padding: 0;
+  border: 1px solid var(--border-3);
+  border-radius: var(--radius-sm);
+  background: none;
+  cursor: pointer;
+}
+
+/* --------------------------- Cleanup ------------------------------- */
+
+.settingsCleanupPresets {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: var(--sp-2);
+}
+
+.settingsCleanupPresets button {
+  border: 1px solid var(--border-5);
+  background-color: var(--surface-3);
+  color: var(--text-1);
+  border-radius: var(--radius-sm);
+  padding: 0.22em 0.45em;
+  cursor: pointer;
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: var(--fs-2xs);
+}
+
+.settingsCleanupPresets button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.settingsCleanupHint {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+  margin-top: var(--sp-2);
+}
+
+@media (max-width: 860px) {
+  .optionField {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .optionField_range input[type="range"] {
+    width: 100%;
+  }
+}
+
+.settingsBalanceHint {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.35;
+  margin-top: var(--sp-2);
+}
+
+.settingsBalanceHint b {
+  color: var(--accent);
+  font-weight: normal;
+}
+
+.optionField_error {
+  color: var(--danger);
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+  flex: 1 1 100%;
+}
+
+.optionField_hint {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+  line-height: 1.3;
+  /* Подсказка внутри кастомного поля живёт в flex-контейнере — там ей
+     нужна строка целиком, а не столбец. */
+  flex: 1 1 100%;
+}
+
+/* ------------------------- Размер карты ------------------------------ */
+
+.mapSizeStepper {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25em;
+}
+
+.mapSizeStepButton {
+  min-width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 1;
+  background-color: var(--surface-3);
+  color: var(--text-1);
+  border: 1px solid var(--border-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--fs-md);
+}
+
+.mapSizeStepButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.mapSizeStepButton:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 1px;
 }

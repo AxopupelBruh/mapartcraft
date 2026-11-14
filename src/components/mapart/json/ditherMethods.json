@@ -3,12 +3,14 @@
     "uniqueId": 0,
     "name": "None",
     "algorithm": "none",
+    "category": "none",
     "localeKey": "MAP-SETTINGS/DITHERING/NONE"
   },
   "FloydSteinberg": {
     "uniqueId": 1,
     "name": "Floyd-Steinberg Default (/16 sharpen)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -32,12 +34,14 @@
         0
       ]
     ],
-    "ditherDivisor": 16
+    "ditherDivisor": 16,
+    "localeKey": "MAP-SETTINGS/DITHERING/FLOYD-STEINBERG"
   },
   "FloydSteinberg_20": {
     "uniqueId": 13,
     "name": "Floyd-Steinberg Custom (/20 sharpen)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -61,12 +65,14 @@
         0
       ]
     ],
-    "ditherDivisor": 20
+    "ditherDivisor": 20,
+    "localeKey": "MAP-SETTINGS/DITHERING/FLOYD-STEINBERG-20"
   },
   "FloydSteinberg_24": {
     "uniqueId": 14,
     "name": "Floyd-Steinberg Custom (/24 sharpen)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -90,12 +96,14 @@
         0
       ]
     ],
-    "ditherDivisor": 24
+    "ditherDivisor": 24,
+    "localeKey": "MAP-SETTINGS/DITHERING/FLOYD-STEINBERG-24"
   },
   "FloydSteinbergEdge": {
     "uniqueId": 25,
     "name": "Floyd-Steinberg (edge-aware, serpentine)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "localeKey": "MAP-SETTINGS/DITHERING/EDGE-AWARE",
     "ditherMatrix": [
       [
@@ -126,6 +134,7 @@
     "uniqueId": 9,
     "name": "Atkinson Default (/8 sharpen)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -149,12 +158,14 @@
         0
       ]
     ],
-    "ditherDivisor": 8
+    "ditherDivisor": 8,
+    "localeKey": "MAP-SETTINGS/DITHERING/ATKINSON"
   },
   "Atkinson_6": {
     "uniqueId": 12,
     "name": "Atkinson Custom (/6 sharpen)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -178,12 +189,14 @@
         0
       ]
     ],
-    "ditherDivisor": 6
+    "ditherDivisor": 6,
+    "localeKey": "MAP-SETTINGS/DITHERING/ATKINSON-6"
   },
   "Atkinson_10": {
     "uniqueId": 10,
     "name": "Atkinson Custom (/10 sharpen)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -207,12 +220,14 @@
         0
       ]
     ],
-    "ditherDivisor": 10
+    "ditherDivisor": 10,
+    "localeKey": "MAP-SETTINGS/DITHERING/ATKINSON-10"
   },
   "Atkinson_12": {
     "uniqueId": 11,
     "name": "Atkinson Custom (/12 sharpen)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -236,12 +251,14 @@
         0
       ]
     ],
-    "ditherDivisor": 12
+    "ditherDivisor": 12,
+    "localeKey": "MAP-SETTINGS/DITHERING/ATKINSON-12"
   },
   "SierraFilterLite": {
     "uniqueId": 7,
     "name": "Sierra (Filter Lite)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -265,12 +282,14 @@
         0
       ]
     ],
-    "ditherDivisor": 4
+    "ditherDivisor": 4,
+    "localeKey": "MAP-SETTINGS/DITHERING/SIERRA-LITE"
   },
   "Fan": {
     "uniqueId": 15,
     "name": "Fan",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -294,12 +313,14 @@
         0
       ]
     ],
-    "ditherDivisor": 16
+    "ditherDivisor": 16,
+    "localeKey": "MAP-SETTINGS/DITHERING/FAN"
   },
   "ShiauFan": {
     "uniqueId": 16,
     "name": "Shiau–Fan",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -323,12 +344,14 @@
         0
       ]
     ],
-    "ditherDivisor": 8
+    "ditherDivisor": 8,
+    "localeKey": "MAP-SETTINGS/DITHERING/SHIAU-FAN"
   },
   "ShiauFan2": {
     "uniqueId": 17,
     "name": "Shiau–Fan 2",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -352,12 +375,14 @@
         0
       ]
     ],
-    "ditherDivisor": 16
+    "ditherDivisor": 16,
+    "localeKey": "MAP-SETTINGS/DITHERING/SHIAU-FAN-2"
   },
   "JarvisJudiceNinke": {
     "uniqueId": 5,
     "name": "Jarvis-Judice-Ninke",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -381,12 +406,14 @@
         1
       ]
     ],
-    "ditherDivisor": 48
+    "ditherDivisor": 48,
+    "localeKey": "MAP-SETTINGS/DITHERING/JARVIS-JUDICE-NINKE"
   },
   "Stucki": {
     "uniqueId": 8,
     "name": "Stucki",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -410,12 +437,14 @@
         1
       ]
     ],
-    "ditherDivisor": 42
+    "ditherDivisor": 42,
+    "localeKey": "MAP-SETTINGS/DITHERING/STUCKI"
   },
   "Burkes": {
     "uniqueId": 6,
     "name": "Burkes",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -439,12 +468,14 @@
         0
       ]
     ],
-    "ditherDivisor": 32
+    "ditherDivisor": 32,
+    "localeKey": "MAP-SETTINGS/DITHERING/BURKES"
   },
   "Sierra": {
     "uniqueId": 18,
     "name": "Sierra",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -468,12 +499,14 @@
         0
       ]
     ],
-    "ditherDivisor": 32
+    "ditherDivisor": 32,
+    "localeKey": "MAP-SETTINGS/DITHERING/SIERRA"
   },
   "SierraTworow": {
     "uniqueId": 19,
     "name": "Sierra (Two-row)",
     "algorithm": "errorDiffusion",
+    "category": "errorDiffusion",
     "ditherMatrix": [
       [
         0,
@@ -497,12 +530,14 @@
         0
       ]
     ],
-    "ditherDivisor": 16
+    "ditherDivisor": 16,
+    "localeKey": "MAP-SETTINGS/DITHERING/SIERRA-TWO-ROW"
   },
   "Bayer22": {
     "uniqueId": 3,
     "name": "Bayer (2x2)",
     "algorithm": "ordered",
+    "category": "ordered",
     "ditherMatrix": [
       [
         1,
@@ -512,12 +547,14 @@
         4,
         2
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/BAYER-2X2"
   },
   "Bayer33": {
     "uniqueId": 20,
     "name": "Bayer (3x3)",
     "algorithm": "ordered",
+    "category": "ordered",
     "ditherMatrix": [
       [
         1,
@@ -534,12 +571,14 @@
         2,
         9
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/BAYER-3X3"
   },
   "Bayer44": {
     "uniqueId": 2,
     "name": "Bayer (4x4)",
     "algorithm": "ordered",
+    "category": "ordered",
     "ditherMatrix": [
       [
         1,
@@ -565,12 +604,14 @@
         14,
         6
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/BAYER-4X4"
   },
   "Bayer88": {
     "uniqueId": 21,
     "name": "Bayer (8x8)",
     "algorithm": "ordered",
+    "category": "ordered",
     "ditherMatrix": [
       [
         1,
@@ -652,12 +693,14 @@
         54,
         22
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/BAYER-8X8"
   },
   "Ordered33": {
     "uniqueId": 4,
     "name": "Ordered (3x3)",
     "algorithm": "ordered",
+    "category": "ordered",
     "ditherMatrix": [
       [
         1,
@@ -674,12 +717,14 @@
         2,
         9
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/ORDERED-3X3"
   },
   "ClusterDot44": {
     "uniqueId": 22,
     "name": "Cluster Dot (4x4)",
     "algorithm": "ordered",
+    "category": "ordered",
     "ditherMatrix": [
       [
         13,
@@ -705,12 +750,14 @@
         10,
         15
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/CLUSTER-DOT-4X4"
   },
   "Halftone88": {
     "uniqueId": 23,
     "name": "Halftone (8x8)",
     "algorithm": "ordered",
+    "category": "halftone",
     "ditherMatrix": [
       [
         25,
@@ -792,12 +839,14 @@
         20,
         30
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/HALFTONE-8X8"
   },
   "VoidAndCluster1414": {
     "uniqueId": 24,
     "name": "Void-and-cluster (14x14)",
     "algorithm": "ordered",
+    "category": "blueNoise",
     "ditherMatrix": [
       [
         24,
@@ -1023,6 +1072,7 @@
         138,
         196
       ]
-    ]
+    ],
+    "localeKey": "MAP-SETTINGS/DITHERING/VOID-AND-CLUSTER-14X14"
   }
 }

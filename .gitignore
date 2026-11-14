@@ -13,3 +13,17 @@ __pycache__/
 /gitignore Extras
 
 *.nbt
+
+# Артефакты передачи этапа 0 — не часть приложения.
+/phase0-files/
+/phase0-final.tar.gz
+/install-phase0.sh
+
+# Копии исходников для сборки деплоя (собираются скриптом).
+/buildSources/src/
+/buildSources/tools/
+
+# Одноразовые скрипты накладки этапа 0 — нужны были только при переносе
+# правок на чистый upstream.
+/tools/applyPhase0MapCanvas.py
+/tools/applyPhase0SupportBlocks.py

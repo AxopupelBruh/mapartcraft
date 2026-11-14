@@ -81,7 +81,12 @@ class Root extends Component {
           {displayingEdgeWarning ? (
             <div className="fixedMessage">
               <p>{this.getLocaleString("EDGE-WARNING").replace("\\n", "\n")}</p>
-              <button type="button" onClick={this.onEdgeWarningButtonClick}>
+              <button
+                type="button"
+                onClick={this.onEdgeWarningButtonClick}
+                aria-label={this.getLocaleString("EDGE-WARNING-CLOSE")}
+                title={this.getLocaleString("EDGE-WARNING-CLOSE")}
+              >
                 ✔️
               </button>
             </div>
@@ -89,7 +94,12 @@ class Root extends Component {
           {displayingCorruptedPresetWarning ? (
             <div className="fixedMessage">
               <p>{this.getLocaleString("BLOCK-SELECTION/PRESETS/IMPORT-ERROR-CORRUPTED")}</p>
-              <button type="button" onClick={this.onCorruptedPresetWarningButtonClick}>
+              <button
+                type="button"
+                onClick={this.onCorruptedPresetWarningButtonClick}
+                aria-label={this.getLocaleString("PRESET-ERROR-CLOSE")}
+                title={this.getLocaleString("PRESET-ERROR-CLOSE")}
+              >
                 ❗
               </button>
             </div>

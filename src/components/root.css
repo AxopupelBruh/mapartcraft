@@ -6,14 +6,14 @@
 }
 
 .titleSubtitle {
-    color: var(--rebaneGreen);
+    color: var(--accent);
     font-family: "kenpixel_mini_square", Lato, sans-serif;
-    font-size: 0.42em;
+    font-size: var(--fs-micro);
     font-weight: normal;
     letter-spacing: 0.04em;
     vertical-align: middle;
     margin-left: 0.35em;
-    border: 1px solid var(--rebaneGreen);
+    border: 1px solid var(--accent);
     padding: 0.08em 0.3em;
     white-space: nowrap;
 }
@@ -22,13 +22,13 @@
     display: block;
     margin-top: -0.15em;
     margin-bottom: 0.45em;
-    color: #b9b9b9;
+    color: var(--text-6);
     font-family: Lato, Open Sans, Arial, sans-serif;
-    font-size: 0.76em;
+    font-size: var(--fs-xs);
 }
 
 .forkCredit a {
-    color: var(--rebaneGreen);
+    color: var(--accent);
 }
 
 .fixedMessages {
@@ -40,10 +40,11 @@
 }
 
 .fixedMessage {
+    border-radius: var(--radius-md);
     margin: 0.1em;
     padding: 0.3em;
-    border: 0.1em solid var(--rebaneGreen);
-    background-color: #333;
+    border: 0.1em solid var(--accent);
+    background-color: var(--surface-3);
 }
 
 .fixedMessage p {

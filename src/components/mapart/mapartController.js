@@ -7,7 +7,9 @@ import MapPreview from "./mapPreview";
 import MapSettings from "./mapSettings";
 import Materials from "./materials";
 import StudioPanel from "./studioPanel";
-import { getStylePreset, STYLE_PRESET_IDS } from "./stylePresets";
+import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "./stylePresets";
+import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
+import { estimateMapSize, estimateRenderSeconds, getMaxMapSize, isBigMap } from "./canvasLimits";
 import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
 import coloursJSON from "./json/coloursJSON.json";
 import ViewOnline2D from "./viewOnline2D/viewOnline2D";
@@ -25,6 +27,20 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 import IMG_Upload from "../../images/upload.png";
 
 import "./mapartController.css";
+
+/* Размер карты ограничен не приложением, а браузером: предел холста
+   (максимальная сторона и площадь) разный в Chrome, Firefox и Safari.
+   Искусственный предел 16x16 стоял только потому, что без него можно
+   было ввести 1000 и получить canvas 128000x128000 — падение вкладки.
+   Теперь верхнюю границу задаёт getMaxMapSize(), а слишком большой
+   размер подтверждается пользователем с оценкой памяти и времени. */
+const MAP_SIZE_MIN = 1;
+
+const clampMapSize = (value) => {
+  const number = parseInt(value, 10);
+  if (isNaN(number) || number < MAP_SIZE_MIN || number > getMaxMapSize()) return null;
+  return number;
+};
 
 class MapartController extends Component {
   state = {
@@ -103,6 +119,9 @@ class MapartController extends Component {
 
   constructor(props) {
     super(props);
+    // Пользователь уже согласился на большую карту — повторно не спрашиваем,
+    // пока размер не вернётся в небольшие пределы.
+    this.bigMapConfirmed = false;
     // update default presets to latest version; done via checking for localeString
     CookieManager.init();
     let cookiesPresets_loaded = this.loadStoredPresets();
@@ -246,60 +265,20 @@ class MapartController extends Component {
 
   getStateFromSettings(settings, colourSource = this.state.coloursJSON) {
     const patch = {};
-    const keys = [
-      "optionValue_modeNBTOrMapdat",
-      "optionValue_mapSize_x",
-      "optionValue_mapSize_y",
-      "optionValue_cropImage",
-      "optionValue_cropImage_zoom",
-      "optionValue_cropImage_percent_x",
-      "optionValue_cropImage_percent_y",
-      "optionValue_showGridOverlay",
-      "optionValue_staircasing",
-      "optionValue_whereSupportBlocks",
-      "optionValue_supportBlock",
-      "optionValue_transparency",
-      "optionValue_transparencyTolerance",
-      "optionValue_mapdatFilenameUseId",
-      "optionValue_mapdatFilenameIdStart",
-      "optionValue_betterColour",
-      "optionValue_dithering",
-      "optionValue_dithering_propagation_red",
-      "optionValue_dithering_propagation_green",
-      "optionValue_dithering_propagation_blue",
-      "optionValue_dithering_strength",
-      "optionValue_improvedPatternDithering",
-      "optionValue_patternPairMode",
-      "optionValue_cleanup_enabled",
-      "optionValue_cleanup_denoise",
-      "optionValue_cleanup_denoiseMethod",
-      "optionValue_cleanup_edges",
-      "optionValue_cleanup_despeckle",
-      "optionValue_cleanup_paletteIslands",
-      "optionValue_cleanup_colours",
-      "optionValue_cleanup_coloursPerceptual",
-      "optionValue_cleanup_islandsSmart",
-      "optionValue_cleanup_adaptiveDither",
-      "optionValue_preprocessingEnabled",
-      "preProcessingValue_brightness",
-      "preProcessingValue_contrast",
-      "preProcessingValue_saturation",
-      "preProcessingValue_backgroundColourSelect",
-      "preProcessingValue_backgroundColour",
-      "preProcessingValue_gamma",
-      "preProcessingValue_autoLevels",
-      "optionValue_extras_moreStaircasingOptions",
-      "optionValue_resizeMethod",
-      "optionValue_pixelPerfect",
-      "optionValue_autoDetectPixelScale",
-      "optionValue_showPixelGrid",
-      "optionValue_previewScale",
-      "optionValue_style",
-      "stylePreset",
-      "selectedPresetName",
-    ];
+    /* Список сохраняемых ключей выводится из optionSchema.js —
+       раньше он был продублирован здесь и в getSettingsSnapshot. */
+    const keys = PERSISTED_OPTION_KEYS;
     for (const key of keys) {
       if (settings[key] !== undefined) patch[key] = settings[key];
+    }
+
+    /* Размер карты из хранилища тоже ограничиваем: старый снимок мог
+       содержать значение, которое сейчас недопустимо. */
+    for (const sizeKey of ["optionValue_mapSize_x", "optionValue_mapSize_y"]) {
+      if (patch[sizeKey] !== undefined) {
+        const size = clampMapSize(patch[sizeKey]);
+        patch[sizeKey] = size === null ? 1 : size;
+      }
     }
 
     const validResizeMethods = ["pixel", "smooth", "lanczos"];
@@ -365,119 +344,85 @@ class MapartController extends Component {
   }
 
   getSettingsSnapshot() {
-    const {
-      selectedBlocks,
-      disabledTones,
-      selectedPresetName,
-      optionValue_version,
-      optionValue_modeNBTOrMapdat,
-      optionValue_mapSize_x,
-      optionValue_mapSize_y,
-      optionValue_cropImage,
-      optionValue_cropImage_zoom,
-      optionValue_cropImage_percent_x,
-      optionValue_cropImage_percent_y,
-      optionValue_showGridOverlay,
-      optionValue_staircasing,
-      optionValue_whereSupportBlocks,
-      optionValue_supportBlock,
-      optionValue_transparency,
-      optionValue_transparencyTolerance,
-      optionValue_mapdatFilenameUseId,
-      optionValue_mapdatFilenameIdStart,
-      optionValue_betterColour,
-      optionValue_dithering,
-      optionValue_dithering_propagation_red,
-      optionValue_dithering_propagation_green,
-      optionValue_dithering_propagation_blue,
-      optionValue_dithering_strength,
-      optionValue_improvedPatternDithering,
-      optionValue_patternPairMode,
-      optionValue_cleanup_enabled,
-      optionValue_cleanup_denoise,
-      optionValue_cleanup_denoiseMethod,
-      optionValue_cleanup_edges,
-      optionValue_cleanup_despeckle,
-      optionValue_cleanup_paletteIslands,
-      optionValue_cleanup_colours,
-      optionValue_cleanup_coloursPerceptual,
-      optionValue_cleanup_islandsSmart,
-      optionValue_cleanup_adaptiveDither,
-      optionValue_preprocessingEnabled,
-      preProcessingValue_brightness,
-      preProcessingValue_contrast,
-      preProcessingValue_saturation,
-      preProcessingValue_backgroundColourSelect,
-      preProcessingValue_backgroundColour,
-      preProcessingValue_gamma,
-      preProcessingValue_autoLevels,
-      optionValue_extras_moreStaircasingOptions,
-      optionValue_resizeMethod,
-      optionValue_pixelPerfect,
-      optionValue_autoDetectPixelScale,
-      optionValue_showPixelGrid,
-      optionValue_previewScale,
-      optionValue_style,
-      stylePreset,
-    } = this.state;
-    return {
+    const { selectedBlocks, disabledTones } = this.state;
+    const snapshot = {
       selectedBlocks: { ...selectedBlocks },
       disabledTones: Object.fromEntries(
         Object.entries(disabledTones).map(([colourSetId, tones]) => [colourSetId, Array.from(tones || [])])
       ),
-      selectedPresetName,
-      optionValue_version,
-      optionValue_modeNBTOrMapdat,
-      optionValue_mapSize_x,
-      optionValue_mapSize_y,
-      optionValue_cropImage,
-      optionValue_cropImage_zoom,
-      optionValue_cropImage_percent_x,
-      optionValue_cropImage_percent_y,
-      optionValue_showGridOverlay,
-      optionValue_staircasing,
-      optionValue_whereSupportBlocks,
-      optionValue_supportBlock,
-      optionValue_transparency,
-      optionValue_transparencyTolerance,
-      optionValue_mapdatFilenameUseId,
-      optionValue_mapdatFilenameIdStart,
-      optionValue_betterColour,
-      optionValue_dithering,
-      optionValue_dithering_propagation_red,
-      optionValue_dithering_propagation_green,
-      optionValue_dithering_propagation_blue,
-      optionValue_dithering_strength,
-      optionValue_improvedPatternDithering,
-      optionValue_patternPairMode,
-      optionValue_cleanup_enabled,
-      optionValue_cleanup_denoise,
-      optionValue_cleanup_denoiseMethod,
-      optionValue_cleanup_edges,
-      optionValue_cleanup_despeckle,
-      optionValue_cleanup_paletteIslands,
-      optionValue_cleanup_colours,
-      optionValue_cleanup_coloursPerceptual,
-      optionValue_cleanup_islandsSmart,
-      optionValue_cleanup_adaptiveDither,
-      optionValue_preprocessingEnabled,
-      preProcessingValue_brightness,
-      preProcessingValue_contrast,
-      preProcessingValue_saturation,
-      preProcessingValue_backgroundColourSelect,
-      preProcessingValue_backgroundColour,
-      preProcessingValue_gamma,
-      preProcessingValue_autoLevels,
-      optionValue_extras_moreStaircasingOptions,
-      optionValue_resizeMethod,
-      optionValue_pixelPerfect,
-      optionValue_autoDetectPixelScale,
-      optionValue_showPixelGrid,
-      optionValue_previewScale,
-      optionValue_style,
-      stylePreset,
+      optionValue_version: this.state.optionValue_version,
     };
+    /* Все остальные опции сохраняются по списку из optionSchema.js. */
+    for (const key of PERSISTED_OPTION_KEYS) {
+      snapshot[key] = this.state[key];
+    }
+    return snapshot;
   }
+
+  /* Текущие значения всех опций — для data-driven формы настроек.
+     Карта пересобирается только когда меняется состояние: иначе MapSettings
+     перерисовывался бы на каждый setState контроллера (в том числе на каждый
+     штрих пиксельного редактора), а раньше он получал примитивные пропсы. */
+  getOptionValues() {
+    if (this.optionValuesState === this.state) return this.optionValuesCache;
+    const values = {};
+    for (const option of OPTION_SCHEMA) {
+      values[option.key] = this.state[option.key];
+    }
+    this.optionValuesState = this.state;
+    this.optionValuesCache = values;
+    return values;
+  }
+
+  /* Обработчики опций — для data-driven формы настроек.
+     Обработчик берётся из метода контроллера, имя которого указано в схеме.
+     Методы — стрелочные свойства класса, поэтому карта не меняется никогда. */
+  getOptionHandlers() {
+    if (!this.optionHandlersCache) {
+      const handlers = {};
+      for (const option of OPTION_SCHEMA) {
+        const handler = this[option.handler];
+        if (typeof handler === "function") {
+          handlers[option.key] = handler;
+        }
+      }
+      this.optionHandlersCache = handlers;
+    }
+    return this.optionHandlersCache;
+  }
+
+  /* Совпадает ли текущее состояние с настройками пресета стиля. */
+  styleMatchesPreset = (preset) => {
+    const state = this.state;
+    /* Режим выбора пары цветов влияет на картинку только там, где включён
+       улучшенный дизеринг по паттерну. */
+    const pairModeMatches =
+      preset.improvedPattern !== true ||
+      (preset.patternPairMode ?? "nearest") === (state.optionValue_patternPairMode ?? "nearest");
+    return (
+      state.optionValue_dithering === preset.dithering &&
+      state.optionValue_betterColour === preset.colourMethod &&
+      state.optionValue_dithering_propagation_red === preset.propagation[0] &&
+      state.optionValue_dithering_propagation_green === preset.propagation[1] &&
+      state.optionValue_dithering_propagation_blue === preset.propagation[2] &&
+      (preset.improvedPattern === true) === (state.optionValue_improvedPatternDithering === true) &&
+      pairModeMatches
+    );
+  };
+
+  /* Какой стиль сейчас активен. Раньше при любой ручной правке
+     stylePreset становился "custom" и подсветка на кнопке стиля
+     исчезала совсем. Теперь остаётся последний применённый пресет,
+     помеченный как изменённый. */
+  getActiveStyle = () => {
+    const matching = STYLE_PRESETS.find((preset) => this.styleMatchesPreset(preset));
+    if (matching) return { id: matching.id, modified: false };
+    const lastApplied = this.state.stylePreset;
+    if (lastApplied && lastApplied !== "custom" && STYLE_PRESETS.some((preset) => preset.id === lastApplied)) {
+      return { id: lastApplied, modified: true };
+    }
+    return { id: null, modified: true };
+  };
 
   getCustomBlocks() {
     try {
@@ -490,9 +435,17 @@ class MapartController extends Component {
 
   getMergedColoursJSON(customBlocks) {
     // this is how we currently merge custom blocks into coloursJSON at runtime / when custom blocks update. this may change if presets support for custom blocks is added
-    let coloursJSON_custom = JSON.parse(JSON.stringify(coloursJSON)); // hmmm
+    // The palette is 359 kB. Copying all of it cost 4.4 ms per call, so only
+    // the colour sets that actually change are copied. The tone tables are
+    // never modified and stay shared.
+    if (!customBlocks || customBlocks.length === 0) return coloursJSON;
+    const coloursJSON_custom = { ...coloursJSON };
     for (const [colourSetId, customBlock] of customBlocks) {
-      coloursJSON_custom[colourSetId].blocks[Object.keys(coloursJSON_custom[colourSetId].blocks).length.toString()] = customBlock;
+      const colourSet = coloursJSON_custom[colourSetId];
+      if (!colourSet) continue;
+      const blocks = { ...colourSet.blocks };
+      blocks[Object.keys(blocks).length.toString()] = customBlock;
+      coloursJSON_custom[colourSetId] = { ...colourSet, blocks };
     }
     return coloursJSON_custom;
   }
@@ -722,11 +675,10 @@ class MapartController extends Component {
       optionValue_dithering_propagation_red: style.propagation[0],
       optionValue_dithering_propagation_green: style.propagation[1],
       optionValue_dithering_propagation_blue: style.propagation[2],
-      optionValue_dithering_strength: 100,
       optionValue_improvedPatternDithering: style.improvedPattern === true,
       optionValue_patternPairMode: style.patternPairMode || "nearest",
-      optionValue_resizeMethod: "pixel",
-      optionValue_pixelPerfect: true,
+      /* Сила дизеринга и способ масштабирования — отдельные настройки
+         пользователя. Раньше пресет стиля молча их сбрасывал. */
     });
   };
 
@@ -784,20 +736,29 @@ class MapartController extends Component {
     for (const colourSetId of Object.keys(coloursJSON)) {
       selectedBlocks[colourSetId] = "-1";
     }
+    const skippedColourSets = [];
     for (const [int_colourSetId, presetIndex] of setsAndBlocks) {
       // we store presetIndex in the cookie, not blockId
       const colourSetId = int_colourSetId.toString();
       if (!(colourSetId in coloursJSON)) {
+        skippedColourSets.push(colourSetId);
         continue;
       }
       const blockIdAndBlock = Object.entries(coloursJSON[colourSetId].blocks).find(([, block]) => block.presetIndex === presetIndex);
       if (blockIdAndBlock === undefined) {
+        skippedColourSets.push(colourSetId);
         continue;
       }
       const blockId = blockIdAndBlock[0];
       if (Object.keys(coloursJSON[colourSetId].blocks[blockId].validVersions).includes(optionValue_version.MCVersion)) {
         selectedBlocks[colourSetId] = blockId;
       }
+    }
+    /* Раньше пресет с неизвестным presetIndex просто молча терялся —
+       пользователь видел, что часть блоков не применилась, но не знал почему. */
+    if (skippedColourSets.length > 0) {
+      console.warn("Preset blocks skipped, unknown colour set or presetIndex:", skippedColourSets);
+      if (this.props.onCorruptedPreset) this.props.onCorruptedPreset();
     }
     this.setState({
       selectedBlocks,
@@ -846,18 +807,55 @@ class MapartController extends Component {
     });
   };
 
+  /* Ручные правки привязаны к сетке, поэтому при смене размера карты
+     они неприменимы. Раньше они молча исчезали — предупреждаем. */
+  confirmResetPixelEdits = () => {
+    if (Object.keys(this.state.pixelEdits).length === 0) return true;
+    return window.confirm(this.props.getLocaleString("MAP-SETTINGS/MAP-SIZE-RESETS-EDITS"));
+  };
+
+  /* Большая карта съедает много памяти и рисуется долго. Пользователь
+     должен понимать, во что он ввязывается, — спрашиваем заранее.
+     Диалог один раз: пока размер остаётся «большим», колесо мыши меняет
+     размер на единицу, и вопрос на каждом шаге был бы мучением. Когда размер
+     снова становится небольшим, вопрос вооружается заново. */
+  confirmBigMap = (sizeX, sizeY) => {
+    const estimate = estimateMapSize(sizeX, sizeY);
+    if (!isBigMap(sizeX, sizeY)) {
+      this.bigMapConfirmed = false;
+      return true;
+    }
+    if (this.bigMapConfirmed) return true;
+    const memory = estimate.gigabytes >= 1 ? `${estimate.gigabytes.toFixed(1)} GB` : `${Math.round(estimate.megabytes)} MB`;
+    const seconds = estimateRenderSeconds(sizeX, sizeY);
+    const accepted = window.confirm(
+      this.props
+        .getLocaleString("MAP-SETTINGS/MAP-SIZE-CONFIRM")
+        .replace("{memory}", memory)
+        .replace("{seconds}", seconds)
+    );
+    if (accepted) this.bigMapConfirmed = true;
+    return accepted;
+  };
+
   onOptionChange_mapSize_x = (value) => {
-    if (value === this.state.optionValue_mapSize_x) return;
+    const size = clampMapSize(value);
+    if (size === null || size === this.state.optionValue_mapSize_x) return;
+    if (!this.confirmResetPixelEdits()) return;
+    if (!this.confirmBigMap(size, this.state.optionValue_mapSize_y)) return;
     this.setState({
-      optionValue_mapSize_x: value,
+      optionValue_mapSize_x: size,
       pixelEdits: {},
     });
   };
 
   onOptionChange_mapSize_y = (value) => {
-    if (value === this.state.optionValue_mapSize_y) return;
+    const size = clampMapSize(value);
+    if (size === null || size === this.state.optionValue_mapSize_y) return;
+    if (!this.confirmResetPixelEdits()) return;
+    if (!this.confirmBigMap(this.state.optionValue_mapSize_x, size)) return;
     this.setState({
-      optionValue_mapSize_y: value,
+      optionValue_mapSize_y: size,
       pixelEdits: {},
     });
   };
@@ -940,7 +938,6 @@ class MapartController extends Component {
     this.setState({
       optionValue_dithering: ditheringValue,
       optionValue_style: "custom",
-      stylePreset: "custom",
     });
   };
 
@@ -964,7 +961,6 @@ class MapartController extends Component {
     this.setState({
       optionValue_improvedPatternDithering: !this.state.optionValue_improvedPatternDithering,
       optionValue_style: "custom",
-      stylePreset: "custom",
     });
   };
 
@@ -972,7 +968,6 @@ class MapartController extends Component {
     this.setState({
       optionValue_patternPairMode: e.target.value,
       optionValue_style: "custom",
-      stylePreset: "custom",
     });
   };
 
@@ -1223,6 +1218,19 @@ class MapartController extends Component {
     let presetToSave_name = prompt(getLocaleString("BLOCK-SELECTION/PRESETS/SAVE-PROMPT-ENTER-NAME"), "");
     if (presetToSave_name === null) {
       return;
+    }
+    presetToSave_name = presetToSave_name.trim();
+    if (presetToSave_name === "") {
+      alert(getLocaleString("BLOCK-SELECTION/PRESETS/SAVE-ERROR-EMPTY-NAME"));
+      return;
+    }
+
+    const existingPreset = presets.find((preset) => preset.name === presetToSave_name);
+    if (existingPreset !== undefined) {
+      const confirmed = window.confirm(getLocaleString("BLOCK-SELECTION/PRESETS/SAVE-CONFIRM-OVERWRITE"));
+      if (!confirmed) {
+        return;
+      }
     }
 
     const otherPresets = presets.filter((preset) => preset.name !== presetToSave_name);
@@ -1514,7 +1522,6 @@ class MapartController extends Component {
       preProcessingValue_backgroundColour,
       preProcessingValue_gamma,
       preProcessingValue_autoLevels,
-      optionValue_extras_moreStaircasingOptions,
       optionValue_resizeMethod,
       optionValue_pixelPerfect,
       optionValue_autoDetectPixelScale,
@@ -1535,10 +1542,14 @@ class MapartController extends Component {
     } = this.state;
     return (
       <React.Fragment>
+        <div className="mapartController">
+        <div className="studioColumn">
         <StudioPanel
           getLocaleString={getLocaleString}
           stylePreset={stylePreset}
           optionValue_style={optionValue_style}
+          activeStyleId={this.getActiveStyle().id}
+          styleModified={this.getActiveStyle().modified}
           onApplyStyle={this.applyStylePreset}
           optionValue_resizeMethod={optionValue_resizeMethod}
           onOptionChange_resizeMethod={this.onOptionChange_resizeMethod}
@@ -1550,34 +1561,15 @@ class MapartController extends Component {
           onOptionChange_showPixelGrid={this.onOptionChange_showPixelGrid}
           optionValue_dithering={optionValue_dithering}
           optionValue_dithering_strength={optionValue_dithering_strength}
+          optionValue_dithering_propagation_red={optionValue_dithering_propagation_red}
+          optionValue_dithering_propagation_green={optionValue_dithering_propagation_green}
+          optionValue_dithering_propagation_blue={optionValue_dithering_propagation_blue}
           onOptionChange_dithering_strength={this.onOptionChange_dithering_strength}
-          optionValue_cleanup_enabled={optionValue_cleanup_enabled}
-          optionValue_cleanup_denoise={optionValue_cleanup_denoise}
-          optionValue_cleanup_denoiseMethod={optionValue_cleanup_denoiseMethod}
-          optionValue_cleanup_edges={optionValue_cleanup_edges}
-          optionValue_cleanup_despeckle={optionValue_cleanup_despeckle}
-          optionValue_cleanup_paletteIslands={optionValue_cleanup_paletteIslands}
-          optionValue_cleanup_colours={optionValue_cleanup_colours}
-          optionValue_cleanup_coloursPerceptual={optionValue_cleanup_coloursPerceptual}
-          optionValue_cleanup_islandsSmart={optionValue_cleanup_islandsSmart}
-          optionValue_cleanup_adaptiveDither={optionValue_cleanup_adaptiveDither}
-          onOptionChange_cleanup_enabled={this.onOptionChange_cleanup_enabled}
-          onOptionChange_cleanup_denoise={this.onOptionChange_cleanup_denoise}
-          onOptionChange_cleanup_denoiseMethod={this.onOptionChange_cleanup_denoiseMethod}
-          onOptionChange_cleanup_edges={this.onOptionChange_cleanup_edges}
-          onOptionChange_cleanup_despeckle={this.onOptionChange_cleanup_despeckle}
-          onOptionChange_cleanup_paletteIslands={this.onOptionChange_cleanup_paletteIslands}
-          onOptionChange_cleanup_colours={this.onOptionChange_cleanup_colours}
-          onOptionChange_cleanup_coloursPerceptual={this.onOptionChange_cleanup_coloursPerceptual}
-          onOptionChange_cleanup_islandsSmart={this.onOptionChange_cleanup_islandsSmart}
-          onOptionChange_cleanup_adaptiveDither={this.onOptionChange_cleanup_adaptiveDither}
-          onApplyCleanupPreset={this.applyCleanupPreset}
           detectedPixelScale={detectedPixelScale}
           sessionStatus={this.state.sessionStatus}
           onResetSession={this.onResetSession}
           sessionResetAvailable={!this.state.uploadedImage_isPlaceholder}
         />
-        <div className="mapartController">
         <BlockSelection
           getLocaleString={getLocaleString}
           coloursJSON={coloursJSON}
@@ -1599,7 +1591,18 @@ class MapartController extends Component {
           handleAddCustomBlock={this.handleAddCustomBlock}
           handleDeleteCustomBlock={this.handleDeleteCustomBlock}
         />
-        <div className="sectionsPreviewSettingsMaterials">
+        {optionValue_modeNBTOrMapdat === MapModes.SCHEMATIC_NBT.uniqueId ? (
+          <Materials
+            getLocaleString={getLocaleString}
+            coloursJSON={coloursJSON}
+            optionValue_version={optionValue_version}
+            optionValue_supportBlock={optionValue_supportBlock}
+            currentMaterialsData={currentMaterialsData}
+            onChangeColourSetBlock={this.handleChangeColourSetBlock}
+          />
+        ) : null}
+        </div>
+        <div className="previewColumn">
           <MapPreview
             getLocaleString={getLocaleString}
             coloursJSON={coloursJSON}
@@ -1660,75 +1663,19 @@ class MapartController extends Component {
             onGetMapMaterials={this.handleSetMapMaterials}
             onMapPreviewWorker_begin={this.onMapPreviewWorker_begin}
           />
-          <div style={{ display: "block" }}>
+        </div>
+        <div className="settingsColumn">
             <MapSettings
               getLocaleString={getLocaleString}
-              coloursJSON={coloursJSON}
-              optionValue_version={optionValue_version}
-              onOptionChange_version={this.onOptionChange_version}
-              optionValue_modeNBTOrMapdat={optionValue_modeNBTOrMapdat}
-              onOptionChange_modeNBTOrMapdat={this.onOptionChange_modeNBTOrMapdat}
-              optionValue_mapSize_x={optionValue_mapSize_x}
-              onOptionChange_mapSize_x={this.onOptionChange_mapSize_x}
-              optionValue_mapSize_y={optionValue_mapSize_y}
-              onOptionChange_mapSize_y={this.onOptionChange_mapSize_y}
-              optionValue_cropImage={optionValue_cropImage}
-              onOptionChange_cropImage={this.onOptionChange_cropImage}
-              optionValue_cropImage_zoom={optionValue_cropImage_zoom}
-              onOptionChange_cropImage_zoom={this.onOptionChange_cropImage_zoom}
-              optionValue_cropImage_percent_x={optionValue_cropImage_percent_x}
-              onOptionChange_cropImage_percent_x={this.onOptionChange_cropImage_percent_x}
-              optionValue_cropImage_percent_y={optionValue_cropImage_percent_y}
-              onOptionChange_cropImage_percent_y={this.onOptionChange_cropImage_percent_y}
-              optionValue_showGridOverlay={optionValue_showGridOverlay}
-              onOptionChange_showGridOverlay={this.onOptionChange_showGridOverlay}
-              optionValue_staircasing={optionValue_staircasing}
-              onOptionChange_staircasing={this.onOptionChange_staircasing}
-              optionValue_whereSupportBlocks={optionValue_whereSupportBlocks}
-              onOptionChange_WhereSupportBlocks={this.onOptionChange_WhereSupportBlocks}
-              optionValue_supportBlock={optionValue_supportBlock}
-              setOption_SupportBlock={this.setOption_SupportBlock}
-              optionValue_transparency={optionValue_transparency}
-              onOptionChange_transparency={this.onOptionChange_transparency}
-              optionValue_transparencyTolerance={optionValue_transparencyTolerance}
-              onOptionChange_transparencyTolerance={this.onOptionChange_transparencyTolerance}
-              optionValue_mapdatFilenameUseId={optionValue_mapdatFilenameUseId}
-              onOptionChange_mapdatFilenameUseId={this.onOptionChange_mapdatFilenameUseId}
-              optionValue_mapdatFilenameIdStart={optionValue_mapdatFilenameIdStart}
-              onOptionChange_mapdatFilenameIdStart={this.onOptionChange_mapdatFilenameIdStart}
-              optionValue_betterColour={optionValue_betterColour}
-              onOptionChange_BetterColour={this.onOptionChange_BetterColour}
-              optionValue_dithering={optionValue_dithering}
-              onOptionChange_dithering={this.onOptionChange_dithering}
-              optionValue_dithering_propagation_red={optionValue_dithering_propagation_red}
-              onOptionChange_dithering_propagation_red={this.onOptionChange_dithering_propagation_red}
-              optionValue_dithering_propagation_green={optionValue_dithering_propagation_green}
-              onOptionChange_dithering_propagation_green={this.onOptionChange_dithering_propagation_green}
-              optionValue_dithering_propagation_blue={optionValue_dithering_propagation_blue}
-              onOptionChange_dithering_propagation_blue={this.onOptionChange_dithering_propagation_blue}
-              optionValue_improvedPatternDithering={optionValue_improvedPatternDithering}
-              onOptionChange_improvedPatternDithering={this.onOptionChange_improvedPatternDithering}
-              optionValue_patternPairMode={optionValue_patternPairMode}
-              onOptionChange_patternPairMode={this.onOptionChange_patternPairMode}
-              optionValue_preprocessingEnabled={optionValue_preprocessingEnabled}
-              onOptionChange_PreProcessingEnabled={this.onOptionChange_PreProcessingEnabled}
-              preProcessingValue_brightness={preProcessingValue_brightness}
-              onOptionChange_PreProcessingBrightness={this.onOptionChange_PreProcessingBrightness}
-              preProcessingValue_contrast={preProcessingValue_contrast}
-              onOptionChange_PreProcessingContrast={this.onOptionChange_PreProcessingContrast}
-              preProcessingValue_saturation={preProcessingValue_saturation}
-              onOptionChange_PreProcessingSaturation={this.onOptionChange_PreProcessingSaturation}
-              preProcessingValue_backgroundColourSelect={preProcessingValue_backgroundColourSelect}
-              onOptionChange_PreProcessingBackgroundColourSelect={this.onOptionChange_PreProcessingBackgroundColourSelect}
-              preProcessingValue_backgroundColour={preProcessingValue_backgroundColour}
-              onOptionChange_PreProcessingBackgroundColour={this.onOptionChange_PreProcessingBackgroundColour}
-              preProcessingValue_gamma={preProcessingValue_gamma}
-              onOptionChange_PreProcessingGamma={this.onOptionChange_PreProcessingGamma}
-              preProcessingValue_autoLevels={preProcessingValue_autoLevels}
-              onOptionChange_PreProcessingAutoLevels={this.onOptionChange_PreProcessingAutoLevels}
-              optionValue_extras_moreStaircasingOptions={optionValue_extras_moreStaircasingOptions}
-              onOptionChange_extras_moreStaircasingOptions={this.onOptionChange_extras_moreStaircasingOptions}
+              optionValues={this.getOptionValues()}
+              optionHandlers={this.getOptionHandlers()}
+              context={{
+                coloursJSON,
+                onApplyCleanupPreset: this.applyCleanupPreset,
+              }}
             />
+        </div>
+        <div className="exportBar">
             <GreenButtons
               getLocaleString={getLocaleString}
               coloursJSON={coloursJSON}
@@ -1766,17 +1713,7 @@ class MapartController extends Component {
               downloadBlobFile={this.downloadBlobFile}
               onGetViewOnlineNBT={this.onGetViewOnlineNBT}
             />
-          </div>
-          {optionValue_modeNBTOrMapdat === MapModes.SCHEMATIC_NBT.uniqueId ? (
-            <Materials
-              getLocaleString={getLocaleString}
-              coloursJSON={coloursJSON}
-              optionValue_version={optionValue_version}
-              optionValue_supportBlock={optionValue_supportBlock}
-              currentMaterialsData={currentMaterialsData}
-              onChangeColourSetBlock={this.handleChangeColourSetBlock}
-            />
-          ) : null}
+        </div>
         </div>
         {viewOnline_NBT !== null &&
           (viewOnline_3D ? (
@@ -1802,7 +1739,6 @@ class MapartController extends Component {
               onChooseViewOnline3D={this.onChooseViewOnline3D}
             />
           ))}
-        </div>
       </React.Fragment>
     );
   }

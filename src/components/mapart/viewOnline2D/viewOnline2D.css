@@ -7,7 +7,7 @@
   left: 0;
   bottom: 0;
   right: 0;
-  background-color: #7bae7f5e;
+  background-color: var(--accent-veil);
 }
 
 .viewOnline2DContainer .topBar {
@@ -17,7 +17,7 @@
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  background-color: var(--rebaneGreen);
+  background-color: var(--accent);
 }
 
 .viewOnline2DContainer .topBar * {
@@ -49,7 +49,7 @@
   }
 
   .viewOnline_waila {
-    font-size: 1.2em;
+    font-size: var(--fs-xl);
     padding: 0;
     justify-self: center;
     grid-column: 1 / 3;
@@ -57,7 +57,7 @@
 
   .viewOnline2DContainer .topBar > h2 {
     margin-right: 0.1em;
-    font-size: 1.2em;
+    font-size: var(--fs-xl);
     text-align: right;
     order: -2;
   }

@@ -18,24 +18,38 @@ class BufferedNumberInput extends Component {
   }
 
   onInputChange = (e) => {
-    const { validators, onValidInput } = this.props;
+    const { validators, onValidInput, onInvalidInput } = this.props;
     const newValue_buffer = e.target.value;
     const newValue_int = parseInt(newValue_buffer);
+    const valid = validators.every((validator) => {
+      return validator(newValue_int);
+    });
     this.setState({ buffer: newValue_buffer }, () => {
-      if (
-        validators.every((validator) => {
-          return validator(newValue_int);
-        })
-      ) {
+      if (valid) {
         onValidInput(newValue_int);
+      } else if (onInvalidInput) {
+        onInvalidInput(newValue_int);
       }
     });
   };
 
   render() {
-    const { min, max, step, style, disabled } = this.props;
+    const { min, max, step, style, disabled, id, ariaLabel } = this.props;
     const { buffer } = this.state;
-    return <input type="number" min={min} max={max} step={step} value={buffer} onChange={this.onInputChange} disabled={disabled} style={style} />;
+    return (
+      <input
+        type="number"
+        id={id}
+        aria-label={ariaLabel}
+        min={min}
+        max={max}
+        step={step}
+        value={buffer}
+        onChange={this.onInputChange}
+        disabled={disabled}
+        style={style}
+      />
+    );
   }
 }
 

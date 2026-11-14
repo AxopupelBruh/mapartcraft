@@ -4,8 +4,8 @@
   margin: 0;
   padding: 0;
   font-family: "kenpixel_mini_square";
-  background: var(--rebaneGreen);
-  color: white;
+  background: var(--accent);
+  color: var(--text-1);
 }
 
 .blockToAddSuggestion th {
@@ -20,6 +20,6 @@
 }
 
 .blockToAddSuggestion:hover {
-  background-color: #609060;
+  background-color: var(--accent-dim);
   cursor: pointer;
 }

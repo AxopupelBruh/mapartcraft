@@ -81,7 +81,14 @@ function runWorker(body) {
     // jsdom's window.onmessage doubles as a message event listener, so deliver
     // worker messages directly instead of dispatching window events.
     window.postMessage = (message) => {
-      if (!message || typeof message !== "object" || message.head !== "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS") return;
+      if (!message || typeof message !== "object") return;
+      if (message.head === "ERROR") {
+        clearTimeout(timeout);
+        window.postMessage = originalPostMessage;
+        reject(new Error(message.body && message.body.message ? message.body.message : "worker error"));
+        return;
+      }
+      if (message.head !== "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS") return;
       clearTimeout(timeout);
       window.postMessage = originalPostMessage;
       resolve(message);

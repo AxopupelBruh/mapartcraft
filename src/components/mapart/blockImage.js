@@ -50,7 +50,7 @@ class BlockImage extends Component {
                 ...style,
               }
         }
-        className={`blockImage ${className}`}
+        className={`blockImage${className ? ` ${className}` : ""}`}
         {...props_others}
       />
     );

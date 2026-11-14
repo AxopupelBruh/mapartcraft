@@ -1,0 +1,55 @@
+/* Таблица материалов.
+   Блок и кнопка удаления стоят рядом (раньше кнопка уезжала на
+   следующую строку), количество выровнено по правому краю. */
+
+#materialtable {
+  border-collapse: collapse;
+  margin-top: var(--sp-2);
+  width: 100%;
+  table-layout: auto;
+}
+
+#materialtable th {
+  font-weight: normal;
+  text-align: left;
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border-2);
+  vertical-align: middle;
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+}
+
+#materialtable tr:first-child th {
+  color: var(--accent);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.04em;
+  border-bottom-color: var(--border-4);
+}
+
+.materialBlockCell {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+#materialtable .blockImage {
+  width: 26px;
+  height: 26px;
+  margin: 2px 0;
+}
+
+.materialBlockRemove {
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.materialBlockRemove:hover {
+  opacity: 1;
+}
+
+.materialAmountCell {
+  text-align: right;
+  white-space: nowrap;
+}

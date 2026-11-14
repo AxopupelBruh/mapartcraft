@@ -3,6 +3,7 @@ import React, { Component, createRef } from "react";
 import Tooltip from "../tooltip";
 import WorkerBuilder from './workers/worker-builder';
 import MapCanvasWorker from "./workers/mapCanvas";
+import ResampleWorker from "./workers/resample";
 
 import BackgroundColourModes from "./json/backgroundColourModes.json";
 import ColourMethods from "./json/colourMethods.json";
@@ -11,12 +12,9 @@ import DitherMethods from "./json/ditherMethods.json";
 import MapModes from "./json/mapModes.json";
 import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 
-import IMG_Null from "../../images/null.png";
-import IMG_Textures from "../../images/textures.png";
 import IMG_GridOverlay from "../../images/gridOverlay.png";
 
 import { detectPixelScale } from "./pixelPerfect";
-import { resizeLanczos } from "./imageResample";
 
 import "./mapPreview.css";
 
@@ -54,6 +52,110 @@ const EDITOR_TOOL_KEYS = {
 
 const EDITOR_SHAPE_TOOLS = ["line", "rect", "ellipse"];
 
+// The properties that make the source canvas (the uploaded image) change.
+const SOURCE_PROPS = [
+  "coloursJSON",
+  "selectedBlocks",
+  "disabledTones",
+  "optionValue_mapSize_x",
+  "optionValue_mapSize_y",
+  "optionValue_cropImage",
+  "optionValue_cropImage_zoom",
+  "optionValue_cropImage_percent_x",
+  "optionValue_cropImage_percent_y",
+  "optionValue_staircasing",
+  "optionValue_preprocessingEnabled",
+  "preProcessingValue_brightness",
+  "preProcessingValue_contrast",
+  "preProcessingValue_saturation",
+  "preProcessingValue_backgroundColourSelect",
+  "preProcessingValue_backgroundColour",
+  "preProcessingValue_gamma",
+  "preProcessingValue_autoLevels",
+  "optionValue_resizeMethod",
+  "optionValue_pixelPerfect",
+  "optionValue_autoDetectPixelScale",
+  "uploadedImage",
+];
+
+// The properties that make the dithered map change.
+const DISPLAY_PROPS = [
+  "coloursJSON",
+  "selectedBlocks",
+  "disabledTones",
+  "optionValue_modeNBTOrMapdat",
+  "optionValue_mapSize_x",
+  "optionValue_mapSize_y",
+  "optionValue_cropImage",
+  "optionValue_cropImage_zoom",
+  "optionValue_cropImage_percent_x",
+  "optionValue_cropImage_percent_y",
+  "optionValue_staircasing",
+  "optionValue_whereSupportBlocks",
+  "optionValue_transparency",
+  "optionValue_transparencyTolerance",
+  "optionValue_betterColour",
+  "optionValue_dithering",
+  "optionValue_dithering_propagation_red",
+  "optionValue_dithering_propagation_green",
+  "optionValue_dithering_propagation_blue",
+  "optionValue_dithering_strength",
+  "optionValue_improvedPatternDithering",
+  "optionValue_patternPairMode",
+  "optionValue_cleanup_enabled",
+  "optionValue_cleanup_denoise",
+  "optionValue_cleanup_denoiseMethod",
+  "optionValue_cleanup_edges",
+  "optionValue_cleanup_despeckle",
+  "optionValue_cleanup_paletteIslands",
+  "optionValue_cleanup_colours",
+  "optionValue_cleanup_coloursPerceptual",
+  "optionValue_cleanup_islandsSmart",
+  "optionValue_cleanup_adaptiveDither",
+  "optionValue_preprocessingEnabled",
+  "preProcessingValue_brightness",
+  "preProcessingValue_contrast",
+  "preProcessingValue_saturation",
+  "preProcessingValue_backgroundColourSelect",
+  "preProcessingValue_backgroundColour",
+  "preProcessingValue_gamma",
+  "preProcessingValue_autoLevels",
+  "optionValue_resizeMethod",
+  "optionValue_pixelPerfect",
+  "optionValue_autoDetectPixelScale",
+  "optionValue_style",
+  "uploadedImage",
+  "pixelEdits",
+];
+
+// Sliders. Dragging one of them changes the value many times per second, and
+// every change used to start a full render of the map. These are throttled
+// instead, so that the preview follows the slider without the interface
+// stuttering.
+const SLOW_PROPS = [
+  "optionValue_dithering_strength",
+  "optionValue_dithering_propagation_red",
+  "optionValue_dithering_propagation_green",
+  "optionValue_dithering_propagation_blue",
+  "optionValue_cleanup_denoise",
+  "optionValue_cleanup_edges",
+  "optionValue_cleanup_despeckle",
+  "optionValue_transparencyTolerance",
+  "optionValue_cropImage_zoom",
+  "optionValue_cropImage_percent_x",
+  "optionValue_cropImage_percent_y",
+  "preProcessingValue_brightness",
+  "preProcessingValue_contrast",
+  "preProcessingValue_saturation",
+  "preProcessingValue_gamma",
+];
+
+// Everything that is not a slider has to be answered immediately.
+const FAST_PROPS = Array.from(new Set([...SOURCE_PROPS, ...DISPLAY_PROPS])).filter((prop) => !SLOW_PROPS.includes(prop));
+
+// How long a slider may be dragged before the preview is recalculated.
+const RENDER_THROTTLE_MS = 120;
+
 const EDITOR_BRUSH_SIZES = [1, 2, 3, 5];
 
 class MapPreview extends Component {
@@ -75,6 +177,9 @@ class MapPreview extends Component {
   };
 
   mapCanvasWorker = new WorkerBuilder(MapCanvasWorker);
+  // The Lanczos resize of a large photo takes a few hundred milliseconds and
+  // is done in a worker, so the interface does not freeze while it runs.
+  resampleWorker = new WorkerBuilder(ResampleWorker);
 
   constructor(props) {
     super(props);
@@ -111,6 +216,21 @@ class MapPreview extends Component {
     this.moveContent = null;
     this.moveDelta = { x: 0, y: 0 };
     this.editorClipboard = null;
+    // The preview worker lives as long as this component. It used to be
+    // thrown away and rebuilt for every change of a setting, which meant a new
+    // thread, a new copy of the palette and an empty colour cache every time.
+    this.renderPending = false;
+    this.renderInFlight = false;
+    this.renderRequestId = 0;
+    this.renderStartedAt = 0;
+    this.sourceDirty = false;
+    this.displayDirty = false;
+    this.refreshTimer = null;
+    this.workerInitColoursJSON = null;
+    this.resampleRequestId = 0;
+    this.pendingResample = null;
+    this.mapCanvasWorker.onmessage = this.handleWorkerMessage;
+    this.resampleWorker.onmessage = this.handleResampleMessage;
   }
 
   t(key, fallback) {
@@ -120,97 +240,29 @@ class MapPreview extends Component {
   }
 
   shouldCanvasUpdate_source(prevProps, newProps, prevState, newState) {
-    const propChanges = [
-      prevProps.coloursJSON === newProps.coloursJSON,
-      prevProps.selectedBlocks === newProps.selectedBlocks,
-      prevProps.disabledTones === newProps.disabledTones,
-      prevProps.optionValue_mapSize_x === newProps.optionValue_mapSize_x,
-      prevProps.optionValue_mapSize_y === newProps.optionValue_mapSize_y,
-      prevProps.optionValue_cropImage === newProps.optionValue_cropImage,
-      prevProps.optionValue_cropImage_zoom === newProps.optionValue_cropImage_zoom,
-      prevProps.optionValue_cropImage_percent_x === newProps.optionValue_cropImage_percent_x,
-      prevProps.optionValue_cropImage_percent_y === newProps.optionValue_cropImage_percent_y,
-      prevProps.optionValue_staircasing === newProps.optionValue_staircasing,
-      prevProps.optionValue_preprocessingEnabled === newProps.optionValue_preprocessingEnabled,
-      prevProps.preProcessingValue_brightness === newProps.preProcessingValue_brightness,
-      prevProps.preProcessingValue_contrast === newProps.preProcessingValue_contrast,
-      prevProps.preProcessingValue_saturation === newProps.preProcessingValue_saturation,
-      prevProps.preProcessingValue_backgroundColourSelect === newProps.preProcessingValue_backgroundColourSelect,
-      prevProps.preProcessingValue_backgroundColour === newProps.preProcessingValue_backgroundColour,
-      prevProps.preProcessingValue_gamma === newProps.preProcessingValue_gamma,
-      prevProps.preProcessingValue_autoLevels === newProps.preProcessingValue_autoLevels,
-      prevProps.optionValue_resizeMethod === newProps.optionValue_resizeMethod,
-      prevProps.optionValue_pixelPerfect === newProps.optionValue_pixelPerfect,
-      prevProps.optionValue_autoDetectPixelScale === newProps.optionValue_autoDetectPixelScale,
-      prevProps.uploadedImage === newProps.uploadedImage,
-    ];
+    // ugly but useful method to determine whether map canvas contents should be redrawn on component update
     return (
       newProps.uploadedImage !== null &&
       prevState.workerProgress === newState.workerProgress &&
-      !propChanges.every((elt) => {
-        return elt === true;
-      })
+      SOURCE_PROPS.some((prop) => prevProps[prop] !== newProps[prop])
     );
   }
 
   shouldCanvasUpdate_display(prevProps, newProps, prevState, newState) {
     // ugly but useful method to determine whether map canvas contents should be redrawn on component update
-    const propChanges = [
-      prevProps.coloursJSON === newProps.coloursJSON,
-      prevProps.selectedBlocks === newProps.selectedBlocks,
-      prevProps.disabledTones === newProps.disabledTones,
-      prevProps.optionValue_modeNBTOrMapdat === newProps.optionValue_modeNBTOrMapdat,
-      prevProps.optionValue_mapSize_x === newProps.optionValue_mapSize_x,
-      prevProps.optionValue_mapSize_y === newProps.optionValue_mapSize_y,
-      prevProps.optionValue_cropImage === newProps.optionValue_cropImage,
-      prevProps.optionValue_cropImage_zoom === newProps.optionValue_cropImage_zoom,
-      prevProps.optionValue_cropImage_percent_x === newProps.optionValue_cropImage_percent_x,
-      prevProps.optionValue_cropImage_percent_y === newProps.optionValue_cropImage_percent_y,
-      prevProps.optionValue_staircasing === newProps.optionValue_staircasing,
-      prevProps.optionValue_whereSupportBlocks === newProps.optionValue_whereSupportBlocks,
-      prevProps.optionValue_transparency === newProps.optionValue_transparency,
-      prevProps.optionValue_transparencyTolerance === newProps.optionValue_transparencyTolerance,
-      prevProps.optionValue_betterColour === newProps.optionValue_betterColour,
-      prevProps.optionValue_dithering === newProps.optionValue_dithering,
-      prevProps.optionValue_dithering_propagation_red === newProps.optionValue_dithering_propagation_red,
-      prevProps.optionValue_dithering_propagation_green === newProps.optionValue_dithering_propagation_green,
-      prevProps.optionValue_dithering_propagation_blue === newProps.optionValue_dithering_propagation_blue,
-      prevProps.optionValue_dithering_strength === newProps.optionValue_dithering_strength,
-      prevProps.optionValue_improvedPatternDithering === newProps.optionValue_improvedPatternDithering,
-      prevProps.optionValue_patternPairMode === newProps.optionValue_patternPairMode,
-      prevProps.optionValue_cleanup_enabled === newProps.optionValue_cleanup_enabled,
-      prevProps.optionValue_cleanup_denoise === newProps.optionValue_cleanup_denoise,
-      prevProps.optionValue_cleanup_denoiseMethod === newProps.optionValue_cleanup_denoiseMethod,
-      prevProps.optionValue_cleanup_edges === newProps.optionValue_cleanup_edges,
-      prevProps.optionValue_cleanup_despeckle === newProps.optionValue_cleanup_despeckle,
-      prevProps.optionValue_cleanup_paletteIslands === newProps.optionValue_cleanup_paletteIslands,
-      prevProps.optionValue_cleanup_colours === newProps.optionValue_cleanup_colours,
-      prevProps.optionValue_cleanup_coloursPerceptual === newProps.optionValue_cleanup_coloursPerceptual,
-      prevProps.optionValue_cleanup_islandsSmart === newProps.optionValue_cleanup_islandsSmart,
-      prevProps.optionValue_cleanup_adaptiveDither === newProps.optionValue_cleanup_adaptiveDither,
-      prevProps.optionValue_preprocessingEnabled === newProps.optionValue_preprocessingEnabled,
-      prevProps.preProcessingValue_brightness === newProps.preProcessingValue_brightness,
-      prevProps.preProcessingValue_contrast === newProps.preProcessingValue_contrast,
-      prevProps.preProcessingValue_saturation === newProps.preProcessingValue_saturation,
-      prevProps.preProcessingValue_backgroundColourSelect === newProps.preProcessingValue_backgroundColourSelect,
-      prevProps.preProcessingValue_backgroundColour === newProps.preProcessingValue_backgroundColour,
-      prevProps.preProcessingValue_gamma === newProps.preProcessingValue_gamma,
-      prevProps.preProcessingValue_autoLevels === newProps.preProcessingValue_autoLevels,
-      prevProps.optionValue_resizeMethod === newProps.optionValue_resizeMethod,
-      prevProps.optionValue_pixelPerfect === newProps.optionValue_pixelPerfect,
-      prevProps.optionValue_autoDetectPixelScale === newProps.optionValue_autoDetectPixelScale,
-      prevProps.optionValue_style === newProps.optionValue_style,
-      prevProps.uploadedImage === newProps.uploadedImage,
-      prevProps.pixelEdits === newProps.pixelEdits,
-    ];
     return (
       newProps.uploadedImage !== null &&
       prevState.workerProgress === newState.workerProgress &&
-      !propChanges.every((elt) => {
-        return elt === true;
-      })
+      DISPLAY_PROPS.some((prop) => prevProps[prop] !== newProps[prop])
     );
   }
+
+  // Whether only sliders changed. Those are throttled, everything else has to
+  // be answered straight away.
+  onlySlowPropsChanged(prevProps) {
+    return !FAST_PROPS.some((prop) => prevProps[prop] !== this.props[prop]);
+  }
+
 
   componentDidMount() {
     window.addEventListener("keydown", this.handleEditorKeyDown, true);
@@ -229,6 +281,8 @@ class MapPreview extends Component {
       prevProps.optionValue_mapSize_y !== this.props.optionValue_mapSize_y
     ) {
       this.resetEditorHistory();
+      /* Новый размер — новая попытка: сообщение об ошибке можно показать снова. */
+      this.canvasTooLargeReported = false;
     }
     if (prevProps.pixelEdits !== this.props.pixelEdits) {
       this.editorMap = { ...(this.props.pixelEdits || {}) };
@@ -237,10 +291,41 @@ class MapPreview extends Component {
     if (prevState.editorEnabled !== this.state.editorEnabled) {
       this.drawEditorSelection();
     }
-    if (this.shouldCanvasUpdate_source(prevProps, this.props, prevState, this.state)) {
-      this.updateCanvas_source(); // draw uploaded image on source canvas
+    const sourceChanged = this.shouldCanvasUpdate_source(prevProps, this.props, prevState, this.state);
+    const displayChanged = this.shouldCanvasUpdate_display(prevProps, this.props, prevState, this.state);
+    if (!sourceChanged && !displayChanged) return;
+    if (sourceChanged) this.sourceDirty = true;
+    if (displayChanged) this.displayDirty = true;
+    this.scheduleRefresh(this.onlySlowPropsChanged(prevProps));
+  }
+
+  // A slider changes the value many times per second. Every change used to
+  // start a full render of the map, which made the interface stutter. Slider
+  // changes are throttled, everything else is rendered straight away.
+  scheduleRefresh(slowOnly) {
+    if (!slowOnly) {
+      if (this.refreshTimer) {
+        window.clearTimeout(this.refreshTimer);
+        this.refreshTimer = null;
+      }
+      this.refreshCanvases();
+      return;
     }
-    if (this.shouldCanvasUpdate_display(prevProps, this.props, prevState, this.state)) {
+    if (this.refreshTimer) return; // a render is already scheduled
+    this.refreshTimer = window.setTimeout(() => {
+      this.refreshTimer = null;
+      this.refreshCanvases();
+    }, RENDER_THROTTLE_MS);
+  }
+
+  refreshCanvases() {
+    if (this.sourceDirty) {
+      this.sourceDirty = false;
+      this.updateCanvas_source(); // draw uploaded image on source canvas
+      return; // the dithered map is calculated once the source canvas is ready
+    }
+    if (this.displayDirty) {
+      this.displayDirty = false;
       this.updateCanvas_display(); // draw pixelart of image on display canvas
     }
   }
@@ -990,17 +1075,61 @@ class MapPreview extends Component {
       workHeight
     );
     workContext.filter = "none";
+    let workImageData;
     try {
-      const resized = resizeLanczos(workContext.getImageData(0, 0, workWidth, workHeight), targetWidth, targetHeight);
-      ctx_source.putImageData(resized, 0, 0);
+      workImageData = workContext.getImageData(0, 0, workWidth, workHeight);
     } catch (error) {
       // Tainted canvases cannot be read back; keep the processed crop and let
       // the browser finish the scale instead of breaking the preview.
       ctx_source.imageSmoothingEnabled = true;
       ctx_source.imageSmoothingQuality = "high";
       ctx_source.drawImage(workCanvas, 0, 0, targetWidth, targetHeight);
+      return false;
     }
+
+    // The resize itself runs in a worker, a large photo takes a few hundred
+    // milliseconds and the interface must not freeze while it does.
+    this.resampleRequestId += 1;
+    const requestId = this.resampleRequestId;
+    this.pendingResample = { requestId, ctx_source, targetWidth, targetHeight };
+    this.resampleWorker.postMessage(
+      {
+        head: "RESAMPLE",
+        body: {
+          imageData: {
+            data: workImageData.data,
+            width: workImageData.width,
+            height: workImageData.height,
+          },
+          targetWidth: targetWidth,
+          targetHeight: targetHeight,
+          requestId: requestId,
+        },
+        requestId: requestId,
+      },
+      [workImageData.data.buffer]
+    );
+    return true;
   }
+
+  handleResampleMessage = (e) => {
+    const data = e.data;
+    const pending = this.pendingResample;
+    if (!pending) return;
+    if (data.head === "ERROR") {
+      console.error("The image resize worker failed:", data.body && data.body.message);
+      this.pendingResample = null;
+      this.onSourceCanvasReady();
+      return;
+    }
+    if (data.head !== "RESAMPLED") return;
+    if (data.requestId !== pending.requestId) return; // an older resize
+    this.pendingResample = null;
+    const ctx_source = pending.ctx_source;
+    if (!ctx_source || ctx_source.canvas.width !== pending.targetWidth) return; // the canvas changed in the meantime
+    ctx_source.putImageData(new ImageData(data.body.data, data.body.width, data.body.height), 0, 0);
+    this.onSourceCanvasReady();
+  };
 
   applyPreprocessTone(ctx_source, gamma, autoLevels) {
     const width = ctx_source.canvas.width;
@@ -1088,8 +1217,6 @@ class MapPreview extends Component {
       preProcessingValue_saturation,
       preProcessingValue_backgroundColourSelect,
       preProcessingValue_backgroundColour,
-      preProcessingValue_gamma,
-      preProcessingValue_autoLevels,
       uploadedImage,
       optionValue_resizeMethod,
       optionValue_pixelPerfect,
@@ -1169,38 +1296,89 @@ class MapPreview extends Component {
     ctx_source.clearRect(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
     if (resizeMethod === "lanczos") {
       ctx_source.filter = "none";
-      this.drawLanczosIntoSource(ctx_source, drawSource, cropRect, backgroundColour, filterValue);
-    } else {
-      ctx_source.imageSmoothingEnabled = resizeMethod !== "pixel";
-      ctx_source.imageSmoothingQuality = resizeMethod === "pixel" ? "low" : "high";
-      if (backgroundColour) {
-        ctx_source.filter = "none"; // this needs to be present to stop filters affecting background colour
-        ctx_source.fillStyle = backgroundColour;
-        ctx_source.fillRect(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
+      const resampling = this.drawLanczosIntoSource(ctx_source, drawSource, cropRect, backgroundColour, filterValue);
+      if (resampling) {
+        // The resize runs in a worker, the rest waits for its result.
+        return;
       }
-      ctx_source.filter = filterValue;
-      ctx_source.drawImage(
-        drawSource,
-        cropRect.x,
-        cropRect.y,
-        cropRect.width,
-        cropRect.height,
-        0,
-        0,
-        ctx_source.canvas.width,
-        ctx_source.canvas.height
-      );
-      ctx_source.filter = "none";
+      this.finishSourceCanvas(ctx_source);
+      return;
     }
+    ctx_source.imageSmoothingEnabled = resizeMethod !== "pixel";
+    ctx_source.imageSmoothingQuality = resizeMethod === "pixel" ? "low" : "high";
+    if (backgroundColour) {
+      ctx_source.filter = "none"; // this needs to be present to stop filters affecting background colour
+      ctx_source.fillStyle = backgroundColour;
+      ctx_source.fillRect(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
+    }
+    ctx_source.filter = filterValue;
+    ctx_source.drawImage(
+      drawSource,
+      cropRect.x,
+      cropRect.y,
+      cropRect.width,
+      cropRect.height,
+      0,
+      0,
+      ctx_source.canvas.width,
+      ctx_source.canvas.height
+    );
+    ctx_source.filter = "none";
 
+    this.finishSourceCanvas(ctx_source);
+  }
+
+  // The gamma and the auto levels are applied to the finished source image.
+  finishSourceCanvas(ctx_source) {
+    const { optionValue_preprocessingEnabled, preProcessingValue_gamma, preProcessingValue_autoLevels } = this.props;
     if (optionValue_preprocessingEnabled && (preProcessingValue_gamma !== 100 || preProcessingValue_autoLevels)) {
       this.applyPreprocessTone(ctx_source, preProcessingValue_gamma, preProcessingValue_autoLevels);
     }
+    this.onSourceCanvasReady();
   }
 
+  // The source canvas is ready, the dithered map can be calculated now.
+  onSourceCanvasReady() {
+    if (!this.displayDirty) return;
+    this.displayDirty = false;
+    this.updateCanvas_display();
+  }
+
+  // Asks for a new preview. The worker is long living, so several changes
+  // that arrive in quick succession are merged into one render.
   updateCanvas_display() {
-    this.mapCanvasWorker.terminate();
-    const { canvasRef_source, canvasRef_display } = this;
+    this.renderPending = true;
+    this.flushRender();
+  }
+
+  /* Размер холста совпадает с запрошенным размером карты? Если браузер
+     отказался выделять память, холст остаётся прежнего размера. */
+  isCanvasSizeUsable() {
+    const { optionValue_mapSize_x, optionValue_mapSize_y } = this.props;
+    const canvas = this.canvasRef_source.current;
+    if (!canvas) return false;
+    return canvas.width === 128 * optionValue_mapSize_x && canvas.height === 128 * optionValue_mapSize_y;
+  }
+
+  /* Сообщение о том, что браузер не вытянул такой размер карты. */
+  reportCanvasTooLarge() {
+    if (this.canvasTooLargeReported) return;
+    this.canvasTooLargeReported = true;
+    window.alert(
+      this.t(
+        "MAP-PREVIEW/MAP-TOO-LARGE",
+        "This browser could not allocate a canvas for this map size. Try a smaller map."
+      )
+    );
+  }
+
+  // Sends the current settings to the worker. Does nothing while a render is
+  // running; the render that is already running is then thrown away and this
+  // one is started as soon as it is done.
+  flushRender() {
+    if (!this.renderPending) return;
+    if (this.renderInFlight) return;
+    const { canvasRef_source } = this;
     const {
       coloursJSON,
       selectedBlocks,
@@ -1232,77 +1410,151 @@ class MapPreview extends Component {
       optionValue_cleanup_adaptiveDither,
       optionValue_style,
       pixelEdits,
-      onGetMapMaterials,
       onMapPreviewWorker_begin,
     } = this.props;
+
+    this.renderPending = false;
+    this.renderInFlight = true;
+    this.renderRequestId += 1;
+    const requestId = this.renderRequestId;
+    this.renderStartedAt = performance.now();
+
+    /* Браузер не всегда соглашается выделить холст нужного размера: если
+       предел превышен, холст молча остаётся прежнего размера, и карта
+       отрисовалась бы неверно. Проверяем размер до рендера. */
+    if (!this.isCanvasSizeUsable()) {
+      this.renderInFlight = false;
+      this.reportCanvasTooLarge();
+      return;
+    }
+
     const ctx_source = canvasRef_source.current.getContext("2d");
-    const canvasImageData = ctx_source.getImageData(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
-    const t0 = performance.now();
-    this.mapCanvasWorker = new WorkerBuilder(MapCanvasWorker);
-    this.mapCanvasWorker.onmessage = (e) => {
-      if (e.data.head === "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS") {
-        const t1 = performance.now();
-        console.log(`Calculated map preview data in ${(t1 - t0).toString()}ms`);
-        const ctx_display = canvasRef_display.current.getContext("2d");
-        ctx_display.imageSmoothingEnabled = false;
-        ctx_display.putImageData(e.data.body.pixels, 0, 0);
-        this.clearEditorOverlay();
-        if (this.state.editorEnabled) this.refreshEditorColours(e.data.body.pixels.data);
-        this.setState({ workerProgress: 1 });
-        onGetMapMaterials({
-          pixelsData: e.data.body.pixels.data,
-          pixelsWidth: canvasRef_display.current.width,
-          pixelsHeight: canvasRef_display.current.height,
-          maps: e.data.body.maps,
-          currentSelectedBlocks: e.data.body.currentSelectedBlocks,
-        });
-      } else if (e.data.head === "PROGRESS_REPORT") {
-        this.setState({ workerProgress: e.data.body });
-      }
-    };
-    onMapPreviewWorker_begin();
-    this.mapCanvasWorker.postMessage({
-      head: "PIXELS",
-      body: {
-        coloursJSON: coloursJSON,
-        MapModes: MapModes,
-        WhereSupportBlocksModes: WhereSupportBlocksModes,
-        ColourMethods: ColourMethods,
-        DitherMethods: DitherMethods,
-        canvasImageData: canvasImageData,
-        selectedBlocks: selectedBlocks,
-        disabledTones: disabledTones,
-        optionValue_modeNBTOrMapdat: optionValue_modeNBTOrMapdat,
-        optionValue_mapSize_x: optionValue_mapSize_x,
-        optionValue_mapSize_y: optionValue_mapSize_y,
-        optionValue_staircasing: optionValue_staircasing,
-        optionValue_whereSupportBlocks: optionValue_whereSupportBlocks,
-        optionValue_transparency: optionValue_transparency,
-        optionValue_transparencyTolerance: optionValue_transparencyTolerance,
-        optionValue_betterColour: optionValue_betterColour,
-        optionValue_dithering: optionValue_dithering,
-        optionValue_dithering_propagation_red: optionValue_dithering_propagation_red,
-        optionValue_dithering_propagation_green: optionValue_dithering_propagation_green,
-        optionValue_dithering_propagation_blue: optionValue_dithering_propagation_blue,
-        optionValue_dithering_strength: optionValue_dithering_strength,
-        optionValue_improvedPatternDithering: optionValue_improvedPatternDithering,
-        optionValue_patternPairMode: optionValue_patternPairMode,
-        optionValue_cleanup_enabled: optionValue_cleanup_enabled,
-        optionValue_cleanup_denoise: optionValue_cleanup_denoise,
-        optionValue_cleanup_denoiseMethod: optionValue_cleanup_denoiseMethod,
-        optionValue_cleanup_edges: optionValue_cleanup_edges,
-        optionValue_cleanup_despeckle: optionValue_cleanup_despeckle,
-        optionValue_cleanup_paletteIslands: optionValue_cleanup_paletteIslands,
-        optionValue_cleanup_colours: optionValue_cleanup_colours,
-        optionValue_cleanup_coloursPerceptual: optionValue_cleanup_coloursPerceptual,
-        optionValue_cleanup_islandsSmart: optionValue_cleanup_islandsSmart,
-        optionValue_cleanup_adaptiveDither: optionValue_cleanup_adaptiveDither,
-        optionValue_style: optionValue_style,
-        pixelEdits: pixelEdits || {},
+    let canvasImageData;
+    try {
+      canvasImageData = ctx_source.getImageData(0, 0, ctx_source.canvas.width, ctx_source.canvas.height);
+    } catch (error) {
+      /* Не хватило памяти на копию пикселей. */
+      this.renderInFlight = false;
+      this.reportCanvasTooLarge();
+      return;
+    }
+
+    // The palette and the mode tables are sent once and stay in the worker.
+    // They are 359 kB and were cloned into every render message before.
+    if (this.workerInitColoursJSON !== coloursJSON) {
+      this.workerInitColoursJSON = coloursJSON;
+      this.mapCanvasWorker.postMessage({
+        head: "INIT",
+        body: {
+          coloursJSON: coloursJSON,
+          MapModes: MapModes,
+          WhereSupportBlocksModes: WhereSupportBlocksModes,
+          ColourMethods: ColourMethods,
+          DitherMethods: DitherMethods,
+        },
+        requestId: requestId,
+      });
+    }
+
+    if (onMapPreviewWorker_begin) onMapPreviewWorker_begin();
+    this.mapCanvasWorker.postMessage(
+      {
+        head: "PIXELS",
+        body: {
+          canvasImageData: {
+            data: canvasImageData.data,
+            width: canvasImageData.width,
+            height: canvasImageData.height,
+          },
+          selectedBlocks: selectedBlocks,
+          disabledTones: disabledTones,
+          optionValue_modeNBTOrMapdat: optionValue_modeNBTOrMapdat,
+          optionValue_mapSize_x: optionValue_mapSize_x,
+          optionValue_mapSize_y: optionValue_mapSize_y,
+          optionValue_staircasing: optionValue_staircasing,
+          optionValue_whereSupportBlocks: optionValue_whereSupportBlocks,
+          optionValue_transparency: optionValue_transparency,
+          optionValue_transparencyTolerance: optionValue_transparencyTolerance,
+          optionValue_betterColour: optionValue_betterColour,
+          optionValue_dithering: optionValue_dithering,
+          optionValue_dithering_propagation_red: optionValue_dithering_propagation_red,
+          optionValue_dithering_propagation_green: optionValue_dithering_propagation_green,
+          optionValue_dithering_propagation_blue: optionValue_dithering_propagation_blue,
+          optionValue_dithering_strength: optionValue_dithering_strength,
+          optionValue_improvedPatternDithering: optionValue_improvedPatternDithering,
+          optionValue_patternPairMode: optionValue_patternPairMode,
+          optionValue_cleanup_enabled: optionValue_cleanup_enabled,
+          optionValue_cleanup_denoise: optionValue_cleanup_denoise,
+          optionValue_cleanup_denoiseMethod: optionValue_cleanup_denoiseMethod,
+          optionValue_cleanup_edges: optionValue_cleanup_edges,
+          optionValue_cleanup_despeckle: optionValue_cleanup_despeckle,
+          optionValue_cleanup_paletteIslands: optionValue_cleanup_paletteIslands,
+          optionValue_cleanup_colours: optionValue_cleanup_colours,
+          optionValue_cleanup_coloursPerceptual: optionValue_cleanup_coloursPerceptual,
+          optionValue_cleanup_islandsSmart: optionValue_cleanup_islandsSmart,
+          optionValue_cleanup_adaptiveDither: optionValue_cleanup_adaptiveDither,
+          optionValue_style: optionValue_style,
+          pixelEdits: pixelEdits || {},
+        },
+        requestId: requestId,
       },
-    });
+      // The pixels are handed over instead of being copied. The buffer is not
+      // used on this side any more.
+      [canvasImageData.data.buffer]
+    );
   }
 
+  handleWorkerMessage = (e) => {
+    const data = e.data;
+    const { onGetMapMaterials } = this.props;
+    const canvasRef_display = this.canvasRef_display;
+    if (data.head === "PROGRESS_REPORT") {
+      if (data.requestId !== this.renderRequestId) return; // an old render
+      this.setState({ workerProgress: data.body });
+      return;
+    }
+    if (data.head === "INIT_DONE") return;
+    if (data.head === "ERROR") {
+      this.renderInFlight = false;
+      console.error("The map preview worker failed:", data.body && data.body.message);
+      this.setState({ workerProgress: 1 });
+      if (this.renderPending) this.flushRender();
+      return;
+    }
+    if (data.head !== "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS") return;
+    if (data.requestId !== this.renderRequestId) return; // an old render
+
+    this.renderInFlight = false;
+    if (this.renderPending) {
+      // A newer render is already wanted, this result is out of date and is
+      // thrown away instead of being drawn.
+      this.flushRender();
+      return;
+    }
+
+    const t1 = performance.now();
+    console.log(`Calculated map preview data in ${(t1 - this.renderStartedAt).toString()}ms`);
+    const pixels = data.body.pixels;
+    const imageData =
+      typeof ImageData !== "undefined" && pixels instanceof ImageData
+        ? pixels
+        : new ImageData(pixels.data, pixels.width, pixels.height);
+    const ctx_display = canvasRef_display.current.getContext("2d");
+    ctx_display.imageSmoothingEnabled = false;
+    ctx_display.putImageData(imageData, 0, 0);
+    this.clearEditorOverlay();
+    if (this.state.editorEnabled) this.refreshEditorColours(pixels.data);
+    this.setState({ workerProgress: 1 });
+    if (onGetMapMaterials) {
+      onGetMapMaterials({
+        pixelsData: pixels.data,
+        pixelsWidth: canvasRef_display.current.width,
+        pixelsHeight: canvasRef_display.current.height,
+        maps: data.body.maps,
+        currentSelectedBlocks: data.body.currentSelectedBlocks,
+      });
+    }
+  };
   resetEditorHistory = () => {
     this.editorUndo = [];
     this.editorRedo = [];
@@ -1894,6 +2146,8 @@ class MapPreview extends Component {
 
   clearEditorEdits = () => {
     if (!Object.keys(this.editorMap).length) return;
+    /* Сброс всех правок — заметное действие, спрашиваем подтверждение. */
+    if (!window.confirm(this.props.getLocaleString("PIXEL-EDITOR/RESET-CONFIRM"))) return;
     this.editorUndo.push({ ...this.editorMap });
     if (this.editorUndo.length > 40) this.editorUndo.shift();
     this.editorRedo = [];
@@ -1936,6 +2190,10 @@ class MapPreview extends Component {
 
   componentWillUnmount() {
     window.removeEventListener("keydown", this.handleEditorKeyDown, true);
+    if (this.refreshTimer) {
+      window.clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
     const canvas = this.canvasRef_display.current;
     if (canvas) {
       canvas.removeEventListener("wheel", this.handleEditorWheel);
@@ -1943,6 +2201,7 @@ class MapPreview extends Component {
       canvas.removeEventListener("pointerleave", this.handleEditorCoordinateLeave);
     }
     this.mapCanvasWorker.terminate();
+    this.resampleWorker.terminate();
   }
 
   render() {
@@ -1984,7 +2243,6 @@ class MapPreview extends Component {
     }
     const mapPreviewSizeScale = Math.max(1, Math.round(optionValue_previewScale || 2));
     const canvasWidth = mapPreviewSizeScale * 128 * optionValue_mapSize_x;
-    const canvasHeight = mapPreviewSizeScale * 128 * optionValue_mapSize_y;
     return (
       <div className="section mapPreviewDiv">
         <h2>{getLocaleString("MAP-PREVIEW/TITLE")}</h2>
@@ -2130,18 +2388,17 @@ class MapPreview extends Component {
             style={{
               backgroundImage: `url(${IMG_GridOverlay})`,
               display: optionValue_showGridOverlay ? "block" : "none",
-              width: `${canvasWidth.toString()}px`,
-              height: `${canvasHeight.toString()}px`,
-              backgroundSize: `${(mapPreviewSizeScale * 128).toString()}px`,
+              /* Размеры в процентах: оверлей остаётся на месте при любом
+                 масштабе канваса (в т.ч. когда он сжат по ширине окна). */
+              backgroundSize: `${(100 / optionValue_mapSize_x).toFixed(4)}% ${(100 / optionValue_mapSize_y).toFixed(4)}%`,
             }}
           />
           {optionValue_showPixelGrid ? (
             <span
               className="pixelGridOverlay"
               style={{
-                width: `${canvasWidth.toString()}px`,
-                height: `${canvasHeight.toString()}px`,
-                backgroundSize: `${mapPreviewSizeScale.toString()}px ${mapPreviewSizeScale.toString()}px`,
+                /* Одна клетка сетки — один блок карты. */
+                backgroundSize: `${(100 / (128 * optionValue_mapSize_x)).toFixed(5)}% ${(100 / (128 * optionValue_mapSize_y)).toFixed(5)}%`,
               }}
             />
           ) : null}
@@ -2152,7 +2409,6 @@ class MapPreview extends Component {
             ref={this.canvasRef_display}
             style={{
               width: `${canvasWidth.toString()}px`,
-              height: `${canvasHeight.toString()}px`,
               touchAction: editorEnabled ? "none" : undefined,
               cursor: editorEnabled ? (editorTool === "pick" || editorTool === "select" ? "crosshair" : editorTool === "move" ? "move" : "cell") : "pointer",
             }}
@@ -2167,28 +2423,24 @@ class MapPreview extends Component {
               if (editorEnabled) event.preventDefault();
             }}
           />
-          <canvas
-            className="pixelEditorOverlay"
-            width={128 * optionValue_mapSize_x}
-            height={128 * optionValue_mapSize_y}
-            ref={this.canvasRef_editor}
-            style={{
-              width: `${canvasWidth.toString()}px`,
-              height: `${canvasHeight.toString()}px`,
-              display: editorEnabled ? "block" : "none",
-            }}
-          />
-          <canvas
-            className="pixelEditorSelectionOverlay"
-            width={128 * optionValue_mapSize_x}
-            height={128 * optionValue_mapSize_y}
-            ref={this.canvasRef_selection}
-            style={{
-              width: `${canvasWidth.toString()}px`,
-              height: `${canvasHeight.toString()}px`,
-              display: editorEnabled ? "block" : "none",
-            }}
-          />
+          {/* Оверлеи редактора создаются только когда редактор включён:
+              на большой карте каждый лишний холст — это сотни мегабайт. */}
+          {editorEnabled ? (
+            <React.Fragment>
+              <canvas
+                className="pixelEditorOverlay"
+                width={128 * optionValue_mapSize_x}
+                height={128 * optionValue_mapSize_y}
+                ref={this.canvasRef_editor}
+              />
+              <canvas
+                className="pixelEditorSelectionOverlay"
+                width={128 * optionValue_mapSize_x}
+                height={128 * optionValue_mapSize_y}
+                ref={this.canvasRef_selection}
+              />
+            </React.Fragment>
+          ) : null}
           <canvas className="displayNone" width={128 * optionValue_mapSize_x} height={128 * optionValue_mapSize_y} ref={this.canvasRef_source}></canvas>
         </div>
         {editorEnabled && editorSelection ? (
@@ -2249,30 +2501,24 @@ class MapPreview extends Component {
               1:1
             </button>
             <Tooltip tooltipText={getLocaleString("MAP-PREVIEW/SCALE-PLUS-TT")}>
-              <img
-                alt="+"
+              <button
+                type="button"
                 className="sizeButton"
-                src={IMG_Null}
-                style={{
-                  backgroundImage: `url(${IMG_Textures})`,
-                  backgroundPositionX: "-96px",
-                  backgroundPositionY: "-2048px",
-                }}
+                aria-label={getLocaleString("MAP-PREVIEW/SCALE-PLUS-TT")}
                 onClick={this.increasePreviewScale}
-              />
+              >
+                +
+              </button>
             </Tooltip>
             <Tooltip tooltipText={getLocaleString("MAP-PREVIEW/SCALE-MINUS-TT")}>
-              <img
-                alt="-"
+              <button
+                type="button"
                 className="sizeButton"
-                src={IMG_Null}
-                style={{
-                  backgroundImage: `url(${IMG_Textures})`,
-                  backgroundPositionX: "-128px",
-                  backgroundPositionY: "-2048px",
-                }}
+                aria-label={getLocaleString("MAP-PREVIEW/SCALE-MINUS-TT")}
                 onClick={this.decreasePreviewScale}
-              />
+              >
+                -
+              </button>
             </Tooltip>
           </div>
         </div>
