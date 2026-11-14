@@ -34,6 +34,10 @@ export const STYLE_PRESETS = [
     dithering: DitherMethods.Bayer22.uniqueId,
     colourMethod: ColourMethods.Euclidian.uniqueId,
     propagation: [100, 100, 100],
+    // Without the improved pattern the two-tone threshold is not normalised,
+    // which leaves the halftone invisible in the mid tones.
+    improvedPattern: true,
+    patternPairMode: "nearest",
   },
   {
     id: "softGradient",
@@ -52,8 +56,17 @@ export const STYLE_PRESETS = [
     dithering: DitherMethods.Bayer33.uniqueId,
     colourMethod: ColourMethods.MapartCraftDefault.uniqueId,
     propagation: [100, 100, 100],
+    improvedPattern: true,
+    patternPairMode: "nearest",
   },
 ];
+
+/**
+ * The ids that may appear in the saved settings. Derived from STYLE_PRESETS so
+ * that adding a preset only needs one edit; a hard coded list silently reset
+ * unknown styles back to "clean" after a reload.
+ */
+export const STYLE_PRESET_IDS = STYLE_PRESETS.map((preset) => preset.id).concat("custom");
 
 export function getStylePreset(id) {
   return STYLE_PRESETS.find((preset) => preset.id === id) || STYLE_PRESETS[0];
