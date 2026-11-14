@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import { STYLE_PRESETS } from "./stylePresets";
+import { STYLE_PRESETS } from "../../presets/stylePresets";
 import { attachWheel, wheelValue } from "./wheelValue";
 
 import "./studioPanel.css";

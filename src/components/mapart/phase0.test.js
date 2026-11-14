@@ -5,7 +5,7 @@ import MapModes from "./json/mapModes.json";
 import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 import ColourMethods from "./json/colourMethods.json";
 import DitherMethods from "./json/ditherMethods.json";
-import { STYLE_PRESETS, STYLE_PRESET_IDS } from "./stylePresets";
+import { STYLE_PRESETS, STYLE_PRESET_IDS } from "../../presets/stylePresets";
 
 const W = 128;
 const H = 128;

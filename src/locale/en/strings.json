@@ -47,7 +47,13 @@
       "GREYSCALE": "Greyscale",
       "PISTON-CLEARABLE": "Piston clearable",
       "SAVE-ERROR-EMPTY-NAME": "The preset name cannot be empty.",
-      "SAVE-CONFIRM-OVERWRITE": "A preset with this name already exists. Overwrite it?"
+      "SAVE-CONFIRM-OVERWRITE": "A preset with this name already exists. Overwrite it?",
+      "EXPORT-JSON": "Export presets",
+      "EXPORT-JSON-TT": "Save all presets (palettes, styles, cleanup) as a JSON file",
+      "IMPORT-JSON": "Import presets",
+      "IMPORT-JSON-TT": "Load presets from a JSON file",
+      "IMPORT-ERROR-EMPTY": "The file has no presets.",
+      "IMPORT-ERROR-PARTIAL": "Some presets in the file were broken and were skipped."
     },
     "UNSUPPORTED-PAST": "Unsupported past",
     "PALETTE": {

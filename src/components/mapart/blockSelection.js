@@ -7,6 +7,8 @@ import BlockImage from "./blockImage";
 import MapModes from "./json/mapModes.json";
 import SupportedVersions from "./json/supportedVersions.json";
 
+import { presetName } from "../../presets/presetFormat";
+
 import "./blockSelection.css";
 
 class BlockSelection extends Component {
@@ -570,6 +572,8 @@ class BlockSelection extends Component {
       onSavePreset,
       onSharePreset,
       onGetPDNPaletteClicked,
+      onExportPresets,
+      onImportPresets,
     } = this.props;
     const availableColourSets = this.getAvailableColourSets();
     const selectedSummary = this.getSelectedSummary(availableColourSets);
@@ -583,7 +587,7 @@ class BlockSelection extends Component {
           <option value="None">{getLocaleString("BLOCK-SELECTION/PRESETS/NONE")}</option>
           {presets.map((preset) => (
             <option value={preset.name} key={preset.name}>
-              {"localeKey" in preset ? getLocaleString(preset.localeKey) : preset.name}
+              {presetName(preset, getLocaleString)}
             </option>
           ))}
         </select>
@@ -602,6 +606,24 @@ class BlockSelection extends Component {
           <button type="button" onClick={onGetPDNPaletteClicked}>
             {getLocaleString("BLOCK-SELECTION/PRESETS/DOWNLOAD")}
           </button>
+        </Tooltip>
+        <Tooltip tooltipText={getLocaleString("BLOCK-SELECTION/PRESETS/EXPORT-JSON-TT")}>
+          <button type="button" onClick={onExportPresets}>
+            {getLocaleString("BLOCK-SELECTION/PRESETS/EXPORT-JSON")}
+          </button>
+        </Tooltip>
+        <Tooltip tooltipText={getLocaleString("BLOCK-SELECTION/PRESETS/IMPORT-JSON-TT")}>
+          <label className="blockSelectionImportLabel">
+            {getLocaleString("BLOCK-SELECTION/PRESETS/IMPORT-JSON")}
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => {
+                onImportPresets(event.target.files && event.target.files[0]);
+                event.target.value = "";
+              }}
+            />
+          </label>
         </Tooltip>
       </div>
     );
