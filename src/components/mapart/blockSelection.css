@@ -66,6 +66,30 @@
   max-width: 220px;
 }
 
+/* Кнопка загрузки файла сделана меткой: нажатие на неё открывает выбор
+   файла. Видом она не отличается от остальных кнопок. */
+.blockSelectionImportLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--border-3);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-2);
+  color: var(--text-1);
+  font-family: Lato, Open Sans, Arial, sans-serif;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.blockSelectionImportLabel:hover {
+  background-color: var(--surface-3);
+}
+
+.blockSelectionImportLabel input {
+  display: none;
+}
+
 .blockSelectionSummary {
   display: flex;
   flex-direction: row;

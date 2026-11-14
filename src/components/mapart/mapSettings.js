@@ -4,6 +4,9 @@ import OptionField from "./optionField";
 
 import { OPTION_GROUP_TITLES, OPTION_TABS, optionsForGroup } from "./optionSchema";
 
+import { CLEANUP_PRESETS } from "../../presets/cleanupPresets";
+import { presetName } from "../../presets/presetFormat";
+
 import "./mapSettings.css";
 
 class MapSettings extends Component {
@@ -68,13 +71,13 @@ class MapSettings extends Component {
         {group === "cleanup" ? (
           <React.Fragment>
             <div className="settingsCleanupPresets">
-              {["clean", "soft", "detail", "off"].map((preset) => (
+              {CLEANUP_PRESETS.map((preset) => (
                 <button
-                  key={preset}
+                  key={preset.id}
                   type="button"
-                  onClick={() => context.onApplyCleanupPreset(preset)}
+                  onClick={() => context.onApplyCleanupPreset(preset.id)}
                 >
-                  {getLocaleString(`STUDIO/CLEANUP-${preset.toUpperCase()}`)}
+                  {presetName(preset, getLocaleString)}
                 </button>
               ))}
             </div>

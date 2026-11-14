@@ -7,7 +7,7 @@ import MapPreview from "./mapPreview";
 import MapSettings from "./mapSettings";
 import Materials from "./materials";
 import StudioPanel from "./studioPanel";
-import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "./stylePresets";
+import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "../../presets/stylePresets";
 import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
 import { estimateMapSize, estimateRenderSeconds, getMaxMapSize, isBigMap } from "./canvasLimits";
 import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
@@ -18,7 +18,9 @@ import ViewOnline3D from "./viewOnline3D/viewOnline3D";
 import BackgroundColourModes from "./json/backgroundColourModes.json";
 import ColourMethods from "./json/colourMethods.json";
 import CropModes from "./json/cropModes.json";
-import DefaultPresets from "./json/defaultPresets.json";
+import DefaultPresets from "../../presets/palettePresets.json";
+import { CLEANUP_PRESETS, getCleanupPreset } from "../../presets/cleanupPresets";
+import { makePreset, PRESET_KIND, presetsFromJson, presetsToJson, toPalettePreset } from "../../presets/presetFormat";
 import DitherMethods from "./json/ditherMethods.json";
 import MapModes from "./json/mapModes.json";
 import SupportedVersions from "./json/supportedVersions.json";
@@ -130,8 +132,9 @@ class MapartController extends Component {
     let cookiesPresets_updated = [];
     for (const cookiesPreset_loaded of cookiesPresets_loaded) {
       let cookiesPreset_updated = undefined;
-      if ("localeKey" in cookiesPreset_loaded) {
-        cookiesPreset_updated = DefaultPresets.find((defaultPreset) => defaultPreset.localeKey === cookiesPreset_loaded.localeKey);
+      /* Встроенный пресет узнаём по ключу перевода, потом по имени. */
+      if (cookiesPreset_loaded.nameKey) {
+        cookiesPreset_updated = DefaultPresets.find((defaultPreset) => defaultPreset.nameKey === cookiesPreset_loaded.nameKey);
       }
       if (cookiesPreset_updated === undefined) {
         cookiesPreset_updated = DefaultPresets.find((defaultPreset) => defaultPreset.name === cookiesPreset_loaded.name);
@@ -170,7 +173,7 @@ class MapartController extends Component {
     const defaultPalette = cookiesPresets_updated.find((preset) => preset.name === "Моя палитра");
     if (defaultPalette) {
       this.state.selectedPresetName = "Моя палитра";
-      for (const [colourSetId, blockId] of defaultPalette.blocks) {
+      for (const [colourSetId, blockId] of defaultPalette.settings.blocks) {
         const block = this.state.coloursJSON[colourSetId]?.blocks[blockId];
         if (block && block.validVersions && this.state.optionValue_version.MCVersion in block.validVersions) {
           this.state.selectedBlocks[colourSetId] = blockId;
@@ -237,7 +240,9 @@ class MapartController extends Component {
     }
     try {
       const parsed = serialized ? JSON.parse(serialized) : null;
-      return Array.isArray(parsed) ? parsed : DefaultPresets;
+      if (!Array.isArray(parsed)) return DefaultPresets;
+      /* Старый формат: { name, blocks, localeKey? }. Переводим в общий. */
+      return parsed.map(toPalettePreset);
     } catch (error) {
       console.warn("Could not parse saved presets", error);
       return DefaultPresets;
@@ -398,16 +403,17 @@ class MapartController extends Component {
     const state = this.state;
     /* Режим выбора пары цветов влияет на картинку только там, где включён
        улучшенный дизеринг по паттерну. */
+    const settings = preset.settings;
     const pairModeMatches =
-      preset.improvedPattern !== true ||
-      (preset.patternPairMode ?? "nearest") === (state.optionValue_patternPairMode ?? "nearest");
+      settings.improvedPattern !== true ||
+      (settings.patternPairMode ?? "nearest") === (state.optionValue_patternPairMode ?? "nearest");
     return (
-      state.optionValue_dithering === preset.dithering &&
-      state.optionValue_betterColour === preset.colourMethod &&
-      state.optionValue_dithering_propagation_red === preset.propagation[0] &&
-      state.optionValue_dithering_propagation_green === preset.propagation[1] &&
-      state.optionValue_dithering_propagation_blue === preset.propagation[2] &&
-      (preset.improvedPattern === true) === (state.optionValue_improvedPatternDithering === true) &&
+      state.optionValue_dithering === settings.dithering &&
+      state.optionValue_betterColour === settings.colourMethod &&
+      state.optionValue_dithering_propagation_red === settings.propagation[0] &&
+      state.optionValue_dithering_propagation_green === settings.propagation[1] &&
+      state.optionValue_dithering_propagation_blue === settings.propagation[2] &&
+      (settings.improvedPattern === true) === (state.optionValue_improvedPatternDithering === true) &&
       pairModeMatches
     );
   };
@@ -678,20 +684,21 @@ class MapartController extends Component {
 
   applyStylePreset = (styleId) => {
     const style = getStylePreset(styleId);
+    const settings = style.settings;
     this.setState({
       stylePreset: style.id,
       optionValue_style: style.id,
-      optionValue_dithering: style.dithering,
-      optionValue_betterColour: style.colourMethod,
-      optionValue_dithering_propagation_red: style.propagation[0],
-      optionValue_dithering_propagation_green: style.propagation[1],
-      optionValue_dithering_propagation_blue: style.propagation[2],
-      optionValue_improvedPatternDithering: style.improvedPattern === true,
-      optionValue_patternPairMode: style.patternPairMode || "nearest",
+      optionValue_dithering: settings.dithering,
+      optionValue_betterColour: settings.colourMethod,
+      optionValue_dithering_propagation_red: settings.propagation[0],
+      optionValue_dithering_propagation_green: settings.propagation[1],
+      optionValue_dithering_propagation_blue: settings.propagation[2],
+      optionValue_improvedPatternDithering: settings.improvedPattern === true,
+      optionValue_patternPairMode: settings.patternPairMode || "nearest",
       /* Сколько тонов палитры разрешено — числами, а не названием стиля:
          новый стиль не требует правок воркера. */
-      optionValue_paletteStrategy: style.paletteStrategy || "all",
-      optionValue_maxTones: style.maxTones || 0,
+      optionValue_paletteStrategy: settings.paletteStrategy || "all",
+      optionValue_maxTones: settings.maxTones || 0,
       /* Сила дизеринга и способ масштабирования — отдельные настройки
          пользователя. Раньше пресет стиля молча их сбрасывал. */
     });
@@ -1036,41 +1043,9 @@ class MapartController extends Component {
     this.setState({ optionValue_cleanup_adaptiveDither: !this.state.optionValue_cleanup_adaptiveDither });
   };
 
-  applyCleanupPreset = (preset) => {
-    const presets = {
-      off: { optionValue_cleanup_enabled: false },
-      clean: {
-        optionValue_cleanup_enabled: true,
-        optionValue_cleanup_denoise: 55,
-        optionValue_cleanup_denoiseMethod: "median",
-        optionValue_cleanup_edges: 55,
-        optionValue_cleanup_despeckle: 2,
-        optionValue_cleanup_paletteIslands: true,
-        optionValue_cleanup_colours: 32,
-        optionValue_cleanup_adaptiveDither: true,
-      },
-      soft: {
-        optionValue_cleanup_enabled: true,
-        optionValue_cleanup_denoise: 30,
-        optionValue_cleanup_denoiseMethod: "bilateral",
-        optionValue_cleanup_edges: 75,
-        optionValue_cleanup_despeckle: 1,
-        optionValue_cleanup_paletteIslands: true,
-        optionValue_cleanup_colours: 48,
-        optionValue_cleanup_adaptiveDither: true,
-      },
-      detail: {
-        optionValue_cleanup_enabled: true,
-        optionValue_cleanup_denoise: 10,
-        optionValue_cleanup_denoiseMethod: "guided",
-        optionValue_cleanup_edges: 90,
-        optionValue_cleanup_despeckle: 0,
-        optionValue_cleanup_paletteIslands: true,
-        optionValue_cleanup_colours: 0,
-        optionValue_cleanup_adaptiveDither: true,
-      },
-    };
-    if (presets[preset]) this.setState(presets[preset]);
+  applyCleanupPreset = (presetId) => {
+    const preset = getCleanupPreset(presetId);
+    if (preset) this.setState(preset.settings);
   };
 
   onOptionChange_WhereSupportBlocks = (e) => {
@@ -1144,6 +1119,49 @@ class MapartController extends Component {
     document.body.removeChild(downloadElt);
   }
 
+  /* Все пресеты — палитры, стили и очистка — одним файлом. Формат общий
+     для всех трёх видов, поэтому файл можно и раздать, и загрузить
+     обратно. */
+  handleExportPresetsClicked = () => {
+    const { presets } = this.state;
+    const all = [...presets, ...STYLE_PRESETS, ...CLEANUP_PRESETS];
+    const blob = new Blob([presetsToJson(all)], { type: "application/json" });
+    this.downloadBlobFile(blob, "mapartcraft-presets.json");
+  };
+
+  /* Загрузка файла с пресетами. Чужой или битый файл не должен ронять
+     приложение: плохие записи пропускаем, хорошие добавляем.
+
+     В список палитр попадают только пресеты палитр: стили и очистка
+     встроены в приложение и пользователем не меняются. */
+  handleImportPresets = (file) => {
+    const { getLocaleString } = this.props;
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const { presets: imported, errors } = presetsFromJson(String(reader.result));
+      const palettePresets = imported.filter((preset) => preset.kind === PRESET_KIND.PALETTE);
+      if (palettePresets.length === 0) {
+        window.alert(getLocaleString("BLOCK-SELECTION/PRESETS/IMPORT-ERROR-EMPTY"));
+        return;
+      }
+      const { presets } = this.state;
+      /* Пресет с тем же именем заменяется, остальные остаются. */
+      const names = new Set(palettePresets.map((preset) => preset.name));
+      const others = presets.filter((preset) => !names.has(preset.name));
+      const merged = [...others, ...palettePresets];
+      this.setState({ presets: merged });
+      this.persistPresets(merged);
+      if (errors.length > 0) {
+        window.alert(getLocaleString("BLOCK-SELECTION/PRESETS/IMPORT-ERROR-PARTIAL"));
+      }
+    };
+    reader.onerror = () => {
+      window.alert(getLocaleString("BLOCK-SELECTION/PRESETS/IMPORT-ERROR-EMPTY"));
+    };
+    reader.readAsText(file);
+  };
+
   handleGetPDNPaletteClicked = () => {
     const { getLocaleString } = this.props;
     const { coloursJSON, selectedBlocks, optionValue_modeNBTOrMapdat, optionValue_staircasing } = this.state;
@@ -1210,7 +1228,7 @@ class MapartController extends Component {
     } else {
       const selectedPreset = presets.find((preset) => preset.name === presetName);
       if (selectedPreset !== undefined) {
-        this.handleChangeColourSetBlocks(selectedPreset.blocks);
+        this.handleChangeColourSetBlocks(selectedPreset.settings.blocks);
       }
     }
   };
@@ -1259,11 +1277,18 @@ class MapartController extends Component {
     }
 
     const otherPresets = presets.filter((preset) => preset.name !== presetToSave_name);
-    let newPreset = { name: presetToSave_name, blocks: [] };
+    const blocks = [];
     Object.keys(selectedBlocks).forEach((key) => {
       if (selectedBlocks[key] !== "-1" && coloursJSON[key].blocks[selectedBlocks[key]].presetIndex !== "CUSTOM") {
-        newPreset.blocks.push([parseInt(key), parseInt(coloursJSON[key].blocks[selectedBlocks[key]].presetIndex)]);
+        blocks.push([parseInt(key), parseInt(coloursJSON[key].blocks[selectedBlocks[key]].presetIndex)]);
       }
+    });
+    /* Тот же общий формат, что и у встроенных пресетов. */
+    const newPreset = makePreset({
+      kind: PRESET_KIND.PALETTE,
+      id: presetToSave_name,
+      name: presetToSave_name,
+      settings: { blocks },
     });
     const presets_new = [...otherPresets, newPreset];
     this.setState({
@@ -1615,6 +1640,8 @@ class MapartController extends Component {
           onSavePreset={this.handleSavePreset}
           onSharePreset={this.handleSharePreset}
           onGetPDNPaletteClicked={this.handleGetPDNPaletteClicked}
+          onExportPresets={this.handleExportPresetsClicked}
+          onImportPresets={this.handleImportPresets}
           handleAddCustomBlock={this.handleAddCustomBlock}
           handleDeleteCustomBlock={this.handleDeleteCustomBlock}
         />

@@ -47,7 +47,13 @@
       "GREYSCALE": "Чёрно-белые",
       "PISTON-CLEARABLE": null,
       "SAVE-ERROR-EMPTY-NAME": "Имя пресета не может быть пустым.",
-      "SAVE-CONFIRM-OVERWRITE": "Пресет с таким именем уже существует. Перезаписать его?"
+      "SAVE-CONFIRM-OVERWRITE": "Пресет с таким именем уже существует. Перезаписать его?",
+      "EXPORT-JSON": "Выгрузить пресеты",
+      "EXPORT-JSON-TT": "Сохранить все пресеты (палитры, стили, очистку) в файл JSON",
+      "IMPORT-JSON": "Загрузить пресеты",
+      "IMPORT-JSON-TT": "Загрузить пресеты из файла JSON",
+      "IMPORT-ERROR-EMPTY": "В файле нет пресетов.",
+      "IMPORT-ERROR-PARTIAL": "Часть пресетов в файле была битая и пропущена."
     },
     "UNSUPPORTED-PAST": "Не позднее версии",
     "PALETTE": {
