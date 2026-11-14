@@ -10,6 +10,7 @@ import StudioPanel from "./studioPanel";
 import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "../../presets/stylePresets";
 import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
 import { estimateMapSize, estimateRenderSeconds, getMaxMapSize, isBigMap } from "./canvasLimits";
+import { colourSetsPresentInImage, findDominantColours, suggestBlocksForColours } from "./autoPalette";
 import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
 import coloursJSON from "./json/coloursJSON.json";
 import ViewOnline2D from "./viewOnline2D/viewOnline2D";
@@ -27,7 +28,6 @@ import SupportedVersions from "./json/supportedVersions.json";
 import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 
 import IMG_Upload from "../../images/upload.png";
-
 import "./mapartController.css";
 
 /* Размер карты ограничен не приложением, а браузером: предел холста
@@ -37,6 +37,10 @@ import "./mapartController.css";
    Теперь верхнюю границу задаёт getMaxMapSize(), а слишком большой
    размер подтверждается пользователем с оценкой памяти и времени. */
 const MAP_SIZE_MIN = 1;
+
+/* Сколько цветов ищется в картинке для автопалитры и для подсветки
+   блоков в списке палитры. */
+const IMAGE_ANALYSIS_CLUSTERS = 12;
 
 const clampMapSize = (value) => {
   const number = parseInt(value, 10);
@@ -100,10 +104,17 @@ class MapartController extends Component {
     optionValue_style: "clean",
     optionValue_paletteStrategy: "all",
     optionValue_maxTones: 0,
+    optionValue_dithering_rotation: 0,
     stylePreset: "clean",
     uploadedImage: null,
     uploadedImage_baseFilename: null,
     uploadedImage_isPlaceholder: true,
+    /* Доминирующие цвета загруженной картинки и наборы блоков, которые в
+       ней встречаются. Считаются один раз на картинку. */
+    imageColours: [],
+    imageColourSetIds: new Set(),
+    /* Что сделала последняя автопалитра: сколько блоков подобрано. */
+    autoPaletteResult: null,
     pixelEdits: {},
     detectedPixelScale: 1,
     sessionStatus: "",
@@ -500,6 +511,14 @@ class MapartController extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
+    /* Новая картинка или новые блоки — анализ надо пересчитать: он
+       нужен для автопалитры и для подсветки блоков в списке. */
+    if (prevState.uploadedImage !== this.state.uploadedImage) {
+      this.updateImageAnalysis();
+    } else if (prevState.coloursJSON !== this.state.coloursJSON && this.state.imageColours.length > 0) {
+      this.setState({ imageColourSetIds: colourSetsPresentInImage(this.state.imageColours, this.state.coloursJSON) });
+    }
+
     if (!this.settingsReady) return;
     const settingsSnapshot = this.getSettingsSnapshot();
     const serialized = JSON.stringify(settingsSnapshot);
@@ -787,8 +806,65 @@ class MapartController extends Component {
     });
   };
 
-  handleToggleColourTone = (colourSetId, tone) => {
-    let disabledTones = { ...this.state.disabledTones };
+  /* ------------------------------------------------------------------------
+     Этап 3.6 / 3.7 — анализ картинки и автопалитра.
+     ------------------------------------------------------------------------ */
+
+  /* Уменьшенная копия картинки для анализа: полная картинка не нужна,
+     а 96x96 — это меньше десяти тысяч точек, и k-means отрабатывает
+     мгновенно. */
+  sampleImageData = (image) => {
+    const size = 96;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d");
+    context.imageSmoothingEnabled = true;
+    context.drawImage(image, 0, 0, size, size);
+    return context.getImageData(0, 0, size, size);
+  };
+
+  /* Доминирующие цвета картинки и наборы блоков, которые в ней есть. */
+  updateImageAnalysis = () => {
+    const { uploadedImage, coloursJSON } = this.state;
+    if (!uploadedImage || !uploadedImage.complete || !uploadedImage.naturalWidth) {
+      if (this.state.imageColours.length > 0) {
+        this.setState({ imageColours: [], imageColourSetIds: new Set() });
+      }
+      return;
+    }
+    const clusters = findDominantColours(this.sampleImageData(uploadedImage), IMAGE_ANALYSIS_CLUSTERS);
+    const colourSetIds = colourSetsPresentInImage(clusters, coloursJSON);
+    this.setState({ imageColours: clusters, imageColourSetIds: colourSetIds });
+  };
+
+  /* Автопалитра: блоки подбираются под цвета картинки. */
+  handleAutoPalette = (count) => {
+    const { coloursJSON, optionValue_version, imageColours } = this.state;
+    if (!imageColours || imageColours.length === 0) {
+      this.setState({ autoPaletteResult: { applied: 0, requested: count, empty: true } });
+      return;
+    }
+    const wanted = Math.max(1, Math.min(32, Math.round(count) || 1));
+    const suggestions = suggestBlocksForColours(
+      imageColours.slice(0, wanted),
+      coloursJSON,
+      optionValue_version.MCVersion
+    );
+    const selectedBlocks = {};
+    for (const colourSetId of Object.keys(coloursJSON)) {
+      selectedBlocks[colourSetId] = "-1";
+    }
+    let applied = 0;
+    for (const suggestion of suggestions) {
+      if (!suggestion.blockId) continue;
+      selectedBlocks[suggestion.colourSetId] = suggestion.blockId;
+      applied += 1;
+    }
+    this.setState({ selectedBlocks, autoPaletteResult: { applied, requested: wanted, empty: false } });
+  };
+
+  handleToggleColourTone = (colourSetId, tone) => {    let disabledTones = { ...this.state.disabledTones };
 
     const set = new Set(disabledTones[colourSetId] || []);
     disabledTones[colourSetId] = set;
@@ -1001,6 +1077,12 @@ class MapartController extends Component {
 
   onOptionChange_maxTones = (value) => {
     this.setState({ optionValue_maxTones: value });
+  };
+
+  /* Поворот узора дизеринга. */
+  onOptionChange_dithering_rotation = (e) => {
+    const value = parseInt(e.target.value, 10);
+    this.setState({ optionValue_dithering_rotation: isNaN(value) ? 0 : value });
   };
 
   onOptionChange_cleanup_enabled = () => {
@@ -1556,6 +1638,7 @@ class MapartController extends Component {
       optionValue_patternPairMode,
       optionValue_paletteStrategy,
       optionValue_maxTones,
+      optionValue_dithering_rotation,
       optionValue_cleanup_enabled,
       optionValue_cleanup_denoise,
       optionValue_cleanup_denoiseMethod,
@@ -1617,6 +1700,10 @@ class MapartController extends Component {
           optionValue_dithering_propagation_green={optionValue_dithering_propagation_green}
           optionValue_dithering_propagation_blue={optionValue_dithering_propagation_blue}
           onOptionChange_dithering_strength={this.onOptionChange_dithering_strength}
+          coloursJSON={coloursJSON}
+          selectedBlocks={selectedBlocks}
+          disabledTones={disabledTones}
+          uploadedImage={this.state.uploadedImage}
           detectedPixelScale={detectedPixelScale}
           sessionStatus={this.state.sessionStatus}
           onResetSession={this.onResetSession}
@@ -1644,6 +1731,10 @@ class MapartController extends Component {
           onImportPresets={this.handleImportPresets}
           handleAddCustomBlock={this.handleAddCustomBlock}
           handleDeleteCustomBlock={this.handleDeleteCustomBlock}
+          imageColourSetIds={this.state.imageColourSetIds}
+          imageColours={this.state.imageColours}
+          autoPaletteResult={this.state.autoPaletteResult}
+          onAutoPalette={this.handleAutoPalette}
         />
         {optionValue_modeNBTOrMapdat === MapModes.SCHEMATIC_NBT.uniqueId ? (
           <Materials
@@ -1685,6 +1776,7 @@ class MapartController extends Component {
             optionValue_patternPairMode={optionValue_patternPairMode}
             optionValue_paletteStrategy={optionValue_paletteStrategy}
             optionValue_maxTones={optionValue_maxTones}
+            optionValue_dithering_rotation={optionValue_dithering_rotation}
             optionValue_cleanup_enabled={optionValue_cleanup_enabled}
             optionValue_cleanup_denoise={optionValue_cleanup_denoise}
             optionValue_cleanup_denoiseMethod={optionValue_cleanup_denoiseMethod}

@@ -64,7 +64,20 @@
       "SEARCH": "Search block or colour...",
       "DONE": "Done",
       "EMPTY": "No blocks selected. Open the palette to choose blocks.",
-      "NO-RESULTS": "No blocks or colours match your search."
+      "NO-RESULTS": "No blocks or colours match your search.",
+      "SORT": "Sort",
+      "SORT-NAME": "By name",
+      "SORT-BRIGHTNESS": "By brightness",
+      "AUTO": "Auto palette",
+      "AUTO-TT": "Picks the blocks that match the colours of the uploaded picture",
+      "AUTO-COUNT": "Colours",
+      "AUTO-RESULT": "Palette rebuilt: {count} blocks",
+      "AUTO-NO-IMAGE": "Load a picture first",
+      "DIAGRAM": "Palette diagram: brightness and colourfulness of the blocks",
+      "DIAGRAM-LUMA": "brightness →",
+      "DIAGRAM-CHROMA": "colourfulness ↑",
+      "PRESENT-TT": "This colour is present in the uploaded picture",
+      "REPLACE": "Click to replace the block"
     },
     "ADD-CUSTOM": {
       "TITLE": "Add Custom",
@@ -194,7 +207,11 @@
       "ORDERED-3X3": "Ordered (3x3)",
       "CLUSTER-DOT-4X4": "Cluster Dot (4x4)",
       "HALFTONE-8X8": "Halftone (8x8)",
-      "VOID-AND-CLUSTER-14X14": "Void-and-cluster (14x14)"
+      "VOID-AND-CLUSTER-14X14": "Void-and-cluster (14x14)",
+      "ROTATION": "Pattern rotation",
+      "ROTATION-TT": "Rotates the dithering pattern. The pattern is sampled with interpolation, so a rotated pattern is softer than a straight one.",
+      "BLUE-NOISE-PALETTE": "Blue noise (palette)",
+      "LUMA-CHROMA": "Luma and chroma"
     },
     "PREPROCESSING": {
       "TITLE": "Image preprocessing",

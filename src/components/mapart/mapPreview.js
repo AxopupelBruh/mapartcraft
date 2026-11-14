@@ -127,6 +127,7 @@ const DISPLAY_PROPS = [
   "optionValue_style",
   "optionValue_paletteStrategy",
   "optionValue_maxTones",
+  "optionValue_dithering_rotation",
   "uploadedImage",
   "pixelEdits",
 ];
@@ -1414,6 +1415,7 @@ class MapPreview extends Component {
       optionValue_style,
       optionValue_paletteStrategy,
       optionValue_maxTones,
+      optionValue_dithering_rotation,
       pixelEdits,
       onMapPreviewWorker_begin,
     } = this.props;
@@ -1501,6 +1503,7 @@ class MapPreview extends Component {
           optionValue_style: optionValue_style,
           optionValue_paletteStrategy: optionValue_paletteStrategy,
           optionValue_maxTones: optionValue_maxTones,
+          optionValue_dithering_rotation: optionValue_dithering_rotation,
           pixelEdits: pixelEdits || {},
         },
         requestId: requestId,

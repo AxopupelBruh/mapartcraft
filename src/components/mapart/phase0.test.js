@@ -253,7 +253,8 @@ test("no dithering produces a flat result", async () => {
 // ---------------------------------------------------------- C6: method dispatch
 
 test("every dithering method declares an algorithm and renders", async () => {
-  const algorithms = new Set(["none", "errorDiffusion", "ordered"]);
+  /* blueNoise и orderedLuma added in stage 3: dithering by brightness. */
+  const algorithms = new Set(["none", "errorDiffusion", "ordered", "blueNoise", "orderedLuma"]);
   for (const method of Object.values(DitherMethods)) {
     expect(algorithms.has(method.algorithm)).toBe(true);
   }
