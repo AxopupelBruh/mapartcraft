@@ -42,6 +42,10 @@ var optionValue_cleanup_adaptiveDither = true;
 // changes here.
 var optionValue_paletteStrategy = "all";
 var optionValue_maxTones = 0;
+// Rotation of the dithering pattern in degrees. 0 = the pattern is used as
+// it is. The pattern is sampled with interpolation, so a rotated pattern is
+// not a permutation of 1..N any more.
+var optionValue_dithering_rotation = 0;
 var pixelEdits;
 var hasPixelEdits = false;
 var hasMaskEdits = false;
@@ -60,6 +64,24 @@ var flatToneList = [];
 // on the tones that can be picked, so changing a dithering slider must not
 // throw them away, but changing the palette must.
 var flatToneSignature = null;
+// The brightness ladder of the palette (stage 3): the tones sorted by their
+// lightness. The blue noise and the luma dithering pick a tone by
+// brightness and only then look for the right hue among the tones of the
+// same lightness.
+var lumaLadder = [];
+/* Наборы блоков с их оттенком: chroma-safe выбор берёт цвет из
+   ближайшего по оттенку набора, а яркость — из лестницы. */
+var hueSets = [];
+/* Кэш выбора набора по цвету пикселя: у картинки обычно намного меньше
+   различных цветов, чем пикселей. */
+var hueCache = new Map();
+/* Корзины наборов по оттенку: пиксель смотрит только в свою корзину. */
+var hueBuckets = new Map();
+var HUE_BUCKET_SIZE = 8;
+// The blue noise threshold field. It does not depend on the palette, so it
+// is calculated once per worker.
+var blueNoiseFieldCache = null;
+var blueNoiseFieldSize = 0;
 var sourceImageData = null;
 var cleanupProtectionMask = null;
 
@@ -772,6 +794,394 @@ function buildFlatToneList() {
     }
   }
   flatToneList = tones;
+}
+
+/* --------------------------------------------------------------------------
+   Этап 3 — дизеринг по яркости: «синий шум» и chroma-safe.
+
+   Обычный упорядоченный дизеринг смешивает два ближайших по цвету тона.
+   Для map art это плохо: два близких по цвету тона могут сильно отличаться
+   по яркости, и полутона превращаются в цветной шум.
+
+   Здесь выбирается иначе:
+     1. по яркости пикселя находится его место в «лестнице» яркости палитры;
+     2. порог (матрица Байера или поле синего шума) решает, взять ли более
+        светлый тон или более тёмный — доля светлого тона равна доле пути
+        между двумя ступенями;
+     3. из тонов той же яркости выбирается тот, чей оттенок ближе к
+        исходному пикселю.
+   -------------------------------------------------------------------------- */
+
+/* Лестница яркости: тоны палитры, отсортированные по светлоте (L*). */
+function buildLumaLadder() {
+  const entries = [];
+  for (let index = 0; index < flatToneList.length; index++) {
+    const entry = flatToneList[index];
+    /* Набор прозрачности (Air) хранит фиктивные значения -100. Это не
+       цвет: его яркость посчиталась бы как отрицательная, и тёмный пиксель
+       выбрал бы «воздух» — то есть чёрный пиксель, которого нет в палитре. */
+    if (entry.colourSetId === alphaColorIdx.toString()) continue;
+    entries.push({
+      entryIndex: index,
+      colourSetId: entry.colourSetId,
+      tone: entry.tone,
+      rgb: entry.rgb,
+      luma: rgb2lab(entry.rgb)[0],
+    });
+  }
+  entries.sort((first, second) => first.luma - second.luma);
+  lumaLadder = entries;
+
+  /* Наборы блоков с их оттенком: chroma-safe выбор берёт цвет из
+     ближайшего по оттенку набора, а яркость — из лестницы. */
+  hueSets = [];
+  for (const colourSet of colourSetsToUse) {
+    if (colourSet.colourSetId === alphaColorIdx.toString()) continue;
+    const tones = [];
+    for (const tone of Object.keys(colourSet.tonesRGB)) {
+      const rgb = colourSet.tonesRGB[tone];
+      if (!rgb || rgb.some((channel) => !Number.isFinite(channel) || channel < 0 || channel > 255)) continue;
+      tones.push({ tone, rgb, luma: rgb2lab(rgb)[0] });
+    }
+    if (tones.length === 0) continue;
+    /* Оттенок набора задаёт его обычный тон: у «Magenta Concrete» и
+       «Magenta Wool» он один и тот же. */
+    const representative = tones.find((tone) => tone.tone === "normal") || tones[0];
+    const lab = rgb2lab(representative.rgb);
+    hueSets.push({ colourSetId: colourSet.colourSetId, lab, tones });
+  }
+  hueCache.clear();
+  buildHueBuckets();
+}
+
+/* Ключ корзины по оттенку (a, b) в Lab. */
+function hueBucketKey(a, b) {
+  const bucketA = Math.round(a / HUE_BUCKET_SIZE) + 64;
+  const bucketB = Math.round(b / HUE_BUCKET_SIZE) + 64;
+  return bucketA * 256 + bucketB;
+}
+
+/* Каждый набор попадает в девять корзин: свою и соседние — иначе
+   пиксель у края корзины не нашёл бы «свой» оттенок. */
+function buildHueBuckets() {
+  hueBuckets.clear();
+  for (let index = 0; index < hueSets.length; index++) {
+    const lab = hueSets[index].lab;
+    const bucketA = Math.round(lab[1] / HUE_BUCKET_SIZE);
+    const bucketB = Math.round(lab[2] / HUE_BUCKET_SIZE);
+    for (let da = -1; da <= 1; da++) {
+      for (let db = -1; db <= 1; db++) {
+        const key = (bucketA + da + 64) * 256 + (bucketB + db + 64);
+        if (!hueBuckets.has(key)) hueBuckets.set(key, []);
+        hueBuckets.get(key).push(index);
+      }
+    }
+  }
+}
+
+/* Где в лестнице яркости находится пиксель: индекс ступени под яркостью и
+   доля пути до следующей ступени. */
+function locateLuma(luma) {
+  const ladder = lumaLadder;
+  if (ladder.length === 0) return { index: 0, fraction: 0 };
+  if (luma <= ladder[0].luma) return { index: 0, fraction: 0 };
+  const last = ladder.length - 1;
+  if (luma >= ladder[last].luma) return { index: last, fraction: 0 };
+  let low = 0;
+  let high = last;
+  while (high - low > 1) {
+    const middle = (low + high) >> 1;
+    if (ladder[middle].luma <= luma) low = middle;
+    else high = middle;
+  }
+  const below = ladder[low].luma;
+  const above = ladder[high].luma;
+  return { index: low, fraction: above > below ? (luma - below) / (above - below) : 0 };
+}
+
+/* Тон набора с яркостью, ближайшей к заданной. */
+function pickToneNearLuma(hueSet, targetLuma) {
+  let best = hueSet.tones[0];
+  let bestDistance = Math.abs(hueSet.tones[0].luma - targetLuma);
+  for (let index = 1; index < hueSet.tones.length; index++) {
+    const distance = Math.abs(hueSet.tones[index].luma - targetLuma);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = hueSet.tones[index];
+    }
+  }
+  return best;
+}
+
+/* Ближайший по оттенку набор блоков. Оттенок сравнивается в Lab без
+   учёта яркости: яркость решает дизеринг, а не выбор блока.
+
+   Палитра делится на «корзины» по оттенку: у картинки обычно десятки
+   тысяч различных цветов, а наборов блоков — около шестидесяти. Без
+   корзин каждый пиксель перебирал бы всю палитру, и на большой карте это
+   занимало бы секунды. */
+function findNearestHueSet(pixelRGB, targetLuma, ladderIndex) {
+  /* Ключ кэша — цвет пикселя И ступень яркости: один и тот же цвет
+     может требовать разных блоков на разных ступенях лестницы. */
+  const key = (((pixelRGB[0] << 16) + (pixelRGB[1] << 8) + pixelRGB[2]) * 4096 + ladderIndex);
+  const cached = hueCache.get(key);
+  if (cached) return cached;
+  const pixelLab = rgb2lab(pixelRGB);
+  const bucket = hueBucketKey(pixelLab[1], pixelLab[2]);
+  const candidates = hueBuckets.get(bucket);
+  const pool = candidates && candidates.length > 0 ? candidates : null;
+  let best = null;
+  let bestScore = Infinity;
+  const count = pool ? pool.length : hueSets.length;
+  for (let position = 0; position < count; position++) {
+    const hueSet = pool ? hueSets[pool[position]] : hueSets[position];
+    const da = pixelLab[1] - hueSet.lab[1];
+    const db = pixelLab[2] - hueSet.lab[2];
+    const chromaDistance = da * da + db * db;
+    /* Набор без тона нужной яркости хуже, чем набор с подходящим
+       оттенком: яркость важнее оттенка. */
+    const tone = pickToneNearLuma(hueSet, targetLuma);
+    const lumaDistance = tone.luma - targetLuma;
+    const score = chromaDistance + lumaDistance * lumaDistance;
+    if (score < bestScore) {
+      bestScore = score;
+      best = hueSet;
+    }
+  }
+  hueCache.set(key, best);
+  return best;
+}
+
+/* Выбор тона по яркости с порогом дизеринга.
+   threshold — порог из матрицы или поля синего шума, значение в (0, 1).
+   strength — сила дизеринга (1 = как в пресете). */
+function selectLumaDitheredTone(pixelRGB, threshold, strength) {
+  if (lumaLadder.length === 0 || hueSets.length === 0) return null;
+  const luma = rgb2lab(pixelRGB)[0];
+  const location = locateLuma(luma);
+  let ladderIndex = location.index;
+  if (strength > 0) {
+    /* Доля более светлого тона равна доле пути между ступенями; сила
+       дизеринга масштабирует её, как и в обычном упорядоченном дизеринге. */
+    if (threshold < location.fraction * strength && location.index + 1 < lumaLadder.length) {
+      ladderIndex = location.index + 1;
+    }
+  } else if (location.fraction >= 0.5 && location.index + 1 < lumaLadder.length) {
+    /* Без дизеринга берётся ближайшая по яркости ступень. */
+    ladderIndex = location.index + 1;
+  }
+  const targetLuma = lumaLadder[ladderIndex].luma;
+  /* Цвет берётся из ближайшего по оттенку блока, яркость — из лестницы:
+     дизеринг меняет только светлоту, а оттенок остаётся исходным. */
+  const hueSet = findNearestHueSet(pixelRGB, targetLuma, ladderIndex);
+  if (!hueSet) return null;
+  const tone = pickToneNearLuma(hueSet, targetLuma);
+  return { colourSetId: hueSet.colourSetId, tone: tone.tone };
+}
+
+/* --------------------------------------------------------------------------
+   Синий шум (void and cluster, Ulichney 1993).
+
+   Копия алгоритма из src/components/mapart/workers/blueNoise.js: файл
+   воркера не может импортировать модули — он собирается в функцию и
+   уходит в воркер строкой. Тест stage3.test.js сверяет копию с общим
+   модулем, чтобы они не разошлись.
+   -------------------------------------------------------------------------- */
+function voidAndClusterRanks(M, N, options) {
+  const settings = options || {};
+  const radius = settings.radius === undefined ? 2 : settings.radius;
+  const sigma = settings.sigma === undefined ? 1.5 : settings.sigma;
+  const MN = M * N;
+  const half = Math.floor(MN / 2);
+
+  const kernel = [];
+  for (let dy = -radius; dy <= radius; dy++) {
+    const row = [];
+    for (let dx = -radius; dx <= radius; dx++) {
+      row.push(Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma)));
+    }
+    kernel.push(row);
+  }
+
+  const wrap = (value, size) => ((value % size) + size) % size;
+
+  /* Отфильтрованное значение клетки — взвешенная сумма соседей.
+     Оно пересчитывается не для всех клеток, а только для затронутых: после
+     изменения одной клетки меняются значения её соседей, и больше
+     ничего. Без этого генерация 32x32 занимала бы сотни миллисекунд. */
+  const filtered = new Float64Array(MN);
+  const filteredValue = (binary, cx, cy) => {
+    let sum = 0;
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = wrap(cx + dx, M);
+        const y = wrap(cy + dy, N);
+        sum += binary[y][x] * kernel[dy + radius][dx + radius];
+      }
+    }
+    return sum;
+  };
+
+  const recomputeAll = () => {
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < M; x++) {
+        filtered[y * M + x] = filteredValue(binary, x, y);
+      }
+    }
+  };
+
+  /* Клетка изменилась на delta: поправляем значения её соседей. */
+  const updateNeighbourhood = (cx, cy, delta) => {
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = wrap(cx - dx, M);
+        const y = wrap(cy - dy, N);
+        filtered[y * M + x] += delta * kernel[dy + radius][dx + radius];
+      }
+    }
+  };
+
+  const binary = [];
+  for (let y = 0; y < N; y++) binary.push(new Array(M).fill(0));
+  const rank = [];
+  for (let y = 0; y < N; y++) rank.push(new Array(M).fill(-1));
+
+  // A "cluster" is a tight group of minority '1's, so the tightest cluster is
+  // the '1' with the MOST '1's in its neighbourhood (highest filtered value).
+  // A "void" is a large empty space, so the largest void is the '0' with the
+  // FEWEST '1's around it (lowest filtered value).
+  const largestVoid = () => {
+    let best = null;
+    let bestValue = Infinity;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < M; x++) {
+        if (binary[y][x]) continue;
+        const value = filtered[y * M + x];
+        if (value < bestValue - 1e-12) {
+          bestValue = value;
+          best = [x, y];
+        }
+      }
+    }
+    return best;
+  };
+
+  const tightestCluster = () => {
+    let best = null;
+    let bestValue = -Infinity;
+    for (let y = 0; y < N; y++) {
+      for (let x = 0; x < M; x++) {
+        if (!binary[y][x]) continue;
+        const value = filtered[y * M + x];
+        if (value > bestValue + 1e-12) {
+          bestValue = value;
+          best = [x, y];
+        }
+      }
+    }
+    return best;
+  };
+
+  // Initial Binary Pattern: grow to `half` dots by always filling the largest void.
+  binary[0][0] = 1;
+  recomputeAll();
+  let count = 1;
+  while (count < half) {
+    const voidCell = largestVoid();
+    if (!voidCell) break;
+    binary[voidCell[1]][voidCell[0]] = 1;
+    updateNeighbourhood(voidCell[0], voidCell[1], 1);
+    count += 1;
+  }
+
+  // Phase I: assign ranks half-1 .. 0 by removing the tightest cluster each step.
+  for (let r = half; r >= 1; r--) {
+    const cluster = tightestCluster();
+    if (!cluster) break;
+    rank[cluster[1]][cluster[0]] = r - 1;
+    binary[cluster[1]][cluster[0]] = 0;
+    updateNeighbourhood(cluster[0], cluster[1], -1);
+  }
+
+  // Phase II: rebuild the prototype to `half` dots. These are the same cells
+  // Phase I removed (they were tightest clusters, so they are now the largest
+  // voids); their ranks were already recorded above.
+  count = 0;
+  for (let y = 0; y < N; y++) for (let x = 0; x < M; x++) count += binary[y][x];
+  while (count < half) {
+    const voidCell = largestVoid();
+    if (!voidCell) break;
+    binary[voidCell[1]][voidCell[0]] = 1;
+    updateNeighbourhood(voidCell[0], voidCell[1], 1);
+    count += 1;
+  }
+
+  // Phase III: ranks half .. MN-1, adding a dot at the largest void each step.
+  for (let r = half; r < MN; r++) {
+    const voidCell = largestVoid();
+    if (!voidCell) break;
+    binary[voidCell[1]][voidCell[0]] = 1;
+    updateNeighbourhood(voidCell[0], voidCell[1], 1);
+    rank[voidCell[1]][voidCell[0]] = r;
+  }
+
+  return rank;
+}
+
+/* Поле порогов синего шума: значения распределены равномерно, но разложены
+   по плоскости в «синем» порядке — без регулярной сетки. */
+function buildBlueNoiseField(size) {
+  const ranks = voidAndClusterRanks(size, size);
+  const field = new Float32Array(size * size);
+  const total = size * size;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      field[y * size + x] = (ranks[y][x] + 0.5) / total;
+    }
+  }
+  return field;
+}
+
+function getBlueNoiseField(size) {
+  if (blueNoiseFieldCache && blueNoiseFieldSize === size) return blueNoiseFieldCache;
+  blueNoiseFieldSize = size;
+  blueNoiseFieldCache = buildBlueNoiseField(size);
+  return blueNoiseFieldCache;
+}
+
+/* --------------------------------------------------------------------------
+   Поворот узора дизеринга.
+
+   Матрица повторяется по всей карте, поэтому поворачивается не сама
+   матрица, а её периодическое продолжение: порог берётся из точки,
+   повёрнутой на угол относительно центра ячейки, со сглаживанием по
+   четырём соседям. */
+function rotatedPatternThreshold(matrix, x, y, cosAngle, sinAngle) {
+  const rows = matrix.length;
+  const cols = matrix[0].length;
+  const centreX = (cols - 1) / 2;
+  const centreY = (rows - 1) / 2;
+  const dx = (x % cols) - centreX;
+  const dy = (y % rows) - centreY;
+  /* Обратный поворот: ищем, какая точка исходного узтора попала в
+     повёрнутую ячейку. */
+  const sourceX = centreX + dx * cosAngle + dy * sinAngle;
+  const sourceY = centreY - dx * sinAngle + dy * cosAngle;
+
+  const x0 = Math.floor(sourceX);
+  const y0 = Math.floor(sourceY);
+  const tx = sourceX - x0;
+  const ty = sourceY - y0;
+  const wrap = (value, size) => ((value % size) + size) % size;
+
+  const topLeft = matrix[wrap(y0, rows)][wrap(x0, cols)];
+  const topRight = matrix[wrap(y0, rows)][wrap(x0 + 1, cols)];
+  const bottomLeft = matrix[wrap(y0 + 1, rows)][wrap(x0, cols)];
+  const bottomRight = matrix[wrap(y0 + 1, rows)][wrap(x0 + 1, cols)];
+
+  const top = topLeft + (topRight - topLeft) * tx;
+  const bottom = bottomLeft + (bottomRight - bottomLeft) * tx;
+  return top + (bottom - top) * ty;
 }
 
 // A fingerprint of the tones that can be picked. The colour caches are only
@@ -2072,6 +2482,15 @@ function getMapartImageDataAndMaterials() {
   if (chosenDitherAlgorithm !== "none") {
     ditherMatrix = chosenDitherMethod.ditherMatrix;
   }
+  if (chosenDitherAlgorithm === "orderedLuma") {
+    /* Узор для дизеринга по яркости — матрица Байера, названная в методе. */
+    const matrixName = chosenDitherMethod.lumaMatrix || "Bayer44";
+    ditherMatrix = DitherMethods[matrixName] ? DitherMethods[matrixName].ditherMatrix : null;
+  }
+  /* Поле синего шума не зависит от палитры и считается один раз на воркер,
+     но обращение к нему идёт на каждом пикселе — поэтому поле достаётся
+     здесь, а не в цикле. */
+  const blueNoiseField = chosenDitherAlgorithm === "blueNoise" ? getBlueNoiseField(chosenDitherMethod.blueNoiseSize || 32) : null;
   if (chosenDitherAlgorithm === "errorDiffusion") {
     divisor = chosenDitherMethod.ditherDivisor;
     ditherMatrix = ditherMatrix.map((row) => row.map((weight) => weight / divisor));
@@ -2082,6 +2501,12 @@ function getMapartImageDataAndMaterials() {
   const serpentineEdgeMask = isSerpentine ? buildSerpentineEdgeMask() : null;
   const ditherStrength = Math.max(0, optionValue_dithering_strength) / 100.0;
   const ditherStrengthMultiplier = ditherStrength;
+  /* Поворот узора: угол в радианах и его косинус/синус считаются один раз
+     на рендер. */
+  const rotationDegrees = optionValue_dithering_rotation || 0;
+  const rotationRadians = (rotationDegrees * Math.PI) / 180;
+  const rotationCos = Math.cos(rotationRadians);
+  const rotationSin = Math.sin(rotationRadians);
   // (pattern size + 1) * strength, the factor of the ordered dithering
   const ditherPatternLimit = (ditherMatrix ? ditherMatrix[0].length * ditherMatrix.length + 1 : 1) * ditherStrength;
   const ditheringPropagationRed = optionValue_dithering_propagation_red / 100.0;
@@ -2194,7 +2619,10 @@ function getMapartImageDataAndMaterials() {
           // The threshold matrix is indexed in raster order: the first index is
           // the row (y), the second the column (x). Indexing it the other way
           // round transposes the pattern and destroys the Bayer cross.
-          const ditherThreshold = ditherMatrix[multimap_y % ditherMatrix.length][multimap_x % ditherMatrix[0].length];
+          const ditherThreshold =
+            rotationDegrees === 0
+              ? ditherMatrix[multimap_y % ditherMatrix.length][multimap_x % ditherMatrix[0].length]
+              : rotatedPatternThreshold(ditherMatrix, multimap_x, multimap_y, rotationCos, rotationSin);
           if (optionValue_improvedPatternDithering) {
             closestColourSetIdAndTone = findBestPatternImproved(
               oldPixel,
@@ -2259,6 +2687,43 @@ function getMapartImageDataAndMaterials() {
           canvasImageData.data[indexR] = closestColour[0];
           canvasImageData.data[indexG] = closestColour[1];
           canvasImageData.data[indexB] = closestColour[2];
+      } else if (chosenDitherAlgorithm === "blueNoise" || chosenDitherAlgorithm === "orderedLuma") {
+          /* Дизеринг по яркости: тон выбирается по месту пикселя в лестнице
+             яркости палитры, а порог решает, брать ли более светлый тон.
+             Оттенок потом подбирается среди тонов той же яркости — поэтому
+             цветного шума не появляется. */
+          let lumaThreshold;
+          if (chosenDitherAlgorithm === "blueNoise") {
+            /* Поле синего шума: пороги разложены по плоскости без
+               регулярной сетки. */
+            lumaThreshold = blueNoiseField[(multimap_y % blueNoiseFieldSize) * blueNoiseFieldSize + (multimap_x % blueNoiseFieldSize)];
+          } else {
+            /* Порог из матрицы Байера, приведённый к (0, 1). */
+            if (!ditherMatrix) {
+              closestColourSetIdAndTone = findClosestColourSetIdAndToneAndRGBTo(oldPixel);
+            } else {
+              const rows = ditherMatrix.length;
+              const cols = ditherMatrix[0].length;
+              const patternValue =
+                rotationDegrees === 0
+                  ? ditherMatrix[multimap_y % rows][multimap_x % cols]
+                  : rotatedPatternThreshold(ditherMatrix, multimap_x, multimap_y, rotationCos, rotationSin);
+              lumaThreshold = patternValue / (rows * cols + 1);
+            }
+          }
+          if (closestColourSetIdAndTone) {
+            const closestColour = colourSetIdAndToneToRGB(closestColourSetIdAndTone.colourSetId, closestColourSetIdAndTone.tone);
+            canvasImageData.data[indexR] = closestColour[0];
+            canvasImageData.data[indexG] = closestColour[1];
+            canvasImageData.data[indexB] = closestColour[2];
+          } else {
+            const lumaTone = selectLumaDitheredTone(oldPixel, lumaThreshold, ditherStrength);
+            closestColourSetIdAndTone = lumaTone || findClosestColourSetIdAndToneAndRGBTo(oldPixel);
+            const closestColour = colourSetIdAndToneToRGB(closestColourSetIdAndTone.colourSetId, closestColourSetIdAndTone.tone);
+            canvasImageData.data[indexR] = closestColour[0];
+            canvasImageData.data[indexG] = closestColour[1];
+            canvasImageData.data[indexB] = closestColour[2];
+          }
       } else if (chosenDitherAlgorithm === "errorDiffusion") {
           closestColourSetIdAndTone = findClosestColourSetIdAndToneAndRGBTo(oldPixel);
           const closestColour = colourSetIdAndToneToRGB(closestColourSetIdAndTone.colourSetId, closestColourSetIdAndTone.tone);
@@ -2492,6 +2957,7 @@ function renderPixels(body, requestId) {
   optionValue_cleanup_adaptiveDither = body.optionValue_cleanup_adaptiveDither !== false;
   optionValue_paletteStrategy = body.optionValue_paletteStrategy || "all";
   optionValue_maxTones = body.optionValue_maxTones || 0;
+  optionValue_dithering_rotation = body.optionValue_dithering_rotation || 0;
   pixelEdits = body.pixelEdits || {};
   sourceImageData = null;
 
@@ -2511,6 +2977,9 @@ function renderPixels(body, requestId) {
   if (signature !== flatToneSignature) {
     flatToneSignature = signature;
     buildFlatToneList();
+    /* Лестница яркости строится из того же списка тонов, поэтому она
+       меняется вместе с ним. */
+    buildLumaLadder();
     colourCache.clear();
     colourCache2.clear();
     colourCache2Improved.clear();

@@ -1100,5 +1100,23 @@
       ]
     ],
     "localeKey": "MAP-SETTINGS/DITHERING/VOID-AND-CLUSTER-14X14"
+  },
+  "BlueNoisePalette": {
+    "uniqueId": 26,
+    "sortOrder": 2,
+    "name": "Blue Noise (palette)",
+    "algorithm": "blueNoise",
+    "category": "blueNoise",
+    "blueNoiseSize": 32,
+    "localeKey": "MAP-SETTINGS/DITHERING/BLUE-NOISE-PALETTE"
+  },
+  "LumaChroma": {
+    "uniqueId": 27,
+    "sortOrder": 20,
+    "name": "Luma and Chroma",
+    "algorithm": "orderedLuma",
+    "category": "ordered",
+    "lumaMatrix": "Bayer44",
+    "localeKey": "MAP-SETTINGS/DITHERING/LUMA-CHROMA"
   }
 }

@@ -81,6 +81,7 @@ const LEGACY_PERSISTED_KEYS = [
   "optionValue_style",
   "optionValue_paletteStrategy",
   "optionValue_maxTones",
+  "optionValue_dithering_rotation",
   "stylePreset",
   "selectedPresetName",
 ];
@@ -149,9 +150,11 @@ test("каждая опция, отображаемая в форме, попа�
   }
 });
 
-test("у всех 26 методов дизеринга есть категория и ключ локализации", () => {
+test("у всех методов дизеринга есть категория и ключ локализации", () => {
   const methods = Object.values(DitherMethods);
-  expect(methods.length).toBe(26);
+  /* Методов стало больше: этап 3 добавил «синий шум по палитре» и
+     «яркость и цвет». */
+  expect(methods.length).toBe(28);
   for (const method of methods) {
     expect(typeof method.category).toBe("string");
     expect(typeof method.localeKey).toBe("string");

@@ -18,6 +18,9 @@
  *  - The void-and-cluster matrix follows Robert Ulichney's algorithm
  *    ("The void-and-cluster method for dither array generation", 1993).
  *    The algorithm is defined for any M x N size, not just powers of two.
+ *    The implementation lives in src/components/mapart/workers/blueNoise.js:
+ *    the worker generates the same matrix at runtime, so both must use the
+ *    same code.
  *
  * The 3x3 Bayer matrix has no power-of-two derivation, so it uses the
  * published 3x3 threshold matrix
@@ -26,6 +29,8 @@
  *        [[13, 6, 7, 14], [5, 1, 2, 8], [12, 4, 3, 9], [16, 11, 10, 15]]
  * (from "Digital Halftoning", Robert Ulichney).
  */
+
+const { voidAndClusterRanks } = require("../components/mapart/workers/blueNoise.js");
 
 const MATRICES = {
   Bayer22: null, // generated
@@ -68,106 +73,9 @@ function bayerMatrix(n) {
  * Ulichney's void-and-cluster threshold matrix, 1-indexed.
  * Produces a permutation of 1..(M*N).
  */
-function voidAndClusterMatrix(M, N, { radius = 2, sigma = 1.5 } = {}) {
-  const MN = M * N;
-  const half = Math.floor(MN / 2);
-
-  const kernel = [];
-  for (let dy = -radius; dy <= radius; dy++) {
-    const row = [];
-    for (let dx = -radius; dx <= radius; dx++) {
-      row.push(Math.exp(-(dx * dx + dy * dy) / (2 * sigma * sigma)));
-    }
-    kernel.push(row);
-  }
-  // Periodic neighbourhood, so the matrix tiles seamlessly in both directions.
-  const filteredValue = (binary, cx, cy) => {
-    let sum = 0;
-    for (let dy = -radius; dy <= radius; dy++) {
-      for (let dx = -radius; dx <= radius; dx++) {
-        const x = (((cx + dx) % M) + M) % M;
-        const y = (((cy + dy) % N) + N) % N;
-        sum += binary[y][x] * kernel[dy + radius][dx + radius];
-      }
-    }
-    return sum;
-  };
-
-  const binary = Array.from({ length: N }, () => new Array(M).fill(0));
-  const rank = Array.from({ length: N }, () => new Array(M).fill(-1));
-
-  // A "cluster" is a tight group of minority '1's, so the tightest cluster is
-  // the '1' with the MOST '1's in its neighbourhood (highest filtered value).
-  // A "void" is a large empty space, so the largest void is the '0' with the
-  // FEWEST '1's around it (lowest filtered value).
-  const largestVoid = () => {
-    let best = null;
-    let bestValue = Infinity;
-    for (let y = 0; y < N; y++) {
-      for (let x = 0; x < M; x++) {
-        if (binary[y][x]) continue;
-        const value = filteredValue(binary, x, y);
-        if (value < bestValue - 1e-12) {
-          bestValue = value;
-          best = [x, y];
-        }
-      }
-    }
-    return best;
-  };
-  const tightestCluster = () => {
-    let best = null;
-    let bestValue = -Infinity;
-    for (let y = 0; y < N; y++) {
-      for (let x = 0; x < M; x++) {
-        if (!binary[y][x]) continue;
-        const value = filteredValue(binary, x, y);
-        if (value > bestValue + 1e-12) {
-          bestValue = value;
-          best = [x, y];
-        }
-      }
-    }
-    return best;
-  };
-
-  // Initial Binary Pattern: grow to `half` dots by always filling the largest void.
-  binary[0][0] = 1;
-  let count = 1;
-  while (count < half) {
-    const [x, y] = largestVoid();
-    binary[y][x] = 1;
-    count += 1;
-  }
-
-  // Phase I: assign ranks half-1 .. 0 by removing the tightest cluster each step.
-  for (let r = half; r >= 1; r--) {
-    const [x, y] = tightestCluster();
-    rank[y][x] = r - 1;
-    binary[y][x] = 0;
-  }
-
-  // Phase II: rebuild the prototype to `half` dots. These are the same cells
-  // Phase I removed (they were tightest clusters, so they are now the largest
-  // voids); their ranks were already recorded above.
-  count = 0;
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < M; x++) count += binary[y][x];
-  }
-  while (count < half) {
-    const [x, y] = largestVoid();
-    binary[y][x] = 1;
-    count += 1;
-  }
-
-  // Phase III: ranks half .. MN-1, adding a dot at the largest void each step.
-  for (let r = half; r < MN; r++) {
-    const [x, y] = largestVoid();
-    binary[y][x] = 1;
-    rank[y][x] = r;
-  }
-
-  return rank.map((row) => row.map((v) => v + 1));
+function voidAndClusterMatrix(M, N) {
+  const ranks = voidAndClusterRanks(M, N);
+  return ranks.map((row) => row.map((value) => value + 1));
 }
 
 function build() {

@@ -485,6 +485,28 @@ export const OPTION_SCHEMA = [
     form: false,
   },
   {
+    /* Поворот узора дизеринга. Матрица повторяется по карте, поэтому
+       поворачивается её периодическое продолжение: порог берётся из
+       повёрнутой точки со сглаживанием. */
+    key: "optionValue_dithering_rotation",
+    handler: "onOptionChange_dithering_rotation",
+    type: "select",
+    valueType: "event",
+    group: "dithering",
+    labelKey: "MAP-SETTINGS/DITHERING/ROTATION",
+    tooltipKey: "MAP-SETTINGS/DITHERING/ROTATION-TT",
+    options: () => [
+      { value: 0, label: "0°" },
+      { value: 15, label: "15°" },
+      { value: 30, label: "30°" },
+      { value: 45, label: "45°" },
+      { value: 60, label: "60°" },
+      { value: 75, label: "75°" },
+      { value: 90, label: "90°" },
+    ],
+    showIf: (values) => isRotatableDithering(values.optionValue_dithering),
+  },
+  {
     key: "optionValue_dithering_propagation_red",
     handler: "onOptionChange_dithering_propagation_red",
     type: "range",
@@ -674,6 +696,15 @@ export const OPTION_SCHEMA = [
 export const isPatternDithering = (ditheringUniqueId) => {
   const method = Object.values(DitherMethods).find((entry) => entry.uniqueId === ditheringUniqueId);
   return method !== undefined && method.ditherMatrix !== undefined && method.ditherDivisor === undefined;
+};
+
+/* Метод, у узор которого можно повернуть: упорядоченные (в них есть
+   матрица) и «только яркость» (узор — матрица Байера). */
+export const isRotatableDithering = (ditheringUniqueId) => {
+  const method = Object.values(DitherMethods).find((entry) => entry.uniqueId === ditheringUniqueId);
+  if (!method) return false;
+  if (method.algorithm === "orderedLuma") return true;
+  return method.ditherMatrix !== undefined && method.ditherDivisor === undefined;
 };
 
 export const OPTION_SCHEMA_BY_KEY = OPTION_SCHEMA.reduce((accumulator, option) => {

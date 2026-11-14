@@ -8,6 +8,7 @@ import MapModes from "./json/mapModes.json";
 import SupportedVersions from "./json/supportedVersions.json";
 
 import { presetName } from "../../presets/presetFormat";
+import { colourSetDiagramPoint, colourSetToneRGB, pickBlockForColourSet } from "./autoPalette";
 
 import "./blockSelection.css";
 
@@ -17,6 +18,10 @@ class BlockSelection extends Component {
     paletteOpen: false,
     paletteSearch: "",
     paletteFocusColourSetId: null,
+    /* Порядок списка блоков в модалке палитры. */
+    paletteSort: "name",
+    /* Сколько цветов искать в картинке для автопалитры. */
+    autoPaletteCount: 8,
   };
 
   constructor(props) {
@@ -344,7 +349,7 @@ class BlockSelection extends Component {
   getFilteredColourSets = () => {
     const { optionValue_version } = this.props;
     const query = this.state.paletteSearch.trim().toLowerCase();
-    return this.getAvailableColourSets()
+    const rows = this.getAvailableColourSets()
       .map(([colourSetId, colourSet]) => {
         const blocks = Object.entries(colourSet.blocks).filter(([, block]) =>
           Object.keys(block.validVersions).includes(optionValue_version.MCVersion)
@@ -364,6 +369,48 @@ class BlockSelection extends Component {
         };
       })
       .filter((row) => row.visible !== false);
+
+    /* Порядок списка: по названию или по яркости. По яркости палитра
+       читается как шкала — тёмное сверху, светлое снизу. */
+    if (this.state.paletteSort === "brightness") {
+      rows.sort((first, second) => {
+        const firstLuma = colourSetDiagramPoint(first.colourSet).luma;
+        const secondLuma = colourSetDiagramPoint(second.colourSet).luma;
+        if (firstLuma !== secondLuma) return firstLuma - secondLuma;
+        return first.colourSet.colourName.localeCompare(second.colourSet.colourName);
+      });
+    } else {
+      rows.sort((first, second) => first.colourSet.colourName.localeCompare(second.colourSet.colourName));
+    }
+    return rows;
+  };
+
+  /* Точки диаграммы: яркость по горизонтали, цветность по вертикали. */
+  getDiagramPoints = () => {
+    const { selectedBlocks } = this.props;
+    return this.getAvailableColourSets().map(([colourSetId, colourSet]) => {
+      const point = colourSetDiagramPoint(colourSet);
+      return {
+        colourSetId,
+        colourSet,
+        luma: point.luma,
+        chroma: point.chroma,
+        rgb: colourSetToneRGB(colourSet),
+        selected: !!selectedBlocks[colourSetId] && selectedBlocks[colourSetId] !== "-1",
+      };
+    });
+  };
+
+  /* Клик по точке диаграммы выбирает набор блоков: берётся первый блок,
+     который есть в выбранной версии игры. */
+  handleDiagramClick = (colourSetId) => {
+    const { coloursJSON, optionValue_version, onChangeColourSetBlock } = this.props;
+    const colourSet = coloursJSON[colourSetId];
+    if (!colourSet) return;
+    const blockId = pickBlockForColourSet(colourSet, optionValue_version.MCVersion);
+    if (!blockId) return;
+    onChangeColourSetBlock(colourSetId, blockId);
+    this.setState({ paletteFocusColourSetId: colourSetId });
   };
 
   renderPaletteSummary = (selectedSummary) => {
@@ -376,13 +423,14 @@ class BlockSelection extends Component {
       const block = colourSet && colourSet.blocks[blockId];
       if (!block) return null;
       const label = `${colourSet.colourName}: ${block.displayName}`;
+      const replaceHint = getLocaleString("BLOCK-SELECTION/PALETTE/REPLACE");
       return (
         <button
           type="button"
           key={colourSetId}
           className="paletteSummaryItem"
-          title={label}
-          aria-label={label}
+          title={`${label} — ${replaceHint}`}
+          aria-label={`${label} — ${replaceHint}`}
           onClick={() => this.openPalette(colourSetId)}
         >
           <BlockImage
@@ -406,17 +454,32 @@ class BlockSelection extends Component {
       selectedBlocks,
       disabledTones,
       onToggleColourTone,
+      imageColourSetIds,
     } = this.props;
     const { paletteFocusColourSetId } = this.state;
     const latestVersion = Object.values(SupportedVersions)[Object.keys(SupportedVersions).length - 1].MCVersion;
+    /* Набор, который встречается в картинке, помечается: он точно
+       пригодится. */
+    const presentInImage = !!(imageColourSetIds && imageColourSetIds.has(colourSetId));
     return (
       <div
         key={colourSetId}
         data-colour-set={colourSetId}
-        className={`colourSet${paletteFocusColourSetId === colourSetId ? " focused" : ""}`}
+        className={`colourSet${paletteFocusColourSetId === colourSetId ? " focused" : ""}${
+          presentInImage ? " presentInImage" : ""
+        }`}
       >
         <div className="colourSetLabel" title={colourSet.colourName}>
           {colourSet.colourName}
+          {presentInImage ? (
+            <span
+              className="colourSetPresent"
+              title={getLocaleString("BLOCK-SELECTION/PALETTE/PRESENT-TT")}
+              aria-label={getLocaleString("BLOCK-SELECTION/PALETTE/PRESENT-TT")}
+            >
+              ●
+            </span>
+          ) : null}
         </div>
         {this.getColourSetBox(colourSet)}
         {this.getColourSetTones(colourSetId, colourSet, disabledTones, onToggleColourTone)}
@@ -498,6 +561,53 @@ class BlockSelection extends Component {
     );
   };
 
+  /* Диаграмма палитры: по горизонтали яркость, по вертикали цветность.
+     Точка — набор блоков; нажатие выбирает его. */
+  renderDiagram = () => {
+    const { getLocaleString, imageColourSetIds } = this.props;
+    const points = this.getDiagramPoints();
+    if (points.length === 0) return null;
+    const maxChroma = Math.max(20, ...points.map((point) => point.chroma));
+    return (
+      <div className="paletteDiagram">
+        <svg
+          className="paletteDiagramSvg"
+          viewBox="0 0 100 60"
+          preserveAspectRatio="none"
+          role="img"
+          aria-label={getLocaleString("BLOCK-SELECTION/PALETTE/DIAGRAM")}
+        >
+          <line x1="0" y1="59.5" x2="100" y2="59.5" className="paletteDiagramAxis" />
+          <line x1="0.5" y1="0" x2="0.5" y2="60" className="paletteDiagramAxis" />
+          {points.map((point) => {
+            const x = Math.max(0, Math.min(100, point.luma));
+            const y = 60 - Math.max(0, Math.min(60, (point.chroma / maxChroma) * 58));
+            const present = !!(imageColourSetIds && imageColourSetIds.has(point.colourSetId));
+            return (
+              <circle
+                key={point.colourSetId}
+                cx={x}
+                cy={y}
+                r={point.selected ? 2.2 : 1.3}
+                className={`paletteDiagramPoint${point.selected ? " selected" : ""}${
+                  present ? " present" : ""
+                }`}
+                fill={`rgb(${point.rgb.join(", ")})`}
+                onClick={() => this.handleDiagramClick(point.colourSetId)}
+              >
+                <title>{point.colourSet.colourName}</title>
+              </circle>
+            );
+          })}
+        </svg>
+        <div className="paletteDiagramLegend">
+          <span>{getLocaleString("BLOCK-SELECTION/PALETTE/DIAGRAM-LUMA")}</span>
+          <span>{getLocaleString("BLOCK-SELECTION/PALETTE/DIAGRAM-CHROMA")}</span>
+        </div>
+      </div>
+    );
+  };
+
   renderPaletteModal = (availableColourSets) => {
     const {
       getLocaleString,
@@ -539,7 +649,52 @@ class BlockSelection extends Component {
               {getLocaleString("BLOCK-SELECTION/PALETTE/DONE")}
             </button>
           </div>
+          <div className="paletteModalTools">
+            <label className="paletteModalSort">
+              <span>{getLocaleString("BLOCK-SELECTION/PALETTE/SORT")}</span>
+              <select
+                value={this.state.paletteSort}
+                onChange={(event) => this.setState({ paletteSort: event.target.value })}
+                aria-label={getLocaleString("BLOCK-SELECTION/PALETTE/SORT")}
+              >
+                <option value="name">{getLocaleString("BLOCK-SELECTION/PALETTE/SORT-NAME")}</option>
+                <option value="brightness">{getLocaleString("BLOCK-SELECTION/PALETTE/SORT-BRIGHTNESS")}</option>
+              </select>
+            </label>
+            <label className="paletteModalAutoCount">
+              <span>{getLocaleString("BLOCK-SELECTION/PALETTE/AUTO-COUNT")}</span>
+              <input
+                type="number"
+                min="1"
+                max="32"
+                step="1"
+                value={this.state.autoPaletteCount}
+                onChange={(event) => {
+                  const value = parseInt(event.target.value, 10);
+                  this.setState({ autoPaletteCount: isNaN(value) ? 1 : Math.max(1, Math.min(32, value)) });
+                }}
+                aria-label={getLocaleString("BLOCK-SELECTION/PALETTE/AUTO-COUNT")}
+              />
+            </label>
+            <button
+              type="button"
+              className="paletteModalAutoButton"
+              onClick={() => this.props.onAutoPalette(this.state.autoPaletteCount)}
+              disabled={!this.props.onAutoPalette || !(this.props.imageColours || []).length}
+              title={getLocaleString("BLOCK-SELECTION/PALETTE/AUTO-TT")}
+            >
+              {getLocaleString("BLOCK-SELECTION/PALETTE/AUTO")}
+            </button>
+            {this.props.autoPaletteResult ? (
+              <span className="paletteModalAutoStatus">
+                {this.props.autoPaletteResult.empty
+                  ? getLocaleString("BLOCK-SELECTION/PALETTE/AUTO-NO-IMAGE")
+                  : getLocaleString("BLOCK-SELECTION/PALETTE/AUTO-RESULT").replace("{count}", String(this.props.autoPaletteResult.applied))}
+              </span>
+            ) : null}
+          </div>
           <div className="paletteModalBody" ref={this.paletteBodyRef}>
+            {this.renderDiagram()}
             {filteredColourSets.map(({ colourSetId, colourSet, blocks }) =>
               this.renderColourSetRow(colourSetId, colourSet, blocks)
             )}
