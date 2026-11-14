@@ -53,9 +53,16 @@ test("select в настройках стоит на отдельной стро
 test("у размера карты есть кнопки +/- и поддержка колеса мыши", () => {
   const field = readFile("optionCustomFields.js");
   const css = readFile("mapSettings.css");
+  const input = readFile("bufferedNumberInput/bufferedNumberInput.js");
+  const helper = readFile("wheelValue.js");
   expect(field).toContain("mapSizeStepButton");
-  expect(field).toContain("addEventListener(\"wheel\"");
-  expect(field).toContain("passive: false");
+  /* Колесо работает во всех числовых полях: обработчик общий, в
+     BufferedNumberInput. В самом поле размера он второй раз не ставится,
+     иначе значение менялось бы на два шага. */
+  expect(helper).toContain("addEventListener(\"wheel\"");
+  expect(helper).toContain("passive: false");
+  expect(input).toContain("attachWheel(");
+  expect(field).not.toContain("attachWheel(");
   expect(css).toContain(".mapSizeStepButton");
 });
 

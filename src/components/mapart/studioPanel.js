@@ -1,10 +1,30 @@
 import React, { Component } from "react";
 
 import { STYLE_PRESETS } from "./stylePresets";
+import { attachWheel, wheelValue } from "./wheelValue";
 
 import "./studioPanel.css";
 
 class StudioPanel extends Component {
+  ditherStrengthRef = React.createRef();
+
+  componentDidMount() {
+    /* Колесо мыши над ползунком силы дизеринга меняет значение. */
+    this.detachWheel = attachWheel(this.ditherStrengthRef.current, (event) => {
+      const node = this.ditherStrengthRef.current;
+      /* Выключенный ползунок не реагирует — как и на перетаскивание. */
+      if (node && node.disabled) return;
+      const { optionValue_dithering_strength, onOptionChange_dithering_strength } = this.props;
+      const next = wheelValue(event, optionValue_dithering_strength, 0, 200, 5);
+      if (next === null) return;
+      onOptionChange_dithering_strength(next);
+    });
+  }
+
+  componentWillUnmount() {
+    if (this.detachWheel) this.detachWheel();
+  }
+
   t(key, fallback) {
     const { getLocaleString } = this.props;
     const value = getLocaleString ? getLocaleString(key) : null;
@@ -90,6 +110,7 @@ class StudioPanel extends Component {
               <b>{optionValue_dithering_strength}%</b>
             </label>
             <input
+              ref={this.ditherStrengthRef}
               id="studioDitherStrength"
               type="range"
               min="0"

@@ -15,6 +15,7 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 import IMG_GridOverlay from "../../images/gridOverlay.png";
 
 import { detectPixelScale } from "./pixelPerfect";
+import { attachWheel, wheelValue } from "./wheelValue";
 
 import "./mapPreview.css";
 
@@ -2188,6 +2189,22 @@ class MapPreview extends Component {
     onOptionChange_previewScale(scale);
   };
 
+  /* Колесо мыши над ползунком допуска меняет значение. Ползунок появляется
+     только при включённом редакторе, поэтому слушатель вешается через
+     callback-реф: он зовётся и с элементом, и без него. */
+  toleranceRef = (node) => {
+    if (this.detachToleranceWheel) {
+      this.detachToleranceWheel();
+      this.detachToleranceWheel = null;
+    }
+    if (!node) return;
+    this.detachToleranceWheel = attachWheel(node, (event) => {
+      const next = wheelValue(event, this.state.editorWandTolerance, 0, 100, 5);
+      if (next === null) return;
+      this.setState({ editorWandTolerance: next });
+    });
+  };
+
   componentWillUnmount() {
     window.removeEventListener("keydown", this.handleEditorKeyDown, true);
     if (this.refreshTimer) {
@@ -2293,6 +2310,7 @@ class MapPreview extends Component {
                 >
                   <span>{this.t("PIXEL-EDITOR/TOLERANCE", "Tolerance")}</span>
                   <input
+                    ref={this.toleranceRef}
                     type="range"
                     min="0"
                     max="100"

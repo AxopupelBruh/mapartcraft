@@ -187,7 +187,7 @@ test("в CSS нет hex-цветов вне :root", () => {
 
 test("каждая используемая CSS-переменная объявлена в :root", () => {
   const indexCss = fs.readFileSync(path.join(__dirname, "..", "..", "index.css"), "utf-8");
-  const declared = new Set(Array.from(indexCss.matchAll(/(--[a-z0-9-]+)\s*:/g)).map((match) => match[1]));
+  const declared = new Set(Array.from(indexCss.matchAll(/(--[A-Za-z0-9-]+)\s*:/g)).map((match) => match[1]));
   const missing = [];
   for (const file of readCssFiles()) {
     const content = fs.readFileSync(file, "utf-8");

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 import Tooltip from "../tooltip";
 import BufferedNumberInput from "./bufferedNumberInput/bufferedNumberInput";
 import { optionControlId } from "./optionControl";
 import { CUSTOM_FIELDS } from "./optionCustomFields";
+import { attachWheel, wheelValue } from "./wheelValue";
 
 export { optionControlId };
 
@@ -32,6 +33,22 @@ const OptionField = ({ option, values, handlers, getLocaleString, context }) => 
   const disabled = option.disabled ? !!option.disabled(values) : false;
   const value = option.valueFrom ? option.valueFrom(values) : values[option.key];
   const onChange = handlers[option.key];
+
+  /* Колесо мыши над ползунком меняет значение на один шаг. */
+  const rangeRef = useRef(null);
+  const latestRef = useRef({ option, value, onChange, disabled });
+  latestRef.current = { option, value, onChange, disabled };
+  useEffect(() => {
+    return attachWheel(rangeRef.current, (event) => {
+      const current = latestRef.current;
+      /* Выключенный ползунок не реагирует — как и на перетаскивание. */
+      if (!current.onChange || current.disabled) return;
+      const { min, max, step } = current.option;
+      const next = wheelValue(event, current.value, min, max, step);
+      if (next === null) return;
+      current.onChange(next);
+    });
+  }, []);
 
   const handleEvent = (event) => {
     if (!onChange) return;
@@ -82,6 +99,7 @@ const OptionField = ({ option, values, handlers, getLocaleString, context }) => 
         return (
           <React.Fragment>
             <input
+              ref={rangeRef}
               id={id}
               type="range"
               min={option.min}

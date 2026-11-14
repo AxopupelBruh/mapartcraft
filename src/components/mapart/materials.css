@@ -35,9 +35,14 @@
 }
 
 #materialtable .blockImage {
-  width: 26px;
-  height: 26px;
+  --block-cell: 26px;
   margin: 2px 0;
+  /* Текстуры лежат в одном спрайт-листе: 31 колонка и 65 строк. Ячейка
+     выбирается процентами в background-position, и проценты попадают в
+     границы ячейки только тогда, когда размер фона кратен размеру самой
+     картинки. Поэтому уменьшенная картинка требует и уменьшенного фона:
+     иначе видно кусок соседней текстуры. */
+  background-size: calc(31 * var(--block-cell)) calc(65 * var(--block-cell));
 }
 
 .materialBlockRemove {
