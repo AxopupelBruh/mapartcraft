@@ -1,12 +1,43 @@
+.greenButtonsRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--sp-2);
+}
+
 .greenButton {
-  display: block;
-  font-family: "kenpixel_mini_square";
-  color: #333333;
-  cursor: pointer;
   position: relative;
-  width: 300px;
-  margin-top: 0.1em;
-  margin-bottom: 0.1em;
+  display: block;
+  flex: 0 1 auto;
+  width: 100%;
+  max-width: 320px;
+  min-width: 160px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background-color: var(--accent);
+  color: var(--surface-0);
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: var(--fs-lg);
+  cursor: pointer;
+  text-align: center;
+}
+
+.greenButton:hover {
+  border-color: var(--accent-hover);
+}
+
+.greenButton:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 2px;
+}
+
+.greenButton[disabled] {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .greenButton_text {
@@ -17,7 +48,8 @@
   text-align: center;
 
   line-height: 29px;
-  z-index: 10;
+  z-index: var(--z-button-text);
+  pointer-events: none;
 }
 
 .greenButton_text_dummy {
@@ -28,47 +60,26 @@
   display: block;
 
   line-height: 29px;
-  z-index: 10;
+  z-index: var(--z-button-text);
 }
 
-.greenButton_large_text {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  text-align: center;
-
-  line-height: 50px;
-  z-index: 10;
-  font-size: 26px ;
-}
-
-.greenButton_large_text_dummy {
-  position: unset;
-  visibility: hidden;
-  width: 100%;
-  text-align: center;
-  display: block;
-
-  line-height: 50px;
-  z-index: 10;
-  font-size: 26px ;
-}
-
+/* Заливка прогресса светлее базового зелёного, чтобы тёмный текст
+   сохранял контраст в обоих состояниях (AA 4.5:1). */
 .greenButton_progressDiv {
   position: absolute;
   top: 0;
   left: 0;
-  background-color: #688e6b;
+  background-color: var(--accent-hover);
   height: 100%;
 }
 
 .greenButton_status {
-  width: 300px;
+  flex: 1 1 100%;
+  width: auto;
   margin-top: 0.15em;
-  color: var(--rebaneGreen);
+  color: var(--accent);
   font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: 0.72em;
+  font-size: var(--fs-xs);
   line-height: 1.2;
   overflow-wrap: anywhere;
 }

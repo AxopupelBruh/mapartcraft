@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import { gzip } from "pako"; // blocks when zipping
 import JSZip from "jszip";
 
 import Tooltip from "../tooltip";
@@ -10,6 +9,8 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 import WorkerBuilder from './workers/worker-builder';
 import NBTWorker from "./workers/nbt";
 import { canvasToBlob, exportArtZip, pixelsToCanvas, sanitizeFilename } from "../../studioStorage";
+import { gzipBytes } from "./gzip";
+import { isBigMap } from "./canvasLimits";
 
 import "./greenButtons.css";
 
@@ -38,6 +39,23 @@ class GreenButtons extends Component {
   hasUsablePalette(currentMaterialsData) {
     return (currentMaterialsData.maps || []).some((row) =>
       row.some((map) => Object.keys(map.materials || {}).length > 0)
+    );
+  }
+
+  /* Огромная карта — это огромный файл схемы: каждый блок попадает в NBT.
+     Предупреждаем заранее, чтобы пользователь не ждал час ради файла,
+     который не откроется. Порог тот же, что и в настройках размера, —
+     иначе экспорт ругался бы на карту, которую настройки считали обычной. */
+  confirmHugeExport() {
+    const { optionValue_mapSize_x, optionValue_mapSize_y } = this.props;
+    if (!isBigMap(optionValue_mapSize_x, optionValue_mapSize_y)) return true;
+    const blocks = 128 * optionValue_mapSize_x * 128 * optionValue_mapSize_y;
+    const million = Math.round((blocks / 1000000) * 10) / 10;
+    return window.confirm(
+      this.t("DOWNLOAD/HUGE-EXPORT", "This map is very large ({blocks} million blocks). The export will take a long time and the file will be huge. Continue?").replace(
+        "{blocks}",
+        million
+      )
     );
   }
 
@@ -92,13 +110,23 @@ class GreenButtons extends Component {
       alert(getLocaleString("DOWNLOAD/ERROR-NONE-SELECTED"));
       return;
     }
+    if (!this.confirmHugeExport()) return;
     this.cancelNbtWorker();
+    /* Номер экспорта: если пользователь отменил его или запустил новый,
+       ответы и файлы прошлого экспорта игнорируются. */
+    const exportId = this.litematicExportId;
     this.resetButtonWidths();
     let numberOfSplitsCalculated = 0;
+    // The compression happens in the background, so the number of finished
+    // compressions is counted separately.
+    let numberOfSplitsCompressed = 0;
+    // The parts of a split export, collected until all of them are ready.
+    const splitFiles = [];
     let zipFile = new JSZip();
     const t0 = performance.now();
     this.nbtWorker = new WorkerBuilder(NBTWorker);
     this.nbtWorker.onmessage = (e) => {
+      if (exportId !== this.litematicExportId) return; // the export was cancelled
       switch (e.data.head) {
         case "PROGRESS_REPORT_CREATE_NBT_JOINED_FOR_VIEW_ONLINE": {
           this.setState({ buttonWidth_viewOnline: e.data.body });
@@ -128,18 +156,30 @@ class GreenButtons extends Component {
           console.log(`Created NBT by ${(t1 - t0).toString()}ms`);
           numberOfSplitsCalculated++;
           const { NBT_Array, whichMap_x, whichMap_y } = e.data.body;
-          const NBT_Array_gzipped = gzip(NBT_Array);
-          if (workerHeader === "CREATE_NBT_SPLIT") {
-            zipFile.file(`${uploadedImage_baseFilename}_${whichMap_x}_${whichMap_y}.nbt`, NBT_Array_gzipped);
-            if (numberOfSplitsCalculated === optionValue_mapSize_x * optionValue_mapSize_y) {
-              zipFile.generateAsync({ type: "blob" }).then((content) => {
-                downloadBlobFile(content, `${uploadedImage_baseFilename}.zip`);
-              });
+          // The compression runs in the background, so the interface stays
+          // usable while a big map is written.
+          gzipBytes(NBT_Array).then((NBT_Array_gzipped) => {
+            if (exportId !== this.litematicExportId) return; // the export was cancelled
+            if (workerHeader === "CREATE_NBT_SPLIT") {
+              /* Файлы собираем отдельно: сжатие идёт параллельно, и порядок
+                 готовности не совпадает с порядком частей карты. В архив
+                 кладём их по именам — иначе состав архива плавает от запуска
+                 к запуску. */
+              splitFiles.push({ name: `${uploadedImage_baseFilename}_${whichMap_x}_${whichMap_y}.nbt`, bytes: NBT_Array_gzipped });
+              numberOfSplitsCompressed++;
+              if (numberOfSplitsCompressed === optionValue_mapSize_x * optionValue_mapSize_y) {
+                for (const file of splitFiles.slice().sort((a, b) => (a.name < b.name ? -1 : 1))) {
+                  zipFile.file(file.name, file.bytes);
+                }
+                zipFile.generateAsync({ type: "blob" }).then((content) => {
+                  downloadBlobFile(content, `${uploadedImage_baseFilename}.zip`);
+                });
+              }
+            } else {
+              const downloadBlob = new Blob([NBT_Array_gzipped], { type: "application/x-minecraft-level" });
+              downloadBlobFile(downloadBlob, `${uploadedImage_baseFilename}.nbt`);
             }
-          } else {
-            const downloadBlob = new Blob([NBT_Array_gzipped], { type: "application/x-minecraft-level" });
-            downloadBlobFile(downloadBlob, `${uploadedImage_baseFilename}.nbt`);
-          }
+          });
           break;
         }
         case "MAPDAT_BYTES": {
@@ -147,11 +187,13 @@ class GreenButtons extends Component {
           console.log(`Created Mapdat by ${(t1 - t0).toString()}ms`);
           numberOfSplitsCalculated++;
           const { Mapdat_Bytes, whichMap_x, whichMap_y } = e.data.body;
-          const Mapdat_Bytes_gzipped = gzip(Mapdat_Bytes);
-          const downloadBlob = new Blob([Mapdat_Bytes_gzipped], { type: "application/x-minecraft-level" });
-          downloadBlobFile(downloadBlob, optionValue_mapdatFilenameUseId
-            ? `map_${(optionValue_mapdatFilenameIdStart + whichMap_y * optionValue_mapSize_x + whichMap_x).toString()}.dat`
-            : `${uploadedImage_baseFilename}_${whichMap_x.toString()}_${whichMap_y.toString()}.dat`);
+          gzipBytes(Mapdat_Bytes).then((Mapdat_Bytes_gzipped) => {
+            if (exportId !== this.litematicExportId) return; // the export was cancelled
+            const downloadBlob = new Blob([Mapdat_Bytes_gzipped], { type: "application/x-minecraft-level" });
+            downloadBlobFile(downloadBlob, optionValue_mapdatFilenameUseId
+              ? `map_${(optionValue_mapdatFilenameIdStart + whichMap_y * optionValue_mapSize_x + whichMap_x).toString()}.dat`
+              : `${uploadedImage_baseFilename}_${whichMap_x.toString()}_${whichMap_y.toString()}.dat`);
+          });
           break;
         }
         case "MAPDAT_BYTES_ZIP": {
@@ -159,18 +201,24 @@ class GreenButtons extends Component {
           console.log(`Created Mapdat by ${(t1 - t0).toString()}ms`);
           numberOfSplitsCalculated++;
           const { Mapdat_Bytes, whichMap_x, whichMap_y } = e.data.body;
-          const Mapdat_Bytes_gzipped = gzip(Mapdat_Bytes);
-          zipFile.file(
-            optionValue_mapdatFilenameUseId
-              ? `map_${(optionValue_mapdatFilenameIdStart + whichMap_y * optionValue_mapSize_x + whichMap_x).toString()}.dat`
-              : `${uploadedImage_baseFilename}_${whichMap_x.toString()}_${whichMap_y.toString()}.dat`,
-            Mapdat_Bytes_gzipped
-          );
-          if (numberOfSplitsCalculated === optionValue_mapSize_x * optionValue_mapSize_y) {
-            zipFile.generateAsync({ type: "blob" }).then((content) => {
-              downloadBlobFile(content, `${uploadedImage_baseFilename}.zip`);
+          gzipBytes(Mapdat_Bytes).then((Mapdat_Bytes_gzipped) => {
+            if (exportId !== this.litematicExportId) return; // the export was cancelled
+            splitFiles.push({
+              name: optionValue_mapdatFilenameUseId
+                ? `map_${(optionValue_mapdatFilenameIdStart + whichMap_y * optionValue_mapSize_x + whichMap_x).toString()}.dat`
+                : `${uploadedImage_baseFilename}_${whichMap_x.toString()}_${whichMap_y.toString()}.dat`,
+              bytes: Mapdat_Bytes_gzipped,
             });
-          }
+            numberOfSplitsCompressed++;
+            if (numberOfSplitsCompressed === optionValue_mapSize_x * optionValue_mapSize_y) {
+              for (const file of splitFiles.slice().sort((a, b) => (a.name < b.name ? -1 : 1))) {
+                zipFile.file(file.name, file.bytes);
+              }
+              zipFile.generateAsync({ type: "blob" }).then((content) => {
+                downloadBlobFile(content, `${uploadedImage_baseFilename}.zip`);
+              });
+            }
+          });
           break;
         }
         default: {
@@ -250,6 +298,7 @@ class GreenButtons extends Component {
       return;
     }
     if (this.state.litematicExportInProgress) return;
+    if (!this.confirmHugeExport()) return;
 
     const artName = sanitizeFilename(uploadedImage_baseFilename || "MyArt");
     const expected = optionValue_mapSize_x * optionValue_mapSize_y;
@@ -262,6 +311,8 @@ class GreenButtons extends Component {
     };
     const files = [];
     let received = 0;
+    // The number of files whose compression has finished.
+    let filesFinished = 0;
 
     this.cancelNbtWorker();
     const exportId = ++this.litematicExportId;
@@ -281,11 +332,14 @@ class GreenButtons extends Component {
         case "LITEMATIC_ARRAY": {
           received++;
           const { Litematic_Array, whichMap_x, whichMap_y } = e.data.body;
-          const bytes = gzip(Litematic_Array);
-          const filename = expected > 1 ? `${artName}_${whichMap_x}_${whichMap_y}.litematic` : `${artName}.litematic`;
-          files.push({ name: filename, bytes });
-          this.setState({ buttonWidth_Litematic: (received - 1 + 0.98) / expected });
-          if (received === expected) this.finishLitematicExport(files, artName, snapshot, exportId);
+          gzipBytes(Litematic_Array).then((bytes) => {
+            if (exportId !== this.litematicExportId) return; // the export was cancelled
+            const filename = expected > 1 ? `${artName}_${whichMap_x}_${whichMap_y}.litematic` : `${artName}.litematic`;
+            files.push({ name: filename, bytes });
+            filesFinished++;
+            this.setState({ buttonWidth_Litematic: (filesFinished - 1 + 0.98) / expected });
+            if (filesFinished === expected) this.finishLitematicExport(files, artName, snapshot, exportId);
+          });
           break;
         }
         default: {
@@ -434,94 +488,118 @@ class GreenButtons extends Component {
       buttons_mapModeConditional = (
         <React.Fragment>
           <Tooltip tooltipText={getLocaleString("VIEW-ONLINE/TITLE-TT")}>
-            <div className="greenButton" onClick={this.onViewOnlineClicked}>
+            <button
+              type="button"
+              className="greenButton"
+              onClick={this.onViewOnlineClicked}
+              aria-label={getLocaleString("VIEW-ONLINE/TITLE")}
+            >
               <span className="greenButton_text_dummy">{getLocaleString("VIEW-ONLINE/TITLE")}</span>
               <span className="greenButton_text">{getLocaleString("VIEW-ONLINE/TITLE")}</span>
-              <div
+              <span
                 className="greenButton_progressDiv"
                 style={{
                   width: `${Math.floor(buttonWidth_viewOnline * 100)}%`,
                 }}
               />
-            </div>
+            </button>
           </Tooltip>
-          <br />
           <Tooltip tooltipText={getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD-TT")}>
-            <div className="greenButton" onClick={this.onGetNBTClicked}>
-              <span className="greenButton_large_text_dummy">{getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD")}</span>
-              <span className="greenButton_large_text">{getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD")}</span>
-              <div
+            <button
+              type="button"
+              className="greenButton"
+              onClick={this.onGetNBTClicked}
+              aria-label={getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD")}
+            >
+              <span className="greenButton_text_dummy">{getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD")}</span>
+              <span className="greenButton_text">{getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD")}</span>
+              <span
                 className="greenButton_progressDiv"
                 style={{
                   width: `${Math.floor(buttonWidth_NBT_Joined * 100)}%`,
                 }}
               />
-            </div>
+            </button>
           </Tooltip>
-          <br />
           <Tooltip tooltipText={getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD-SPLIT-TT")}>
-            <div className="greenButton" onClick={this.onGetNBTSplitClicked}>
+            <button
+              type="button"
+              className="greenButton"
+              onClick={this.onGetNBTSplitClicked}
+              aria-label={`${getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD-SPLIT")} .ZIP`}
+            >
               <span className="greenButton_text_dummy">{`${getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD-SPLIT")} .ZIP`}</span>
               <span className="greenButton_text">{`${getLocaleString("DOWNLOAD/NBT-SPECIFIC/DOWNLOAD-SPLIT")} .ZIP`}</span>
-              <div
+              <span
                 className="greenButton_progressDiv"
                 style={{
                   width: `${Math.floor(buttonWidth_NBT_Split * 100)}%`,
                 }}
               />
-            </div>
+            </button>
           </Tooltip>
-          <br />
           <Tooltip tooltipText={this.t("STUDIO/LITEMATIC-TT", "Download .litematic and PNG as a ZIP archive")}>
-            <div className="greenButton greenButton_wide" onClick={this.onGetLitematicClicked}>
+            <button
+              type="button"
+              className="greenButton greenButton_wide"
+              onClick={this.onGetLitematicClicked}
+              aria-label={this.t("STUDIO/LITEMATIC-BUTTON", "Download .litematic + PNG")}
+            >
               <span className="greenButton_text_dummy">{this.t("STUDIO/LITEMATIC-BUTTON", "Download .litematic + PNG")}</span>
               <span className="greenButton_text">{this.t("STUDIO/LITEMATIC-BUTTON", "Download .litematic + PNG")}</span>
-              <div
+              <span
                 className="greenButton_progressDiv"
                 style={{
                   width: `${Math.floor(buttonWidth_Litematic * 100)}%`,
                 }}
               />
-            </div>
+            </button>
           </Tooltip>
           {litematicStatus ? <div className="greenButton_status">{litematicStatus}</div> : null}
-          <br />
         </React.Fragment>
       );
     } else {
       buttons_mapModeConditional = (
         <React.Fragment>
           <Tooltip tooltipText={getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD-TT")}>
-            <div className="greenButton" onClick={this.onGetMapdatSplitClicked}>
-              <span className="greenButton_large_text_dummy">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")}`}</span>
-              <span className="greenButton_large_text">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")}`}</span>
-              <div
+            <button
+              type="button"
+              className="greenButton"
+              onClick={this.onGetMapdatSplitClicked}
+              aria-label={getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")}
+            >
+              <span className="greenButton_text_dummy">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")}`}</span>
+              <span className="greenButton_text">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")}`}</span>
+              <span
                 className="greenButton_progressDiv"
                 style={{
                   width: `${Math.floor(buttonWidth_Mapdat_Split * 100)}%`,
                 }}
               />
-            </div>
+            </button>
           </Tooltip>
-          <br />
           <Tooltip tooltipText={getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD-TT")}>
-            <div className="greenButton" onClick={this.onGetMapdatSplitZipClicked}>
-              <span className="greenButton_large_text_dummy">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")} .ZIP`}</span>
-              <span className="greenButton_large_text">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")} .ZIP`}</span>
-              <div
+            <button
+              type="button"
+              className="greenButton"
+              onClick={this.onGetMapdatSplitZipClicked}
+              aria-label={`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")} .ZIP`}
+            >
+              <span className="greenButton_text_dummy">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")} .ZIP`}</span>
+              <span className="greenButton_text">{`${getLocaleString("DOWNLOAD/MAPDAT-SPECIFIC/DOWNLOAD")} .ZIP`}</span>
+              <span
                 className="greenButton_progressDiv"
                 style={{
                   width: `${Math.floor(buttonWidth_Mapdat_Split * 100)}%`,
                 }}
               />
-            </div>
+            </button>
           </Tooltip>
-          <br />
         </React.Fragment>
       );
     }
     const buttonsDiv = (
-      <div>
+      <div className="greenButtonsRow">
         {buttons_mapModeConditional}
       </div>
     );

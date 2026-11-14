@@ -75,20 +75,42 @@ class Materials extends Component {
     return supportBlockCount;
   }
 
-  formatMaterialCount = (count) => {
-    if (count < 64) return '' + count;
-
+  /* Разбивка количества на шалкеры, стопки и остаток:
+     2070358 -> 1198SB+3ST+22 */
+  formatMaterialCountBreakdown = (count) => {
+    if (count < 64) return "";
     const numberOfShulkers = Math.floor(count / 1728);
     const numberOfStacks = Math.floor((count % 1728) / 64);
     const remainder = count % 64;
 
-    const sb = numberOfShulkers > 0 ? `${numberOfShulkers} SB` : "";
-    const stacks = numberOfStacks > 0 ? `${numberOfStacks} ST` : "";
-    const items = remainder > 0 ? `${remainder}`: "";
+    const sb = numberOfShulkers > 0 ? `${numberOfShulkers}SB` : "";
+    const stacks = numberOfStacks > 0 ? `${numberOfStacks}ST` : "";
+    const items = remainder > 0 ? `${remainder}` : "";
 
-    const split = [sb, stacks, items].filter(n => n).join(' + ');
+    return [sb, stacks, items].filter((part) => part).join("+");
+  };
 
-    return `${count.toString()} (${split})`;
+  /* Короткая запись больших чисел: 2070358 -> ~2m, 1500 -> ~2k. */
+  abbreviateMaterialCount = (count) => {
+    if (count < 1000) return `${count}`;
+    if (count < 1000000) return `~${Math.round(count / 1000)}k`;
+    return `~${Math.round(count / 1000000)}m`;
+  };
+
+  /* Полное количество блоков показываем, когда включён режим «Only show max
+     mats per split» — там числа небольшие. Без него суммируются все
+     части карты, и точное число занимает пол-экрана, поэтому пишем
+     коротко: ~2m (1198SB+3ST+22). */
+  formatMaterialCount = (count) => {
+    const breakdown = this.formatMaterialCountBreakdown(count);
+    const number = this.state.onlyMaxPerSplit ? `${count}` : this.abbreviateMaterialCount(count);
+    return breakdown ? `${number} (${breakdown})` : number;
+  };
+
+  /* Для буфера обмена всегда точное число: это список для закупки. */
+  formatMaterialCountExact = (count) => {
+    const breakdown = this.formatMaterialCountBreakdown(count);
+    return breakdown ? `${count} (${breakdown})` : `${count}`;
   };
 
   colourSetIdAndBlockIdFromNBTName(blockName) {
@@ -151,7 +173,7 @@ class Materials extends Component {
 
     const sortedEntries = Object.entries(counts)
       .sort((first, second) => second[1] - first[1])
-      .map(([key, count]) => [key, this.formatMaterialCount(count)]);
+      .map(([key, count]) => [key, this.formatMaterialCountExact(count)]);
 
     const NBSP = String.fromCharCode(160); //non-breaking space
     const CRLF = String.fromCharCode(13, 10); //new line
@@ -211,16 +233,18 @@ class Materials extends Component {
             {supportBlockCount !== 0 && (
               <tr>
                 <th>
-                  <Tooltip tooltipText={getLocaleString("MATERIALS/PLACEHOLDER-BLOCK-TT")}>
-                    <BlockImage
-                      getLocaleString={getLocaleString}
-                      coloursJSON={coloursJSON}
-                      colourSetId={supportBlockIds === null ? "64" : supportBlockIds.colourSetId}
-                      blockId={supportBlockIds === null ? "2" : supportBlockIds.blockId}
-                    />
-                  </Tooltip>
+                  <span className="materialBlockCell">
+                    <Tooltip tooltipText={getLocaleString("MATERIALS/PLACEHOLDER-BLOCK-TT")}>
+                      <BlockImage
+                        getLocaleString={getLocaleString}
+                        coloursJSON={coloursJSON}
+                        colourSetId={supportBlockIds === null ? "64" : supportBlockIds.colourSetId}
+                        blockId={supportBlockIds === null ? "2" : supportBlockIds.blockId}
+                      />
+                    </Tooltip>
+                  </span>
                 </th>
-                <th>{this.formatMaterialCount(supportBlockCount)}</th>
+                <th className="materialAmountCell">{this.formatMaterialCount(supportBlockCount)}</th>
               </tr>
             )}
             {nonZeroMaterialsItems.map(([colourSetId, materialCount]) => {
@@ -228,23 +252,25 @@ class Materials extends Component {
               return (
                 <tr key={colourSetId}>
                   <th>
-                    <Tooltip tooltipText={coloursJSON[colourSetId].blocks[blockId].displayName}>
-                      <BlockImage coloursJSON={coloursJSON} colourSetId={colourSetId} blockId={blockId} />
-                    </Tooltip>
-                    <Tooltip tooltipText={getLocaleString("NONE")}>
-                      <BlockImage
-                        getLocaleString={getLocaleString}
-                        coloursJSON={coloursJSON}
-                        colourSetId={colourSetId}
-                        blockId={"-1"}
-                        onClick={() => onChangeColourSetBlock(colourSetId, "-1")}
-                        style={{
-                          cursor: "pointer"
-                        }}
-                      />
-                    </Tooltip>
+                    {/* Блок и кнопка удаления стоят рядом: раньше кнопка
+                        уезжала на следующую строку и ломала таблицу. */}
+                    <span className="materialBlockCell">
+                      <Tooltip tooltipText={coloursJSON[colourSetId].blocks[blockId].displayName}>
+                        <BlockImage coloursJSON={coloursJSON} colourSetId={colourSetId} blockId={blockId} />
+                      </Tooltip>
+                      <Tooltip tooltipText={getLocaleString("NONE")}>
+                        <BlockImage
+                          getLocaleString={getLocaleString}
+                          coloursJSON={coloursJSON}
+                          colourSetId={colourSetId}
+                          blockId={"-1"}
+                          onClick={() => onChangeColourSetBlock(colourSetId, "-1")}
+                          className="materialBlockRemove"
+                        />
+                      </Tooltip>
+                    </span>
                   </th>
-                  <th>{this.formatMaterialCount(materialCount)}</th>
+                  <th className="materialAmountCell">{this.formatMaterialCount(materialCount)}</th>
                 </tr>
               );
             })}

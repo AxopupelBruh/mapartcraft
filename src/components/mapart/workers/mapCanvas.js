@@ -41,6 +41,21 @@ var optionValue_style;
 var pixelEdits;
 var hasPixelEdits = false;
 var hasMaskEdits = false;
+// The pixel editor edits are kept in two typed arrays instead of a plain
+// object: looking up an object key for every one of the 262144 pixels of a
+// 512x512 map was one of the hottest lookups of the whole render.
+//   kind 0 = no edit, 1 = mask, 2 = protect, 3 = painted colour, 4 = unknown value
+var pixelEditKinds = null;
+var pixelEditRGB = null;
+var pixelEditIndices = null;
+// Every tone that can be picked, in one flat list. The colour search used to
+// call Object.keys(colourSet.tonesRGB) for every colour set on every pixel,
+// which allocated an array per colour set per pixel.
+var flatToneList = [];
+// Identifies the tone set the colour caches belong to. The caches only depend
+// on the tones that can be picked, so changing a dithering slider must not
+// throw them away, but changing the palette must.
+var flatToneSignature = null;
 var sourceImageData = null;
 var cleanupProtectionMask = null;
 
@@ -51,11 +66,16 @@ var colourCache2 = new Map(); // cache for nearest two colours (Bayer dithering)
 var colourCache2Improved = new Map(); // cache for nearest two colours with fixed second-best selection
 var colourCache2Reflect = new Map(); // cache for nearest colour + its reflected pair
 var labCache = new Map();
+// The support block rule of every colour set of the current palette.
+var supportMandatoryByColourSetId = new Map();
 var lab50Cache = new Map();
 var lab65Cache = new Map();
 var hctCache = new Map();
 
 var maps = [];
+// The request the current render belongs to, so that a progress report of a
+// render that has been superseded can be ignored by the main thread.
+var currentRequestId = null;
 
 let alphaColorIdx = 61;
 
@@ -236,142 +256,174 @@ function rgb2hct(rgb) {
   return hct;
 }
 
+// The colour space the chosen colour method works in. It is decided once per
+// render, because the distance between two colours is calculated for every
+// tone of the palette and for every pixel.
+var colourMetricKind = "euclidean";
+
+function setupColourMetricKind() {
+  const uniqueId = chosenColourMethod.uniqueId;
+  if (uniqueId === ColourMethods.MapartCraftDefault.uniqueId) colourMetricKind = "lab";
+  else if (uniqueId === ColourMethods.Cie76_Lab50.uniqueId) colourMetricKind = "lab50";
+  else if (uniqueId === ColourMethods.Cie76_Lab65.uniqueId) colourMetricKind = "lab65";
+  else if (uniqueId === ColourMethods.Hct.uniqueId) colourMetricKind = "hct";
+  else if (uniqueId === ColourMethods.Ciede2000_Lab50.uniqueId) colourMetricKind = "ciede2000lab50";
+  else if (uniqueId === ColourMethods.Ciede2000_Lab65.uniqueId) colourMetricKind = "ciede2000lab65";
+  else colourMetricKind = "euclidean";
+}
+
+// The value of a colour in the colour space of the chosen method. The euclidean
+// method works on the rgb values directly and needs no conversion.
+function convertColourForMetric(rgb) {
+  switch (colourMetricKind) {
+    case "lab":
+      return rgb2lab(rgb);
+    case "lab50":
+      return rgb2lab50(rgb);
+    case "lab65":
+      return rgb2lab65(rgb);
+    case "hct":
+      return rgb2hct(rgb);
+    case "ciede2000lab50":
+      return rgb2lab50(rgb);
+    case "ciede2000lab65":
+      return rgb2lab65(rgb);
+    default:
+      return null;
+  }
+}
+
+// The squared distance of two values of the same colour space.
+function squaredEuclideanMetricConverted(value1, value2) {
+  const L = value1[0] - value2[0];
+  const a = value1[1] - value2[1];
+  const b = value1[2] - value2[2];
+  return L * L + a * a + b * b;
+}
+
+// The squared euclidean distance of two rgb values.
+function squaredEuclideanMetricRGB(rgb1, rgb2) {
+  const r = rgb1[0] - rgb2[0];
+  const g = rgb1[1] - rgb2[1];
+  const b = rgb1[2] - rgb2[2];
+  return r * r + g * g + b * b;
+}
+
+// CIEDE2000, the colour difference of two Lab values.
+//Code based on culori.js - https://culorijs.org/
+function ciede2000Distance(pixel1, pixel2) {
+  let lStd = pixel1[0];
+  let aStd = pixel1[1];
+  let bStd = pixel1[2];
+  let cStd = Math.sqrt(aStd * aStd + bStd * bStd);
+
+  let lSmp = pixel2[0];
+  let aSmp = pixel2[1];
+  let bSmp = pixel2[2];
+  let cSmp = Math.sqrt(aSmp * aSmp + bSmp * bSmp);
+  let cAvg = (cStd + cSmp) / 2;
+
+  let cAvgPow7 = Math.pow(cAvg, 7);
+  let G =
+    0.5 *
+    (1 -
+      Math.sqrt(
+        cAvgPow7 /
+        (cAvgPow7 + Math.pow(25, 7))
+      ));
+
+  let apStd = aStd * (1 + G);
+  let apSmp = aSmp * (1 + G);
+
+  let cpStd = Math.sqrt(apStd * apStd + bStd * bStd);
+  let cpSmp = Math.sqrt(apSmp * apSmp + bSmp * bSmp);
+
+  let hpStd =
+    Math.abs(apStd) + Math.abs(bStd) === 0
+      ? 0
+      : Math.atan2(bStd, apStd);
+  hpStd += (hpStd < 0) * 2 * Math.PI;
+
+  let hpSmp =
+    Math.abs(apSmp) + Math.abs(bSmp) === 0
+      ? 0
+      : Math.atan2(bSmp, apSmp);
+  hpSmp += (hpSmp < 0) * 2 * Math.PI;
+
+  let dL = lSmp - lStd;
+  let dC = cpSmp - cpStd;
+
+  let cpStdtimescpSmpZero = (cpStd === 0 && cpSmp === 0);
+  let dhp = cpStdtimescpSmpZero ? 0 : hpSmp - hpStd;
+  dhp -= (dhp > Math.PI) * 2 * Math.PI;
+  dhp += (dhp < -Math.PI) * 2 * Math.PI;
+
+  let dH = 2 * Math.sqrt(cpStd * cpSmp) * Math.sin(dhp / 2);
+
+  let Lp = (lStd + lSmp) / 2;
+  let Cp = (cStd + cSmp) / 2;
+
+  let hp;
+  if (cpStdtimescpSmpZero) {
+    hp = hpStd + hpSmp;
+  } else {
+    hp = (hpStd + hpSmp) / 2;
+    hp -= (Math.abs(hpStd - hpSmp) > Math.PI) * Math.PI;
+    hp += (hp < 0) * 2 * Math.PI;
+  }
+
+  let Lpminus50 = Lp - 50;
+  let Lpm50 = Lpminus50 * Lpminus50;
+  let T =
+    1 -
+    0.17 * Math.cos(hp - Math.PI / 6) +
+    0.24 * Math.cos(2 * hp) +
+    0.32 * Math.cos(3 * hp + Math.PI / 30) -
+    0.2 * Math.cos(4 * hp - (63 * Math.PI) / 180);
+
+  let Sl = 1 + (0.015 * Lpm50) / Math.sqrt(20 + Lpm50);
+  let Sc = 1 + 0.045 * Cp;
+  let Sh = 1 + 0.015 * Cp * T;
+
+  let deltaTheta =
+    ((30 * Math.PI) / 180) *
+    Math.exp(-1 * Math.pow(((180 / Math.PI) * hp - 275) / 25, 2));
+  let Rc =
+    2 *
+    Math.sqrt(Math.pow(Cp, 7) / (Math.pow(Cp, 7) + Math.pow(25, 7)));
+  let Rt = -1 * Math.sin(2 * deltaTheta) * Rc;
+
+  let dLdivSl = dL / Sl;
+  let dCdivSc = dC / Sc;
+  let dHdivSh = dH / Sh;
+  return dLdivSl * dLdivSl + dCdivSc * dCdivSc + dHdivSh * dHdivSh +
+      (((Rt * dC) / Sc) * dH) / Sh;
+}
+
+// The distance of two colours, for the places that compare two colours that
+// are not tones of the palette.
 function squaredEuclideanMetricColours(pixel1, pixel2) {
-  if (chosenColourMethod.uniqueId === ColourMethods.MapartCraftDefault.uniqueId) {
-    //return deltaE(rgb2lab(pixel1),rgb2lab(pixel2))
-    pixel1 = rgb2lab(pixel1);
-    pixel2 = rgb2lab(pixel2);
-    const L = pixel1[0] - pixel2[0];
-    const a = pixel1[1] - pixel2[1];
-    const b = pixel1[2] - pixel2[2];
-    return L * L + a * a + b * b;
+  if (colourMetricKind === "euclidean") {
+    return squaredEuclideanMetricRGB(pixel1, pixel2);
   }
-  else if (chosenColourMethod.uniqueId === ColourMethods.Cie76_Lab50.uniqueId ||
-    chosenColourMethod.uniqueId === ColourMethods.Cie76_Lab65.uniqueId ||
-    chosenColourMethod.uniqueId === ColourMethods.Hct.uniqueId) {
-    if (chosenColourMethod.uniqueId === ColourMethods.Cie76_Lab50.uniqueId) {
-      pixel1 = rgb2lab50(pixel1);
-      pixel2 = rgb2lab50(pixel2);
-    }
-    else if (chosenColourMethod.uniqueId === ColourMethods.Cie76_Lab65.uniqueId) {
-      pixel1 = rgb2lab65(pixel1);
-      pixel2 = rgb2lab65(pixel2);
-    }
-    else {
-      pixel1 = rgb2hct(pixel1);
-      pixel2 = rgb2hct(pixel2);
-    }
-    const L = pixel1[0] - pixel2[0];
-    const a = pixel1[1] - pixel2[1];
-    const b = pixel1[2] - pixel2[2];
-    return L * L + a * a + b * b;
+  const converted1 = convertColourForMetric(pixel1);
+  const converted2 = convertColourForMetric(pixel2);
+  if (colourMetricKind === "ciede2000lab50" || colourMetricKind === "ciede2000lab65") {
+    return ciede2000Distance(converted1, converted2);
   }
-  else if (chosenColourMethod.uniqueId === ColourMethods.Ciede2000_Lab50.uniqueId ||
-      chosenColourMethod.uniqueId === ColourMethods.Ciede2000_Lab65.uniqueId) {
-    //Code based on culori.js - https://culorijs.org/
+  return squaredEuclideanMetricConverted(converted1, converted2);
+}
 
-    if (chosenColourMethod.uniqueId === ColourMethods.Ciede2000_Lab50.uniqueId) {
-      pixel1 = rgb2lab50(pixel1);
-      pixel2 = rgb2lab50(pixel2);
-    }
-    else {
-      pixel1 = rgb2lab65(pixel1);
-      pixel2 = rgb2lab65(pixel2);
-    }
-
-    let lStd = pixel1[0];
-    let aStd = pixel1[1];
-    let bStd = pixel1[2];
-    let cStd = Math.sqrt(aStd * aStd + bStd * bStd);
-
-    let lSmp = pixel2[0];
-    let aSmp = pixel2[1];
-    let bSmp = pixel2[2];
-    let cSmp = Math.sqrt(aSmp * aSmp + bSmp * bSmp);
-    let cAvg = (cStd + cSmp) / 2;
-
-    let cAvgPow7 = Math.pow(cAvg, 7);
-    let G =
-      0.5 *
-      (1 -
-        Math.sqrt(
-          cAvgPow7 / (cAvgPow7 + Math.pow(25, 7))
-        ));
-
-    let apStd = aStd * (1 + G);
-    let apSmp = aSmp * (1 + G);
-
-    let cpStd = Math.sqrt(apStd * apStd + bStd * bStd);
-    let cpSmp = Math.sqrt(apSmp * apSmp + bSmp * bSmp);
-
-    let hpStd =
-      Math.abs(apStd) + Math.abs(bStd) === 0
-        ? 0
-        : Math.atan2(bStd, apStd);
-    hpStd += (hpStd < 0) * 2 * Math.PI;
-
-    let hpSmp =
-      Math.abs(apSmp) + Math.abs(bSmp) === 0
-        ? 0
-        : Math.atan2(bSmp, apSmp);
-    hpSmp += (hpSmp < 0) * 2 * Math.PI;
-
-    let dL = lSmp - lStd;
-    let dC = cpSmp - cpStd;
-
-    let cpStdtimescpSmpZero = (cpStd === 0 && cpSmp === 0);
-    let dhp = cpStdtimescpSmpZero ? 0 : hpSmp - hpStd;
-    dhp -= (dhp > Math.PI) * 2 * Math.PI;
-    dhp += (dhp < -Math.PI) * 2 * Math.PI;
-
-    let dH = 2 * Math.sqrt(cpStd * cpSmp) * Math.sin(dhp / 2);
-
-    let Lp = (lStd + lSmp) / 2;
-    let Cp = (cpStd + cpSmp) / 2;
-
-    let hp;
-    if (cpStdtimescpSmpZero) {
-      hp = hpStd + hpSmp;
-    } else {
-      hp = (hpStd + hpSmp) / 2;
-      hp -= (Math.abs(hpStd - hpSmp) > Math.PI) * Math.PI;
-      hp += (hp < 0) * 2 * Math.PI;
-    }
-
-    let Lpminus50 = Lp - 50;
-    let Lpm50 = Lpminus50 * Lpminus50;
-    let T =
-      1 -
-      0.17 * Math.cos(hp - Math.PI / 6) +
-      0.24 * Math.cos(2 * hp) +
-      0.32 * Math.cos(3 * hp + Math.PI / 30) -
-      0.2 * Math.cos(4 * hp - (63 * Math.PI) / 180);
-
-    let Sl = 1 + (0.015 * Lpm50) / Math.sqrt(20 + Lpm50);
-    let Sc = 1 + 0.045 * Cp;
-    let Sh = 1 + 0.015 * Cp * T;
-
-    let deltaTheta =
-      ((30 * Math.PI) / 180) *
-      Math.exp(-1 * Math.pow(((180 / Math.PI) * hp - 275) / 25, 2));
-    let Rc =
-      2 *
-      Math.sqrt(Math.pow(Cp, 7) / (Math.pow(Cp, 7) + Math.pow(25, 7)));
-
-    let Rt = -1 * Math.sin(2 * deltaTheta) * Rc;
-
-    let dLdivSl = dL / Sl;
-    let dCdivSc = dC / Sc;
-    let dHdivSh = dH / Sh;
-    return dLdivSl * dLdivSl + dCdivSc * dCdivSc + dHdivSh * dHdivSh +
-        (((Rt * dC) / Sc) * dH) / Sh;
+// The distance of a tone of the palette to a pixel. The colour space value of
+// the tone is already known, only the pixel has to be converted.
+function metricForTone(entry, pixelRGB, pixelValue) {
+  if (colourMetricKind === "euclidean") {
+    return squaredEuclideanMetricRGB(entry.rgb, pixelRGB);
   }
-  else {
-    const r = pixel1[0] - pixel2[0];
-    const g = pixel1[1] - pixel2[1];
-    const b = pixel1[2] - pixel2[2];
-    return r * r + g * g + b * b;
+  if (colourMetricKind === "ciede2000lab50" || colourMetricKind === "ciede2000lab65") {
+    return ciede2000Distance(entry.metricValue, pixelValue);
   }
+  return squaredEuclideanMetricConverted(entry.metricValue, pixelValue);
 }
 
 function findClosestColourSetIdAndToneAndRGBTo(pixelRGB) {
@@ -381,20 +433,20 @@ function findClosestColourSetIdAndToneAndRGBTo(pixelRGB) {
   } else {
     let shortestDistance = 9999999;
     let closestPixel;
+    const tones = flatToneList;
+    const pixelValue = convertColourForMetric(pixelRGB);
 
-    colourSetsToUse.forEach((colourSet) => {
-      Object.keys(colourSet.tonesRGB).forEach((toneKey) => {
-        const toneRGB = colourSet.tonesRGB[toneKey];
-        let squareDistance = squaredEuclideanMetricColours(toneRGB, pixelRGB);
-        if (squareDistance < shortestDistance) {
-          shortestDistance = squareDistance;
-          closestPixel = {
-            colourSetId: colourSet.colourSetId,
-            tone: toneKey,
-          };
-        }
-      });
-    });
+    for (let index = 0; index < tones.length; index++) {
+      const entry = tones[index];
+      let squareDistance = metricForTone(entry, pixelRGB, pixelValue);
+      if (squareDistance < shortestDistance) {
+        shortestDistance = squareDistance;
+        closestPixel = {
+          colourSetId: entry.colourSetId,
+          tone: entry.tone,
+        };
+      }
+    }
     colourCache.set(RGBBinary, closestPixel);
     return closestPixel;
   }
@@ -409,29 +461,31 @@ function findClosest2ColourSetIdAndToneAndRGBTo(pixelRGB) {
     let shortestDistance2 = 9999999;
     let closestPixel1 = { colourSetId: null, tone: null }; // best colour
     let closestPixel2 = { colourSetId: null, tone: null }; // second best colour
+    let closestRGB1 = null; // the rgb of closestPixel1, to skip the same colour twice
+    const tones = flatToneList;
+    const pixelValue = convertColourForMetric(pixelRGB);
 
-    colourSetsToUse.forEach((colourSet) => {
-      Object.keys(colourSet.tonesRGB).forEach((toneKey) => {
-        const toneRGB = colourSet.tonesRGB[toneKey];
-        let squareDistance = squaredEuclideanMetricColours(toneRGB, pixelRGB);
-        if (squareDistance < shortestDistance1) {
-          shortestDistance2 = shortestDistance1;
-          closestPixel2 = closestPixel1;
-          shortestDistance1 = squareDistance;
-          closestPixel1 = {
-            colourSetId: colourSet.colourSetId,
-            tone: toneKey,
-          };
-        }
-        else if (squareDistance < shortestDistance2 && colourSetIdAndToneToRGB(closestPixel1.colourSetId, closestPixel1.tone) !== toneRGB) {
-          shortestDistance2 = squareDistance;
-          closestPixel2 = {
-            colourSetId: colourSet.colourSetId,
-            tone: toneKey,
-          };
-        }
-      });
-    });
+    for (let index = 0; index < tones.length; index++) {
+      const entry = tones[index];
+      let squareDistance = metricForTone(entry, pixelRGB, pixelValue);
+      if (squareDistance < shortestDistance1) {
+        shortestDistance2 = shortestDistance1;
+        closestPixel2 = closestPixel1;
+        shortestDistance1 = squareDistance;
+        closestPixel1 = {
+          colourSetId: entry.colourSetId,
+          tone: entry.tone,
+        };
+        closestRGB1 = entry.rgb;
+      }
+      else if (squareDistance < shortestDistance2 && closestRGB1 !== entry.rgb) {
+        shortestDistance2 = squareDistance;
+        closestPixel2 = {
+          colourSetId: entry.colourSetId,
+          tone: entry.tone,
+        };
+      }
+    }
     if (
       shortestDistance2 !== 9999999 && // to make sure closestPixel2.colourSetId/tone is not null
       squaredEuclideanMetricColours(
@@ -461,28 +515,28 @@ function findClosest2Improved(pixelRGB) {
   let shortestDistance2 = 9999999;
   let closestPixel1 = { colourSetId: null, tone: null };
   let closestPixel2 = { colourSetId: null, tone: null };
+  const tones = flatToneList;
+  const pixelValue = convertColourForMetric(pixelRGB);
 
-  colourSetsToUse.forEach((colourSet) => {
-    Object.keys(colourSet.tonesRGB).forEach((toneKey) => {
-      const toneRGB = colourSet.tonesRGB[toneKey];
-      let squareDistance = squaredEuclideanMetricColours(toneRGB, pixelRGB);
-      if (squareDistance < shortestDistance1) {
-        shortestDistance2 = shortestDistance1;
-        closestPixel2 = closestPixel1;
-        shortestDistance1 = squareDistance;
-        closestPixel1 = {
-          colourSetId: colourSet.colourSetId,
-          tone: toneKey,
-        };
-      } else if (squareDistance < shortestDistance2) {
-        shortestDistance2 = squareDistance;
-        closestPixel2 = {
-          colourSetId: colourSet.colourSetId,
-          tone: toneKey,
-        };
-      }
-    });
-  });
+  for (let index = 0; index < tones.length; index++) {
+    const entry = tones[index];
+    let squareDistance = metricForTone(entry, pixelRGB, pixelValue);
+    if (squareDistance < shortestDistance1) {
+      shortestDistance2 = shortestDistance1;
+      closestPixel2 = closestPixel1;
+      shortestDistance1 = squareDistance;
+      closestPixel1 = {
+        colourSetId: entry.colourSetId,
+        tone: entry.tone,
+      };
+    } else if (squareDistance < shortestDistance2) {
+      shortestDistance2 = squareDistance;
+      closestPixel2 = {
+        colourSetId: entry.colourSetId,
+        tone: entry.tone,
+      };
+    }
+  }
   if (!closestPixel2 || closestPixel2.colourSetId === null || closestPixel2.tone === null) {
     closestPixel2 = closestPixel1;
   }
@@ -504,20 +558,20 @@ function findClosest2Reflect(pixelRGB) {
   const reflectedTarget = [2 * pixelRGB[0] - rgb1[0], 2 * pixelRGB[1] - rgb1[1], 2 * pixelRGB[2] - rgb1[2]];
   let shortestDistance2 = 9999999;
   let closestPixel2 = { colourSetId: null, tone: null };
+  const tones = flatToneList;
+  const reflectedValue = convertColourForMetric(reflectedTarget);
 
-  colourSetsToUse.forEach((colourSet) => {
-    Object.keys(colourSet.tonesRGB).forEach((toneKey) => {
-      const toneRGB = colourSet.tonesRGB[toneKey];
-      let squareDistance = squaredEuclideanMetricColours(toneRGB, reflectedTarget);
-      if (squareDistance < shortestDistance2) {
-        shortestDistance2 = squareDistance;
-        closestPixel2 = {
-          colourSetId: colourSet.colourSetId,
-          tone: toneKey,
-        };
-      }
-    });
-  });
+  for (let index = 0; index < tones.length; index++) {
+    const entry = tones[index];
+    let squareDistance = metricForTone(entry, reflectedTarget, reflectedValue);
+    if (squareDistance < shortestDistance2) {
+      shortestDistance2 = squareDistance;
+      closestPixel2 = {
+        colourSetId: entry.colourSetId,
+        tone: entry.tone,
+      };
+    }
+  }
   if (!closestPixel2 || closestPixel2.colourSetId === null || closestPixel2.tone === null) {
     closestPixel2 = closestPixel1;
   }
@@ -691,9 +745,110 @@ function setupExactColourCache() {
   }
 }
 
+// Builds the flat list of tones that the colour search walks over. The order
+// is the same as the old nested loop over the colour sets, so the result of
+// the search does not change.
+function buildFlatToneList() {
+  const tones = [];
+  for (const colourSet of colourSetsToUse) {
+    const toneKeys = Object.keys(colourSet.tonesRGB);
+    for (const toneKey of toneKeys) {
+      tones.push({
+        rgb: colourSet.tonesRGB[toneKey],
+        colourSetId: colourSet.colourSetId,
+        tone: toneKey,
+        // The colour space value of the tone is calculated once per palette
+        // instead of once per tone and pixel.
+        metricValue: convertColourForMetric(colourSet.tonesRGB[toneKey]),
+      });
+    }
+  }
+  flatToneList = tones;
+}
+
+// A fingerprint of the tones that can be picked. The colour caches are only
+// valid for the tone set they were built with, so they are thrown away when
+// this changes and kept when only the dithering settings change.
+function toneSetSignature() {
+  // the colour method changes the colour space the tones are measured in
+  let signature = colourMetricKind + "|";
+  for (const colourSet of colourSetsToUse) {
+    signature += colourSet.colourSetId + ":";
+    const toneKeys = Object.keys(colourSet.tonesRGB);
+    for (const toneKey of toneKeys) {
+      const rgb = colourSet.tonesRGB[toneKey];
+      signature += toneKey + "," + rgb[0] + "." + rgb[1] + "." + rgb[2] + ";";
+    }
+    signature += "|";
+  }
+  return signature;
+}
+
+// Converts the plain pixel edit object of the main thread into two typed
+// arrays, so that the render loop does not have to look up an object key for
+// every pixel.
+function setupPixelEdits(edits, pixelCount) {
+  const entries = Object.entries(edits || {});
+  if (entries.length === 0) {
+    pixelEditKinds = null;
+    pixelEditRGB = null;
+    pixelEditIndices = null;
+    hasPixelEdits = false;
+    hasMaskEdits = false;
+    return;
+  }
+  const kinds = new Uint8Array(pixelCount);
+  const rgbValues = new Uint8Array(pixelCount * 3);
+  const indices = [];
+  let used = false;
+  let hasMask = false;
+  for (const [index, value] of entries) {
+    const pixel = parseInt(index, 10);
+    if (!Number.isInteger(pixel) || pixel < 0 || pixel >= pixelCount) continue;
+    if (value === "mask") {
+      kinds[pixel] = 1;
+      hasMask = true;
+      used = true;
+    } else if (value === "protect") {
+      kinds[pixel] = 2;
+      used = true;
+    } else {
+      const parsed = hexToRGB(value);
+      if (!parsed) {
+        // An edit the worker does not understand still counts as an edited
+        // pixel for the island cleanup, it just does not change the colour.
+        kinds[pixel] = 4;
+        used = true;
+        continue;
+      }
+      kinds[pixel] = 3;
+      rgbValues[pixel * 3] = parsed[0];
+      rgbValues[pixel * 3 + 1] = parsed[1];
+      rgbValues[pixel * 3 + 2] = parsed[2];
+      used = true;
+    }
+    indices.push(pixel);
+  }
+  hasPixelEdits = used;
+  hasMaskEdits = hasMask;
+  pixelEditKinds = used ? kinds : null;
+  pixelEditRGB = used ? rgbValues : null;
+  pixelEditIndices = used ? Int32Array.from(indices) : null;
+}
+
+// Whether the pixel has any edit at all, protect edits included.
+function pixelHasEdit(pixel) {
+  return pixelEditKinds !== null && pixelEditKinds[pixel] !== 0;
+}
+
 function exactRGBToColourSetIdAndTone(pixelRGB) {
   const RGBBinary = (pixelRGB[0] << 16) + (pixelRGB[1] << 8) + pixelRGB[2];
   return exactColourCache.get(RGBBinary);
+}
+
+// The same lookup without building an rgb array for every pixel.
+function exactRGBChannelsToColourSetIdAndTone(red, green, blue) {
+  return exactColourCache.get((red << 16) + (green << 8) + blue);
 }
 
 function hexToRGB(hex) {
@@ -704,14 +859,32 @@ function hexToRGB(hex) {
 }
 
 function isSupportBlockMandatoryForColourSetIdAndTone(colourSetIdAndTone) {
-  const colourSet = coloursJSON[colourSetIdAndTone.colourSetId];
+  if (!colourSetIdAndTone) return false;
+  const colourSetId = colourSetIdAndTone.colourSetId;
+  // The rule only depends on the colour set, not on the tone. The answer is
+  // therefore looked up once per render instead of once per pixel.
+  const cached = supportMandatoryByColourSetId.get(colourSetId);
+  if (cached !== undefined) return cached;
+  return computeSupportBlockMandatory(colourSetId);
+}
+
+function computeSupportBlockMandatory(colourSetId) {
+  const colourSet = coloursJSON[colourSetId];
   if (!colourSet) return false;
-  const blockId = selectedBlocks[colourSetIdAndTone.colourSetId];
+  const blockId = selectedBlocks[colourSetId];
   // The exact colour cache holds every colour set, so a colour can resolve to
   // a colour set that is not part of the current palette.
   if (blockId === undefined || blockId === "-1") return false;
   const block = colourSet.blocks[blockId];
   return !!(block && block.supportBlockMandatory);
+}
+
+// Fills the cache of the support block rule for the current palette.
+function setupSupportMandatoryCache() {
+  supportMandatoryByColourSetId.clear();
+  for (const colourSetId of Object.keys(selectedBlocks)) {
+    supportMandatoryByColourSetId.set(colourSetId, computeSupportBlockMandatory(colourSetId));
+  }
 }
 
 function colourSetIdAndToneToRGB(colourSetId, tone) {
@@ -1400,7 +1573,7 @@ function cleanupPaletteIslands(size) {
             const pixel = queue[head++];
             const px = pixel % width;
             const py = (pixel - px) / width;
-            if (pixelEdits[pixel] !== undefined) hasEdits = true;
+            if (pixelHasEdit(pixel)) hasEdits = true;
             const lx = px - baseX;
             const ly = py - baseY;
             for (let dy = -1; dy <= 1; dy++) {
@@ -1502,7 +1675,7 @@ function cleanupSmartPaletteIslands(size) {
             const pixel = queue[head++];
             const px = pixel % width;
             const py = (pixel - px) / width;
-            if (pixelEdits[pixel] !== undefined) hasEdits = true;
+            if (pixelHasEdit(pixel)) hasEdits = true;
             luminanceSum +=
               0.299 * data[pixel * 4] + 0.587 * data[pixel * 4 + 1] + 0.114 * data[pixel * 4 + 2];
             const lx = px - baseX;
@@ -1667,11 +1840,11 @@ function supportBlockCountForPixel(i, indexA, closestColourSetIdAndTone, whichMa
         case 1: {
           // first block in column; special since noobline to the North
           const coloursBlock0_index = i - 4 * 128 * optionValue_mapSize_x; //exactRGBToColourSetIdAndTone
-          const coloursBlock0 = exactRGBToColourSetIdAndTone([
+          const coloursBlock0 = exactRGBChannelsToColourSetIdAndTone(
             canvasImageData.data[coloursBlock0_index],
             canvasImageData.data[coloursBlock0_index + 1],
-            canvasImageData.data[coloursBlock0_index + 2],
-          ]);
+            canvasImageData.data[coloursBlock0_index + 2]
+          );
           if (
             // first under-support block
             coloursBlock0.tone === "light" ||
@@ -1695,11 +1868,11 @@ function supportBlockCountForPixel(i, indexA, closestColourSetIdAndTone, whichMa
           // special case 127 also accounts for final block in column since we are 1-cycle behind in out for-loop; no lookahead.
           // falls through to default case to also account for block 126 as expected too
           const penultimateColoursBlock_index = i - 4 * 128 * optionValue_mapSize_x;
-          const penultimateColoursBlock = exactRGBToColourSetIdAndTone([
+          const penultimateColoursBlock = exactRGBChannelsToColourSetIdAndTone(
             canvasImageData.data[penultimateColoursBlock_index],
             canvasImageData.data[penultimateColoursBlock_index + 1],
-            canvasImageData.data[penultimateColoursBlock_index + 2],
-          ]);
+            canvasImageData.data[penultimateColoursBlock_index + 2]
+          );
           if (
             // first under-support block
             closestColourSetIdAndTone.tone === "light" ||
@@ -1720,17 +1893,17 @@ function supportBlockCountForPixel(i, indexA, closestColourSetIdAndTone, whichMa
         default: {
           // average block in column
           const coloursBlock_north_index = i - 4 * 128 * optionValue_mapSize_x * 2;
-          const coloursBlock_north = exactRGBToColourSetIdAndTone([
+          const coloursBlock_north = exactRGBChannelsToColourSetIdAndTone(
             canvasImageData.data[coloursBlock_north_index],
             canvasImageData.data[coloursBlock_north_index + 1],
-            canvasImageData.data[coloursBlock_north_index + 2],
-          ]);
+            canvasImageData.data[coloursBlock_north_index + 2]
+          );
           const coloursBlock_index = i - 4 * 128 * optionValue_mapSize_x;
-          const coloursBlock = exactRGBToColourSetIdAndTone([
+          const coloursBlock = exactRGBChannelsToColourSetIdAndTone(
             canvasImageData.data[coloursBlock_index],
             canvasImageData.data[coloursBlock_index + 1],
-            canvasImageData.data[coloursBlock_index + 2],
-          ]);
+            canvasImageData.data[coloursBlock_index + 2]
+          );
           const coloursBlock_south = closestColourSetIdAndTone;
           if (
             // first under-support block
@@ -1775,11 +1948,11 @@ function supportBlockCountForPixel(i, indexA, closestColourSetIdAndTone, whichMa
         default: {
           count += 1;
           const coloursBlock_north_index = i - 4 * 128 * optionValue_mapSize_x;
-          const coloursBlock_north = exactRGBToColourSetIdAndTone([
+          const coloursBlock_north = exactRGBChannelsToColourSetIdAndTone(
             canvasImageData.data[coloursBlock_north_index],
             canvasImageData.data[coloursBlock_north_index + 1],
-            canvasImageData.data[coloursBlock_north_index + 2],
-          ]);
+            canvasImageData.data[coloursBlock_north_index + 2]
+          );
           if (coloursBlock_north.tone === "light" || closestColourSetIdAndTone.tone === "dark") {
             count += 1;
           }
@@ -1847,10 +2020,9 @@ function getMapartImageDataAndMaterials() {
     const width = optionValue_mapSize_x * 128;
     const height = optionValue_mapSize_y * 128;
     const pixelCount = width * height;
-    for (const [index, value] of Object.entries(pixelEdits)) {
-      if (value !== "protect") continue;
-      const pixel = parseInt(index, 10);
-      if (!Number.isInteger(pixel) || pixel < 0 || pixel >= pixelCount) continue;
+    for (let index = 0; index < pixelEditIndices.length; index++) {
+      const pixel = pixelEditIndices[index];
+      if (pixelEditKinds[pixel] !== 2) continue; // protect
       if (!cleanupProtectionMask) cleanupProtectionMask = new Uint8Array(pixelCount);
       cleanupProtectionMask[pixel] = 1;
     }
@@ -1885,6 +2057,9 @@ function getMapartImageDataAndMaterials() {
   let divisor;
   const chosenDitherMethod =
     DitherMethods[Object.keys(DitherMethods).find((ditherMethodKey) => DitherMethods[ditherMethodKey].uniqueId === optionValue_dithering)];
+  if (!chosenDitherMethod) {
+    throw new Error("Unknown dithering method: " + String(optionValue_dithering));
+  }
   const chosenDitherAlgorithm = chosenDitherMethod.algorithm;
   if (chosenDitherAlgorithm !== "none") {
     ditherMatrix = chosenDitherMethod.ditherMatrix;
@@ -1899,6 +2074,8 @@ function getMapartImageDataAndMaterials() {
   const serpentineEdgeMask = isSerpentine ? buildSerpentineEdgeMask() : null;
   const ditherStrength = Math.max(0, optionValue_dithering_strength) / 100.0;
   const ditherStrengthMultiplier = ditherStrength;
+  // (pattern size + 1) * strength, the factor of the ordered dithering
+  const ditherPatternLimit = (ditherMatrix ? ditherMatrix[0].length * ditherMatrix.length + 1 : 1) * ditherStrength;
   const ditheringPropagationRed = optionValue_dithering_propagation_red / 100.0;
   const ditheringPropagationGreen = optionValue_dithering_propagation_green / 100.0;
   const ditheringPropagationBlue = optionValue_dithering_propagation_blue / 100.0;
@@ -1909,7 +2086,8 @@ function getMapartImageDataAndMaterials() {
     const multimap_x = isSerpentine && row % 2 === 1 ? multimapWidth - 1 - columnInRow : columnInRow;
     const multimap_y = row;
     const serpentineDirection = isSerpentine && row % 2 === 1 ? -1 : 1;
-    const i = (multimap_y * multimapWidth + multimap_x) * 4;
+    const pixelIndex = multimap_y * multimapWidth + multimap_x;
+    const i = pixelIndex * 4;
     const indexR = i;
     const indexG = i + 1;
     const indexB = i + 2;
@@ -1925,16 +2103,16 @@ function getMapartImageDataAndMaterials() {
         postMessage({
           head: "PROGRESS_REPORT",
           body: progress,
+          requestId: currentRequestId,
         });
         lastProgressPercent = progressPercent;
       }
     }
 
     let closestColourSetIdAndTone;
-    const editedValue = hasPixelEdits ? pixelEdits[i / 4] : null;
-    const editedIsMask = editedValue === "mask";
-    const editedIsProtect = editedValue === "protect";
-    const editedRGB = editedValue && !editedIsMask && !editedIsProtect ? hexToRGB(editedValue) : null;
+    const editKind = hasPixelEdits ? pixelEditKinds[pixelIndex] : 0;
+    const editedIsMask = editKind === 1;
+    const editedRGB = editKind === 3 ? [pixelEditRGB[pixelIndex * 3], pixelEditRGB[pixelIndex * 3 + 1], pixelEditRGB[pixelIndex * 3 + 2]] : null;
     if (editedIsMask) {
       // A mask pins the pixel to the closest single tone of its original
       // source colour, so it stays clean without overriding the source hue.
@@ -2035,12 +2213,35 @@ function getMapartImageDataAndMaterials() {
             // is taken to get a distance that is proportional to the actual
             // distance between the colours. Without it the ratio bends towards
             // the closest colour and the pattern disappears in the dark tones.
-            const distanceToClosest = Math.sqrt(newPixels[0]);
-            const distanceToSecond = Math.sqrt(newPixels[1]);
-            const totalDistance = distanceToClosest + distanceToSecond;
-            const mixRatio = totalDistance > 0 ? distanceToClosest / totalDistance : 0;
-            const patternSize = ditherMatrix[0].length * ditherMatrix.length;
-            if (ditherStrength > 0 && mixRatio * (patternSize + 1) * ditherStrength > ditherThreshold) {
+            //
+            // How much of the second colour is mixed in is decided by where the
+            // pixel sits between the two candidate colours, which is
+            // distanceToClosest / (distanceToClosest + distanceToSecond): 0 at
+            // the closest colour, 1 at the second closest and 0.5 exactly in
+            // between. Comparing that ratio with the raw threshold (1..N)
+            // spreads the pattern evenly over the whole tone range.
+            //
+            // The previous comparison divided by the distance to the second
+            // colour alone. That ratio exceeds 1 for every pixel which is
+            // closer to the first colour, so the pattern was invisible
+            // everywhere except in the darkest tones.
+            //
+            // The colour method returns squared distances, so the square root
+            // is taken to get a distance that is proportional to the actual
+            // distance between the colours. Without it the ratio bends towards
+            // the closest colour and the pattern disappears in the dark tones.
+            //
+            // The square roots are avoided: the comparison
+            //   d1 / (d1 + d2) * K > T
+            // is the same as
+            //   d1 * (K - T) > T * d2
+            // and both sides are positive, so it can be squared:
+            //   d1^2 * (K - T)^2 > T^2 * d2^2
+            // The squared distances are exactly what the colour method
+            // returned, so the whole comparison works without a square root
+            // and without a division.
+            const limit = ditherPatternLimit - ditherThreshold;
+            if (ditherStrength > 0 && limit > 0 && newPixels[0] * limit * limit > ditherThreshold * ditherThreshold * newPixels[1]) {
               closestColourSetIdAndTone = newPixels[3];
             } else {
               closestColourSetIdAndTone = newPixels[2];
@@ -2192,71 +2393,137 @@ function getMapartImageDataAndMaterials() {
 }
 
 onmessage = (e) => {
-  coloursJSON = e.data.body.coloursJSON;
-  MapModes = e.data.body.MapModes;
-  WhereSupportBlocksModes = e.data.body.WhereSupportBlocksModes;
-  ColourMethods = e.data.body.ColourMethods;
-  DitherMethods = e.data.body.DitherMethods;
-  canvasImageData = e.data.body.canvasImageData;
-  selectedBlocks = e.data.body.selectedBlocks;
-  disabledTones = e.data.body.disabledTones;
-  optionValue_modeNBTOrMapdat = e.data.body.optionValue_modeNBTOrMapdat;
-  optionValue_mapSize_x = e.data.body.optionValue_mapSize_x;
-  optionValue_mapSize_y = e.data.body.optionValue_mapSize_y;
-  optionValue_staircasing = e.data.body.optionValue_staircasing;
-  optionValue_whereSupportBlocks = e.data.body.optionValue_whereSupportBlocks;
-  optionValue_transparency = e.data.body.optionValue_transparency;
-  optionValue_transparencyTolerance = e.data.body.optionValue_transparencyTolerance;
-  optionValue_betterColour = e.data.body.optionValue_betterColour;
+  const head = e.data.head;
+  const body = e.data.body || {};
+  // the request id travels with the message, the body is only used by older
+  // callers that put it there
+  const requestId = e.data.requestId !== undefined ? e.data.requestId : body.requestId;
+
+  if (head === "INIT") {
+    // The palette and the mode tables are sent once and then stay in the
+    // worker. They are 359 kB in total and were cloned into every single
+    // render message before.
+    coloursJSON = body.coloursJSON;
+    MapModes = body.MapModes;
+    WhereSupportBlocksModes = body.WhereSupportBlocksModes;
+    ColourMethods = body.ColourMethods;
+    DitherMethods = body.DitherMethods;
+    // The exact colour cache belongs to the palette, so a new palette means a
+    // new cache.
+    exactColourCache.clear();
+    setupExactColourCache();
+    postMessage({
+      head: "INIT_DONE",
+      body: {},
+      requestId: requestId,
+    });
+    return;
+  }
+
+  if (head !== "PIXELS") {
+    throw new Error("Unknown worker message header: " + String(head));
+  }
+
+  try {
+    renderPixels(body, requestId);
+  } catch (error) {
+    postMessage({
+      head: "ERROR",
+      body: {
+        message: error && error.message ? error.message : String(error),
+      },
+      requestId: requestId,
+    });
+  }
+};
+
+function renderPixels(body, requestId) {
+  // Older callers send the palette with every render message. The studio sends
+  // it once with an INIT message, but the fallback keeps the worker usable on
+  // its own.
+  if (body.coloursJSON && body.coloursJSON !== coloursJSON) {
+    coloursJSON = body.coloursJSON;
+    MapModes = body.MapModes || MapModes;
+    WhereSupportBlocksModes = body.WhereSupportBlocksModes || WhereSupportBlocksModes;
+    ColourMethods = body.ColourMethods || ColourMethods;
+    DitherMethods = body.DitherMethods || DitherMethods;
+    exactColourCache.clear();
+    setupExactColourCache();
+  }
+  currentRequestId = requestId;
+  canvasImageData = body.canvasImageData;
+  selectedBlocks = body.selectedBlocks;
+  disabledTones = body.disabledTones;
+  optionValue_modeNBTOrMapdat = body.optionValue_modeNBTOrMapdat;
+  optionValue_mapSize_x = body.optionValue_mapSize_x;
+  optionValue_mapSize_y = body.optionValue_mapSize_y;
+  optionValue_staircasing = body.optionValue_staircasing;
+  optionValue_whereSupportBlocks = body.optionValue_whereSupportBlocks;
+  optionValue_transparency = body.optionValue_transparency;
+  optionValue_transparencyTolerance = body.optionValue_transparencyTolerance;
+  optionValue_betterColour = body.optionValue_betterColour;
   chosenColourMethod =
     ColourMethods[Object.keys(ColourMethods).find((colourMethodKey) => ColourMethods[colourMethodKey].uniqueId === optionValue_betterColour)];
-  optionValue_dithering = e.data.body.optionValue_dithering;
-  optionValue_dithering_propagation_red = e.data.body.optionValue_dithering_propagation_red;
-  optionValue_dithering_propagation_green = e.data.body.optionValue_dithering_propagation_green;
-  optionValue_dithering_propagation_blue = e.data.body.optionValue_dithering_propagation_blue;
-  optionValue_dithering_strength = e.data.body.optionValue_dithering_strength === undefined ? 100 : e.data.body.optionValue_dithering_strength;
-  optionValue_improvedPatternDithering = e.data.body.optionValue_improvedPatternDithering === true;
-  optionValue_patternPairMode = e.data.body.optionValue_patternPairMode === "reflect" ? "reflect" : "nearest";
-  optionValue_cleanup_enabled = !!e.data.body.optionValue_cleanup_enabled;
-  optionValue_cleanup_denoise = e.data.body.optionValue_cleanup_denoise || 0;
-  optionValue_cleanup_denoiseMethod = e.data.body.optionValue_cleanup_denoiseMethod || "median";
-  optionValue_cleanup_edges = e.data.body.optionValue_cleanup_edges === undefined ? 60 : e.data.body.optionValue_cleanup_edges;
-  optionValue_cleanup_despeckle = e.data.body.optionValue_cleanup_despeckle || 0;
-  optionValue_cleanup_paletteIslands = e.data.body.optionValue_cleanup_paletteIslands !== false;
-  optionValue_cleanup_colours = e.data.body.optionValue_cleanup_colours || 0;
-  optionValue_cleanup_coloursPerceptual = !!e.data.body.optionValue_cleanup_coloursPerceptual;
-  optionValue_cleanup_islandsSmart = !!e.data.body.optionValue_cleanup_islandsSmart;
-  optionValue_cleanup_adaptiveDither = e.data.body.optionValue_cleanup_adaptiveDither !== false;
-  optionValue_style = e.data.body.optionValue_style;
-  pixelEdits = e.data.body.pixelEdits || {};
-  hasPixelEdits = Object.keys(pixelEdits).length > 0;
-  hasMaskEdits = Object.values(pixelEdits).some((value) => value === "mask");
+  setupColourMetricKind();
+  optionValue_dithering = body.optionValue_dithering;
+  optionValue_dithering_propagation_red = body.optionValue_dithering_propagation_red;
+  optionValue_dithering_propagation_green = body.optionValue_dithering_propagation_green;
+  optionValue_dithering_propagation_blue = body.optionValue_dithering_propagation_blue;
+  optionValue_dithering_strength = body.optionValue_dithering_strength === undefined ? 100 : body.optionValue_dithering_strength;
+  optionValue_improvedPatternDithering = body.optionValue_improvedPatternDithering === true;
+  optionValue_patternPairMode = body.optionValue_patternPairMode === "reflect" ? "reflect" : "nearest";
+  optionValue_cleanup_enabled = !!body.optionValue_cleanup_enabled;
+  optionValue_cleanup_denoise = body.optionValue_cleanup_denoise || 0;
+  optionValue_cleanup_denoiseMethod = body.optionValue_cleanup_denoiseMethod || "median";
+  optionValue_cleanup_edges = body.optionValue_cleanup_edges === undefined ? 60 : body.optionValue_cleanup_edges;
+  optionValue_cleanup_despeckle = body.optionValue_cleanup_despeckle || 0;
+  optionValue_cleanup_paletteIslands = body.optionValue_cleanup_paletteIslands !== false;
+  optionValue_cleanup_colours = body.optionValue_cleanup_colours || 0;
+  optionValue_cleanup_coloursPerceptual = !!body.optionValue_cleanup_coloursPerceptual;
+  optionValue_cleanup_islandsSmart = !!body.optionValue_cleanup_islandsSmart;
+  optionValue_cleanup_adaptiveDither = body.optionValue_cleanup_adaptiveDither !== false;
+  optionValue_style = body.optionValue_style;
+  pixelEdits = body.pixelEdits || {};
   sourceImageData = null;
 
-  // Reset everything that belongs to a single render. The worker used to be
-  // thrown away after every preview, which hid the fact that the maps array
-  // and the colour caches kept growing; the exact colour cache also kept
-  // entries of palettes that are no longer selected.
+  // Reset everything that belongs to a single render. The maps array belongs to
+  // one render and must not grow from one render to the next.
   maps = [];
   colourSetsToUse = [];
-  colourCache.clear();
-  colourCache2.clear();
-  colourCache2Improved.clear();
-  colourCache2Reflect.clear();
-  exactColourCache.clear();
 
   setupColourSetsToUse();
   applyStyleColourLimit();
-  setupExactColourCache();
+  setupSupportMandatoryCache();
+
+  // The colour caches only depend on the tones that can be picked. They are
+  // kept when only the dithering settings changed and thrown away when the
+  // palette changed, which is what makes dragging a slider fast.
+  const signature = toneSetSignature();
+  if (signature !== flatToneSignature) {
+    flatToneSignature = signature;
+    buildFlatToneList();
+    colourCache.clear();
+    colourCache2.clear();
+    colourCache2Improved.clear();
+    colourCache2Reflect.clear();
+  }
+
+  setupPixelEdits(pixelEdits, optionValue_mapSize_x * 128 * optionValue_mapSize_y * 128);
   getMapartImageDataAndMaterials();
-  postMessage({
-    head: "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS",
-    body: {
-      pixels: canvasImageData,
-      maps: maps,
-      currentSelectedBlocks: selectedBlocks,
+  postMessage(
+    {
+      head: "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS",
+      body: {
+        pixels: canvasImageData,
+        maps: maps,
+        currentSelectedBlocks: selectedBlocks,
+      },
+      requestId: requestId,
     },
-  });
-};
+    // The pixel buffer is handed over instead of being copied. The worker does
+    // not use it after this message.
+    [canvasImageData.data.buffer]
+  );
+}
 
 };

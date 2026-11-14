@@ -89,7 +89,14 @@ function runWorker(body) {
     const timeout = setTimeout(() => reject(new Error("worker timeout")), 30000);
     const originalPostMessage = window.postMessage;
     window.postMessage = (message) => {
-      if (!message || typeof message !== "object" || message.head !== "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS") return;
+      if (!message || typeof message !== "object") return;
+      if (message.head === "ERROR") {
+        clearTimeout(timeout);
+        window.postMessage = originalPostMessage;
+        reject(new Error(message.body && message.body.message ? message.body.message : "worker error"));
+        return;
+      }
+      if (message.head !== "PIXELS_MATERIALS_CURRENTSELECTEDBLOCKS") return;
       clearTimeout(timeout);
       window.postMessage = originalPostMessage;
       resolve(message);
@@ -107,7 +114,7 @@ function pixelAt(pixels, x, y) {
 // ---------------------------------------------------------------- C3: matrices
 
 test("every ordered dither matrix is a permutation of 1..N", () => {
-  for (const [name, method] of Object.entries(DitherMethods)) {
+  for (const method of Object.values(DitherMethods)) {
     if (method.algorithm !== "ordered") continue;
     const matrix = method.ditherMatrix;
     expect(Array.isArray(matrix)).toBe(true);
@@ -247,10 +254,10 @@ test("no dithering produces a flat result", async () => {
 
 test("every dithering method declares an algorithm and renders", async () => {
   const algorithms = new Set(["none", "errorDiffusion", "ordered"]);
-  for (const [name, method] of Object.entries(DitherMethods)) {
+  for (const method of Object.values(DitherMethods)) {
     expect(algorithms.has(method.algorithm)).toBe(true);
   }
-  for (const [name, method] of Object.entries(DitherMethods)) {
+  for (const method of Object.values(DitherMethods)) {
     const result = await runWorker(
       twoToneBody(solidImageData([136, 136, 136]), { optionValue_dithering: method.uniqueId })
     );

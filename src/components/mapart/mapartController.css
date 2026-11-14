@@ -1,35 +1,120 @@
-.mapartController,
-.sectionsPreviewSettingsMaterials {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: flex-start;
+/* ==========================================================================
+   Раскладка Local Studio — три колонки (Этап 2.3)
+   ┌──────────────────────────────────────────────────────┐
+   │ studio (стили, палитра, материалы) │ preview │ settings │
+   ├──────────────────────────────────────────────────────┤
+   │ export bar (липкая)                                  │
+   └──────────────────────────────────────────────────────┘
+   ========================================================================== */
+
+.mapartController {
+  display: grid;
+  grid-template-areas:
+    "studio preview settings"
+    "export export export";
+  grid-template-columns: 300px minmax(0, 1fr) 340px;
+  gap: var(--sp-3);
+  align-items: start;
 }
 
-.sectionsPreviewSettingsMaterials {
-  flex: 1;
+.studioColumn {
+  grid-area: studio;
+}
+
+.previewColumn {
+  grid-area: preview;
+}
+
+.settingsColumn {
+  grid-area: settings;
+}
+
+.exportBar {
+  grid-area: export;
+}
+
+.studioColumn,
+.previewColumn,
+.settingsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
 }
 
 .section {
   padding: 0.3em;
 }
 
+/* Липкая панель экспорта: кнопки всегда под рукой при прокрутке. */
+.exportBar {
+  position: sticky;
+  bottom: 0;
+  z-index: var(--z-float);
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-1);
+  background: var(--overlay-panel);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-float);
+}
+
+@media (max-width: 1200px) {
+  /* Две колонки: студия слева, превью и настройки справа друг под другом. */
+  .mapartController {
+    grid-template-areas:
+      "studio preview"
+      "studio settings"
+      "export export";
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1200px) and (min-width: 861px) {
+  /* Студия занимает две строки сетки. Её содержимое может оказаться
+     выше этих строк и тогда наезжает на панель экспорта — поэтому
+     ограничиваем высоту и даём колонке свою прокрутку. */
+  .studioColumn {
+    max-height: calc(100vh - 2 * var(--sp-2));
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 860px) {
+  /* Одна колонка. */
+  .mapartController {
+    grid-template-areas:
+      "studio"
+      "preview"
+      "settings"
+      "export";
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 720px) {
-  /* Let the side-by-side sections stack without their min-content width
-     forcing the whole document to scroll horizontally. */
-  .sectionsPreviewSettingsMaterials {
-    min-width: 0;
+  .mapartController {
+    gap: var(--sp-2);
   }
 
-  .sectionsPreviewSettingsMaterials > .section,
-  .sectionsPreviewSettingsMaterials > div {
+  .studioColumn > *,
+  .previewColumn > *,
+  .settingsColumn > * {
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
   }
 
-  .section.settingsDiv select {
+  .settingsColumn select {
     max-width: 100%;
+  }
+
+  .exportBar {
+    position: static;
   }
 }

@@ -15,6 +15,9 @@
 }
 
 .mapCanvas {
+  /* Канвас не выходит за пределы колонки; высота сохраняет пропорции. */
+  max-width: 100%;
+  height: auto;
   image-rendering: optimizeSpeed; /* Older versions of FF */
   image-rendering: -moz-crisp-edges; /* FF 6.0+ */
   image-rendering: -webkit-optimize-contrast; /* Safari */
@@ -34,24 +37,45 @@
 }
 
 .sizeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   margin-top: 2px;
   margin-left: 2px;
-  width: 15px;
-  height: 15px;
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
   cursor: pointer;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-3);
+  color: var(--text-1);
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: var(--fs-lg);
+  line-height: 1;
+}
+
+.sizeButton:hover {
+  border-color: var(--accent-hover);
+  color: var(--accent);
 }
 
 .progress {
-  background-color: black;
+  position: relative;
+  background-color: var(--surface-0);
 }
 
 .progressText {
   position: absolute;
+  top: 0;
+  left: 0;
   padding-left: 6px;
+  z-index: var(--z-button-text);
 }
 
 .progressDiv {
-  background-color: #688e6b;
+  background-color: var(--accent-progress);
   height: 24px;
 }
 
@@ -68,6 +92,8 @@
   position: absolute;
   top: 0;
   left: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
@@ -77,8 +103,8 @@
 
 .pixelGridOverlay {
   z-index: 2;
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.28) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.28) 1px, transparent 1px);
+  background-image: linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
   opacity: 0.72;
 }
 
@@ -89,35 +115,37 @@
 }
 
 .pixelModeHint {
-  color: var(--rebaneGreen);
+  color: var(--accent);
   font-family: Lato, Open Sans, Arial, sans-serif;
   margin-left: 0.35em;
   white-space: nowrap;
 }
 
 .previewModeButton {
+  border-radius: var(--radius-sm);
   margin-top: 2px;
   margin-left: 2px;
   min-width: 26px;
   height: 19px;
   padding: 0 3px;
-  border: 1px solid #fff;
-  background-color: #333;
-  color: #fff;
+  border: 1px solid var(--text-1);
+  background-color: var(--surface-3);
+  color: var(--text-1);
   cursor: pointer;
   font-family: "kenpixel_mini_square", Lato, sans-serif;
-  font-size: 0.72em;
+  font-size: var(--fs-xs);
   line-height: 1;
 }
 
 .previewModeButton:hover {
-  border-color: var(--rebaneGreen);
-  color: var(--rebaneGreen);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .pixelEditor {
-  border: 1px solid #555;
-  background-color: #2a2a2a;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-3);
+  background-color: var(--surface-2);
   padding: 0.35em 0.4em;
   margin: 0.35em 0 0.55em;
   font-family: Lato, Open Sans, Arial, sans-serif;
@@ -134,20 +162,21 @@
 }
 
 .pixelEditor button {
-  border: 1px solid #fff;
-  background-color: #333;
-  color: #fff;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--text-1);
+  background-color: var(--surface-3);
+  color: var(--text-1);
   padding: 0.2em 0.42em;
   cursor: pointer;
   font-family: "kenpixel_mini_square", Lato, sans-serif;
-  font-size: 0.76em;
+  font-size: var(--fs-xs);
   line-height: 1.2;
 }
 
 .pixelEditor button:hover:not(:disabled),
 .pixelEditor button.active {
-  border-color: var(--rebaneGreen);
-  color: var(--rebaneGreen);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .pixelEditor button:disabled {
@@ -160,7 +189,7 @@
 }
 
 .pixelEditorToggle.active {
-  background-color: #2b4a2e;
+  background-color: var(--accent-surface);
 }
 
 .pixelEditorTools {
@@ -171,13 +200,13 @@
 
 .pixelEditorCount {
   margin-left: auto;
-  color: var(--rebaneGreen);
-  font-size: 0.74em;
+  color: var(--accent);
+  font-size: var(--fs-xs);
 }
 
 .pixelEditorHint {
-  color: #999;
-  font-size: 0.72em;
+  color: var(--text-6);
+  font-size: var(--fs-xs);
 }
 
 .pixelEditorPalette {
@@ -191,25 +220,26 @@
 }
 
 .pixelEditorSwatch {
-  width: 18px;
-  height: 18px;
-  min-width: 18px;
+  border-radius: var(--radius-sm);
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
   padding: 0 !important;
-  border: 1px solid #111 !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--swatch-border) !important;
+  box-shadow: inset 0 0 0 1px var(--grid-line-soft);
 }
 
 .pixelEditorSwatch:hover,
 .pixelEditorSwatch.active {
-  border-color: #fff !important;
-  box-shadow: 0 0 0 1px var(--rebaneGreen);
+  border-color: var(--text-1) !important;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .pixelEditorSwatchCurrent {
   display: inline-block;
   margin-right: 0.25em;
-  border: 1px solid #fff !important;
-  box-shadow: 0 0 0 1px var(--rebaneGreen);
+  border: 1px solid var(--text-1) !important;
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .pixelEditorActions {
@@ -222,6 +252,9 @@
   position: absolute;
   top: 0;
   left: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
   image-rendering: optimizeSpeed;
   image-rendering: -moz-crisp-edges;
@@ -241,6 +274,7 @@
 
 
 .pixelEditorSelectionBar {
+  border-radius: var(--radius-md);
   position: fixed;
   left: 50%;
   bottom: max(10px, env(safe-area-inset-bottom));
@@ -254,27 +288,28 @@
   gap: 0.3em;
   max-width: calc(100vw - 24px);
   padding: 0.4em 0.5em;
-  border: 1px solid var(--rebaneGreen);
-  background-color: rgba(33, 33, 33, 0.97);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--accent);
+  background-color: var(--overlay-panel);
+  box-shadow: var(--shadow-float);
   box-sizing: border-box;
   font-family: "kenpixel_mini_square", Lato, sans-serif;
 }
 
 .pixelEditorSelectionBar button {
-  border: 1px solid #fff;
-  background-color: #333;
-  color: #fff;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--text-1);
+  background-color: var(--surface-3);
+  color: var(--text-1);
   padding: 0.24em 0.42em;
   cursor: pointer;
   font-family: "kenpixel_mini_square", Lato, sans-serif;
-  font-size: 0.76em;
+  font-size: var(--fs-xs);
   line-height: 1.2;
 }
 
 .pixelEditorSelectionBar button:hover:not(:disabled) {
-  border-color: var(--rebaneGreen);
-  color: var(--rebaneGreen);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .pixelEditorSelectionBar button:disabled {
@@ -283,16 +318,16 @@
 }
 
 .pixelEditorSelectionLabel {
-  color: #ddd;
+  color: var(--text-3);
   font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: 0.72em;
+  font-size: var(--fs-xs);
   white-space: nowrap;
 }
 
 .pixelEditorStatus {
-  color: var(--rebaneGreen);
+  color: var(--accent);
   font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: 0.7em;
+  font-size: var(--fs-2xs);
   max-width: 12em;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -304,18 +339,18 @@
   flex-direction: row;
   align-items: center;
   gap: 0.25em;
-  color: #bbb;
+  color: var(--text-4);
   font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: 0.72em;
+  font-size: var(--fs-xs);
 }
 
 .pixelEditorInlineControl select {
-  border: 1px solid #777;
-  background-color: #333;
-  color: #fff;
+  border: 1px solid var(--border-5);
+  background-color: var(--surface-3);
+  color: var(--text-1);
   padding: 0.15em 0.25em;
   font-family: "kenpixel_mini_square", Lato, sans-serif;
-  font-size: 0.95em;
+  font-size: var(--fs-lg);
 }
 
 .pixelEditorZoom {
@@ -323,32 +358,32 @@
   flex-direction: row;
   align-items: center;
   gap: 0.2em;
-  color: var(--rebaneGreen);
+  color: var(--accent);
   font-family: "kenpixel_mini_square", Lato, sans-serif;
-  font-size: 0.76em;
+  font-size: var(--fs-xs);
 }
 
 .pixelEditorShapeFill {
-  color: #eee;
-  font-size: 0.76em;
+  color: var(--text-2);
+  font-size: var(--fs-xs);
 }
 
 .pixelEditorTolerance input[type="range"] {
   width: 72px;
-  accent-color: var(--rebaneGreen);
+  accent-color: var(--accent);
 }
 
 .pixelEditorTolerance b {
-  color: var(--rebaneGreen);
+  color: var(--accent);
   font-weight: normal;
   min-width: 2em;
   text-align: right;
 }
 
 .pixelEditorCoords {
-  color: #aaa;
+  color: var(--text-5);
   font-family: "kenpixel_mini_square", Lato, sans-serif;
-  font-size: 0.7em;
+  font-size: var(--fs-2xs);
   min-width: 5.5em;
   text-align: right;
   white-space: nowrap;

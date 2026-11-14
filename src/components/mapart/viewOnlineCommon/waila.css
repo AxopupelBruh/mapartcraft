@@ -1,7 +1,7 @@
 .viewOnline_waila {
   font-family: "kenpixel_mini_square";
-  background: var(--rebaneGreen);
-  color: white;
+  background: var(--accent);
+  color: var(--text-1);
   padding: 0.3em;
 }
 

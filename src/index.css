@@ -1,7 +1,4 @@
-:root {
-  --rebaneGreen: #7BAE7F;
-}
-
+/* @import must come before every other rule, otherwise browsers drop it. */
 @import url("https://fonts.googleapis.com/css?family=Open+Sans");
 @import url("https://fonts.googleapis.com/css?family=Lato");
 
@@ -10,8 +7,105 @@
   src: url("./kenpixel_mini_square.woff") format("woff");
 }
 
+/* ==========================================================================
+   Design tokens (MapArtCraft Local Studio)
+   Единственный источник цвета, радиусов, отступов, размеров шрифта и z-index.
+   Никаких hex-литералов ниже этого блока.
+   ========================================================================== */
+:root {
+  /* Legacy alias — используется в JS и старых CSS, не удалять. */
+  --rebaneGreen: #7bae7f;
+
+  /* Поверхности (тёмная тема) */
+  --surface-0: #1e1e1e;
+  --surface-1: #242424;
+  --surface-2: #2a2a2a;
+  --surface-3: #333333;
+  --surface-4: #3a3a3a;
+  --surface-raised: #262626;
+  --surface-sunken: #222222;
+
+  /* Границы */
+  --border-1: #383838;
+  --border-2: #444444;
+  --border-3: #555555;
+  --border-4: #666666;
+  --border-5: #777777;
+  --border-inset: #4c4c4c;
+  --swatch-border: #111111;
+
+  /* Текст */
+  --text-1: #ffffff;
+  --text-2: #eeeeee;
+  --text-3: #dddddd;
+  --text-4: #b7b7b7;
+  --text-5: #aaaaaa;
+  --text-6: #999999;
+  --text-muted: #8f8f8f;
+
+  /* Акцент */
+  --accent: #7bae7f;
+  --accent-hover: #8fc092;
+  --accent-active: #5e8b62;
+  --accent-surface: #2b4a2e;
+  --accent-surface-hover: #355c39;
+  --accent-progress: #688e6b;
+  --accent-dim: #609060;
+
+  /* Опасные действия */
+  --danger: #f99999;
+  --danger-border: #dd7777;
+
+  /* Прозрачности и тени */
+  --overlay-dark: rgba(0, 0, 0, 0.72);
+  --overlay-panel: rgba(33, 33, 33, 0.97);
+  --grid-line: rgba(255, 255, 255, 0.28);
+  --grid-line-soft: rgba(255, 255, 255, 0.18);
+  --shadow-panel: 0 12px 40px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 4px 18px rgba(0, 0, 0, 0.55);
+  --accent-veil: rgba(123, 174, 127, 0.37);
+
+  /* Радиусы скругления */
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --radius-lg: 8px;
+
+  /* Отступы */
+  --sp-1: 0.25em;
+  --sp-2: 0.5em;
+  --sp-3: 0.75em;
+  --sp-4: 1em;
+
+  /* Размеры шрифта */
+  --fs-micro: 0.42em;
+  --fs-2xs: 0.68em;
+  --fs-xs: 0.74em;
+  --fs-sm: 0.8em;
+  --fs-md: 0.88em;
+  --fs-lg: 1em;
+  --fs-xl: 1.2em;
+  --fs-2xl: 1.35em;
+  --fs-body: 16px;
+  --fs-huge: 26px;
+
+  /* Шкала z-index */
+  --z-canvas: 1;
+  --z-grid: 2;
+  --z-overlay: 4;
+  --z-selection: 5;
+  --z-button-text: 10;
+  --z-suggestions: 50;
+  --z-float: 80;
+  --z-tooltip: 100;
+  --z-viewport: 120;
+  --z-viewport-bar: 122;
+  --z-toast: 200;
+  --z-modal: 300;
+}
+
 html {
-  background-color: #333;
+  background-color: var(--surface-3);
+  scrollbar-gutter: stable;
 }
 
 h1,
@@ -21,17 +115,18 @@ h2 {
 
 body {
   font-family: Lato, Open Sans, Arial;
-  color: #fff;
-  font-size: 16px;
+  color: var(--text-1);
+  font-size: var(--fs-body);
   margin: auto auto;
   padding: 1em;
   line-height: 1.4;
-  text-align: justify;
+  /* Интерфейс не выравнивается по ширине — это ломает чтение в колонках. */
+  text-align: left;
 }
 
 a,
 a:visited {
-  color: var(--rebaneGreen);
+  color: var(--accent);
 }
 
 [type="radio"] {
@@ -52,4 +147,42 @@ th:first-child {
 
 .displayNone {
   display: none;
+}
+
+/* Видимый только для скринридера текст (описания полей, aria-describedby). */
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ==========================================================================
+   Базовые элементы форм
+   ========================================================================== */
+
+button,
+select,
+input[type="text"],
+input[type="number"],
+input[type="search"] {
+  border-radius: var(--radius-sm);
+}
+
+button {
+  font-family: inherit;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 1px;
 }
