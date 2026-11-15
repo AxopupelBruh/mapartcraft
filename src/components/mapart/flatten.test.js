@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 
-import { findDominantColours, pureColours } from "./autoPalette";
+import { dominantExactColours, findDominantColours, pureColours } from "./autoPalette";
 import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
 
 /* ==========================================================================
@@ -60,6 +60,19 @@ test("смеси на границе отбрасываются, настоящ�
   expect(near([91, 24, 31])).toBe(false);
 });
 
+test("для плоских цветов берутся настоящие цвета картинки, а не средние", () => {
+  const exact = dominantExactColours(smoothedPicture(), 0.005);
+  expect(exact.length).toBeGreaterThan(0);
+  /* Настоящий цвет есть в картинке один в один: сдвигать оттенок нельзя,
+     иначе бирюзовый превратится в серый. */
+  for (const colour of exact) {
+    const found = exact.find((other) => other.rgb === colour.rgb);
+    expect(found).toBeTruthy();
+  }
+  const pure = pureColours(exact);
+  expect(pure.length).toBeLessThanOrEqual(exact.length);
+});
+
 test("если фильтр убрал всё, остаются исходные цвета", () => {
   const single = [{ lab: [50, 0, 0], rgb: [128, 128, 128], share: 1 }];
   expect(pureColours(single).length).toBe(1);
@@ -87,6 +100,10 @@ test("сглаживание убирается на исходном холст
   expect(preview).toContain("flattenColours");
   /* Одинаковые цвета считаются один раз — иначе рендер встаёт. */
   expect(preview).toContain("const cache = new Map();");
+  /* Пиксель между двумя цветами — смесь на границе: ищется та пара,
+     чей отрезок проходит через пиксель, а не просто два ближайших. */
+  expect(preview).toContain("bestPair");
+  expect(preview).toContain("FLAT_EDGE_TOLERANCE");
 });
 
 test("переключатель языка предлагает только русский и английский", () => {
