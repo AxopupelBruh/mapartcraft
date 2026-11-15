@@ -230,8 +230,7 @@
         "DITHERED": "On (dithered)",
         "SMOOTH": "On (smooth)"
       },
-      "BACKGROUND-COLOUR": "Colour",
-      "FLATTEN": "Flatten colours (remove the smoothing of the picture)"
+      "BACKGROUND-COLOUR": "Colour"
     },
     "EXTRAS": {
       "TITLE": "Extras",
@@ -357,8 +356,7 @@
     "LITEMATIC-BUTTON": "Download .litematic + PNG",
     "LITEMATIC-TT": "Download .litematic and PNG as a ZIP archive",
     "ISLANDS-HINT": "Island removal must be switched on here: the options below only work when it is not Off.",
-    "STYLE-MODIFIED": "modified",
-    "FLATTEN-COLOURS": "Flat colours (test)"
+    "STYLE-MODIFIED": "modified"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Pixel editor",

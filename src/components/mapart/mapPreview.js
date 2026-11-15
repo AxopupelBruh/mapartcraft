@@ -15,7 +15,6 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 import IMG_GridOverlay from "../../images/gridOverlay.png";
 
 import { detectPixelScale } from "./pixelPerfect";
-import { rgbToLab } from "./autoPalette";
 import { attachWheel, wheelValue } from "./wheelValue";
 
 import "./mapPreview.css";
@@ -54,11 +53,6 @@ const EDITOR_TOOL_KEYS = {
 
 const EDITOR_SHAPE_TOOLS = ["line", "rect", "ellipse"];
 
-/* Допуск «плоских цветов»: насколько пиксель может отстоять от отрезка
-   между двумя цветами (в единицах sRGB, 0..255) и всё ещё считаться
-   смесью на границе. */
-const FLAT_EDGE_TOLERANCE = 14;
-
 // The properties that make the source canvas (the uploaded image) change.
 const SOURCE_PROPS = [
   "coloursJSON",
@@ -82,10 +76,6 @@ const SOURCE_PROPS = [
   "optionValue_resizeMethod",
   "optionValue_pixelPerfect",
   "optionValue_autoDetectPixelScale",
-  /* Плоские цвета применяются к исходному холсту, поэтому его надо
-     пересобрать заново — иначе переключатель ничего не меняет. */
-  "optionValue_flattenColours",
-  "flattenColours",
   "uploadedImage",
 ];
 
@@ -138,8 +128,6 @@ const DISPLAY_PROPS = [
   "optionValue_paletteStrategy",
   "optionValue_maxTones",
   "optionValue_dithering_rotation",
-  "optionValue_flattenColours",
-  "flattenColours",
   "uploadedImage",
   "pixelEdits",
 ];
@@ -1350,120 +1338,11 @@ class MapPreview extends Component {
       optionValue_preprocessingEnabled,
       preProcessingValue_gamma,
       preProcessingValue_autoLevels,
-      optionValue_flattenColours,
-      flattenColours,
     } = this.props;
     if (optionValue_preprocessingEnabled && (preProcessingValue_gamma !== 100 || preProcessingValue_autoLevels)) {
       this.applyPreprocessTone(ctx_source, preProcessingValue_gamma, preProcessingValue_autoLevels);
     }
-    /* Убираем сглаживание: каждый пиксель прижимается к одному из
-       доминирующих цветов картинки. Полоса сглаживания вокруг линии
-       исчезает, и линия становится чёткой — как в «Retro 1-bit», но
-       цвет остаётся. */
-    if (optionValue_flattenColours && flattenColours && flattenColours.length > 0) {
-      this.applyFlattenColours(ctx_source, flattenColours);
-    }
     this.onSourceCanvasReady();
-  }
-
-  /* Прижимает каждый пиксель к одному из настоящих цветов картинки.
-     Расстояние считается в Lab: в RGB два близких цвета не всегда
-     выглядят близкими, и граница уходила бы не туда.
-
-     Важно: трогаются не все пиксели, а только те, что лежат между
-     двумя настоящими цветами — то есть ровно полоса сглаживания. Пиксели
-     настоящих цветов остаются как есть: прижимать их к усреднённому
-     цвету значило бы сдвинуть оттенок (бирюзовый стал бы серым).
-
-     Одинаковые цвета считаются один раз: у картинки различных цветов
-     обычно сильно меньше, чем пикселей. */
-  applyFlattenColours(ctx_source, colours) {
-    const width = ctx_source.canvas.width;
-    const height = ctx_source.canvas.height;
-    let imageData;
-    try {
-      imageData = ctx_source.getImageData(0, 0, width, height);
-    } catch (error) {
-      return;
-    }
-    const data = imageData.data;
-    const cache = new Map();
-    for (let index = 0; index < data.length; index += 4) {
-      /* Прозрачные пиксели не трогаем: у них нет цвета. */
-      if (data[index + 3] < 16) continue;
-      const key = (data[index] << 16) | (data[index + 1] << 8) | data[index + 2];
-      let snapped = cache.get(key);
-      if (!snapped) {
-        snapped = this.snapToFlatColour(data[index], data[index + 1], data[index + 2], colours);
-        cache.set(key, snapped);
-      }
-      data[index] = snapped[0];
-      data[index + 1] = snapped[1];
-      data[index + 2] = snapped[2];
-    }
-    ctx_source.putImageData(imageData, 0, 0);
-  }
-
-  /* Ближайший настоящий цвет, а для пикселя между двумя цветами — тот
-     из двух, к которому он ближе.
-
-     Геометрия смеси считается в sRGB, а не в Lab: сглаживание смешивает
-     значения каналов именно в sRGB, и в Lab такая смесь не лежит на
-     отрезке между двумя цветами. Ближайший цвет ищется в Lab — так
-     сравнение честнее. */
-  snapToFlatColour(red, green, blue, colours) {
-    const original = [red, green, blue];
-    if (!colours || colours.length === 0) return original;
-    const lab = rgbToLab(original);
-    let first = null;
-    let firstDistance = Infinity;
-    for (const colour of colours) {
-      const dL = lab[0] - colour.lab[0];
-      const da = lab[1] - colour.lab[1];
-      const db = lab[2] - colour.lab[2];
-      const distance = dL * dL + da * da + db * db;
-      if (distance < firstDistance) {
-        first = colour;
-        firstDistance = distance;
-      }
-    }
-    if (!first) return original;
-    /* Смесь лежит на отрезке между двумя цветами: тогда видно, к какому
-       из них пиксель ближе, и полоса сглаживания схлопывается.
-
-       Важно: ищется не пара двух БЛИЖАЙШИХ цветов, а та пара, чей
-       отрезок действительно проходит через пиксель. Ближайшая пара может
-       оказаться не той (например, тёмный контур рядом с белым: к контуру
-       ближе, чем к белому, и до белого не добраться). */
-    const a = first.rgb;
-    const ac0 = red - a[0];
-    const ac1 = green - a[1];
-    const ac2 = blue - a[2];
-    let bestPair = null;
-    let bestT = 0;
-    let bestDistance = Infinity;
-    for (const colour of colours) {
-      if (colour === first) continue;
-      const b = colour.rgb;
-      const ab0 = b[0] - a[0];
-      const ab1 = b[1] - a[1];
-      const ab2 = b[2] - a[2];
-      const length = ab0 * ab0 + ab1 * ab1 + ab2 * ab2;
-      if (length === 0) continue;
-      const t = (ac0 * ab0 + ac1 * ab1 + ac2 * ab2) / length;
-      if (t <= 0.08 || t >= 0.92) continue;
-      const dx = ac0 - t * ab0;
-      const dy = ac1 - t * ab1;
-      const dz = ac2 - t * ab2;
-      const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (distance <= FLAT_EDGE_TOLERANCE && distance < bestDistance) {
-        bestDistance = distance;
-        bestT = t;
-        bestPair = colour;
-      }
-    }
-    if (!bestPair) return original;
-    return (bestT < 0.5 ? first.rgb : bestPair.rgb);
   }
 
   // The source canvas is ready, the dithered map can be calculated now.

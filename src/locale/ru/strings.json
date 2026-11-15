@@ -230,8 +230,7 @@
         "DITHERED": "Вкл. (с дитерингом)",
         "SMOOTH": "Вкл. (сплошной цвет)"
       },
-      "BACKGROUND-COLOUR": "Цвет",
-      "FLATTEN": "Плоские цвета (убрать сглаживание картинки)"
+      "BACKGROUND-COLOUR": "Цвет"
     },
     "EXTRAS": {
       "TITLE": "Дополнительно",
@@ -357,8 +356,7 @@
     "LITEMATIC-BUTTON": "Скачать .litematic + PNG",
     "LITEMATIC-TT": "Скачать .litematic и PNG ZIP-архивом",
     "ISLANDS-HINT": "Удаление островков должно быть включено здесь: параметры ниже работают только когда оно не выключено.",
-    "STYLE-MODIFIED": "изменён",
-    "FLATTEN-COLOURS": "Плоские цвета (тест)"
+    "STYLE-MODIFIED": "изменён"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Пиксельный редактор",
