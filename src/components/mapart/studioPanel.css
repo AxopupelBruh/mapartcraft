@@ -65,18 +65,6 @@
   line-height: 1.25;
 }
 
-/* Миниатюра превью стиля: рисуется тем же воркером, что и карта. */
-.studioStyleThumb {
-  display: block;
-  width: 32px;
-  height: 32px;
-  margin-bottom: 0.25em;
-  image-rendering: pixelated;
-  border: 1px solid var(--border-1);
-  border-radius: var(--radius-sm);
-  background-color: var(--surface-sunken);
-}
-
 .studioStyleButton b {
   display: block;
   color: var(--text-1);

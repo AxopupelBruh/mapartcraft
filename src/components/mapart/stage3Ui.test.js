@@ -3,34 +3,15 @@ import { render, fireEvent } from "@testing-library/react";
 
 import BlockSelection from "./blockSelection";
 import StudioPanel from "./studioPanel";
+import { STYLE_PRESETS } from "../../presets/stylePresets";
 import coloursJSON from "./json/coloursJSON.json";
 import enStrings from "../../locale/en/strings.json";
 import SupportedVersions from "./json/supportedVersions.json";
 import MapModes from "./json/mapModes.json";
 
-/* Превью стилей рисует воркер, а в jsdom воркеров нет — рендерер
-   превью подменяется заглушкой, которая только запоминает вызовы. */
-const previewCalls = { contexts: [], canvases: [] };
-
-jest.mock("./stylePreview", () => ({
-  __esModule: true,
-  default: class StylePreviewRendererStub {
-    setContext(context, styles) {
-      previewCalls.contexts.push({ context, styles });
-    }
-    setCanvas(styleId, canvas) {
-      previewCalls.canvases.push({ styleId, canvas });
-    }
-    dispose() {}
-  },
-  PREVIEW_SIZE: 128,
-  THUMB_SIZE: 32,
-  sampleImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 }),
-}));
-
 /* ==========================================================================
-   Тесты интерфейса этапа 3: галерея пресетов с превью, автопалитра,
-   сортировка и диаграмма палитры.
+   Тесты интерфейса этапа 3: галерея пресетов, автопалитра, сортировка и
+   диаграмма палитры.
    ========================================================================== */
 
 const lookup = (strings, key) => key.split("/").reduce((folder, part) => (folder ? folder[part] : undefined), strings);
@@ -72,8 +53,7 @@ const baseBlockSelectionProps = (overrides) => ({
 
 /* ------------------------------------------ 3.2 галерея пресетов */
 
-test("3.2 у каждого пресета стиля есть миниатюра", () => {
-  previewCalls.canvases.length = 0;
+test("3.2 в галерее стилей кнопка на каждый пресет", () => {
   const { container } = render(
     <StudioPanel
       getLocaleString={getLocaleString}
@@ -98,18 +78,12 @@ test("3.2 у каждого пресета стиля есть миниатюр�
       sessionStatus=""
       onResetSession={jest.fn()}
       sessionResetAvailable={false}
-      coloursJSON={coloursJSON}
-      selectedBlocks={{}}
-      disabledTones={{}}
-      uploadedImage={null}
     />
   );
-  const thumbs = container.querySelectorAll("canvas.studioStyleThumb");
-  expect(thumbs.length).toBeGreaterThan(0);
-  /* Холсты должны быть отданы рендереру превью — иначе миниатюры останутся
-     пустыми. */
-  const registered = previewCalls.canvases.filter((call) => call.canvas);
-  expect(registered.length).toBe(thumbs.length);
+  const buttons = container.querySelectorAll("button.studioStyleButton");
+  expect(buttons.length).toBe(STYLE_PRESETS.length);
+  /* Миниатюры убрали: лишний рендер воркером на каждый стиль. */
+  expect(container.querySelectorAll("canvas.studioStyleThumb").length).toBe(0);
 });
 
 /* ------------------------------------------ 3.6 / 3.7 модалка палитры */

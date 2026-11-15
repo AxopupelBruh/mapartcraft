@@ -228,7 +228,7 @@ class MapartController extends Component {
     this.uploadedImageBlob = null;
     this.imageLoadId = 0;
     this.sessionRevision = 0;
-    this.isMounted = false;
+    this.mounted = false;
   }
 
   loadStoredPresets() {
@@ -497,9 +497,9 @@ class MapartController extends Component {
   }.bind(this);
 
   componentDidMount() {
-    this.isMounted = true;
+    this.mounted = true;
     this.restoreLastSession().then((restored) => {
-      if (!restored && this.isMounted) {
+      if (!restored && this.mounted) {
         this.loadUploadedImageFromURL(IMG_Upload, "MyArt", { placeholder: true });
       }
     });
@@ -555,7 +555,7 @@ class MapartController extends Component {
   }
 
   componentWillUnmount() {
-    this.isMounted = false;
+    this.mounted = false;
     document.removeEventListener("dragover", this.eventListener_dragover);
     document.removeEventListener("drop", this.eventListener_drop);
     document.removeEventListener("paste", this.eventListener_paste);
@@ -572,7 +572,7 @@ class MapartController extends Component {
   saveSessionNow() {
     if (this.state.uploadedImage_isPlaceholder || !this.uploadedImageBlob) return;
     const revision = this.sessionRevision;
-    if (this.isMounted) this.setState({ sessionStatus: "saving" });
+    if (this.mounted) this.setState({ sessionStatus: "saving" });
     saveSession({
       imageBlob: this.uploadedImageBlob,
       imageBaseFilename: this.state.uploadedImage_baseFilename,
@@ -581,11 +581,11 @@ class MapartController extends Component {
       pixelEdits: this.state.pixelEdits,
     })
       .then(() => {
-        if (this.isMounted && revision === this.sessionRevision) this.setState({ sessionStatus: "saved" });
+        if (this.mounted && revision === this.sessionRevision) this.setState({ sessionStatus: "saved" });
       })
       .catch((error) => {
         console.warn("Could not save the current session", error);
-        if (this.isMounted && revision === this.sessionRevision) this.setState({ sessionStatus: "error" });
+        if (this.mounted && revision === this.sessionRevision) this.setState({ sessionStatus: "error" });
       });
   }
 
@@ -634,7 +634,7 @@ class MapartController extends Component {
       const img = new Image();
       img.onload = () => {
         URL.revokeObjectURL(imageURL);
-        if (!this.isMounted) {
+        if (!this.mounted) {
           resolve(false);
           return;
         }
@@ -676,7 +676,7 @@ class MapartController extends Component {
     const img = new Image();
     img.onload = () => {
       if (revokeObjectURL) URL.revokeObjectURL(imageURL);
-      if (!this.isMounted || loadId !== this.imageLoadId) return;
+      if (!this.mounted || loadId !== this.imageLoadId) return;
       this.uploadedImageBlob = placeholder ? null : imageBlob;
       this.setState({
         uploadedImage: img,
@@ -1700,10 +1700,6 @@ class MapartController extends Component {
           optionValue_dithering_propagation_green={optionValue_dithering_propagation_green}
           optionValue_dithering_propagation_blue={optionValue_dithering_propagation_blue}
           onOptionChange_dithering_strength={this.onOptionChange_dithering_strength}
-          coloursJSON={coloursJSON}
-          selectedBlocks={selectedBlocks}
-          disabledTones={disabledTones}
-          uploadedImage={this.state.uploadedImage}
           detectedPixelScale={detectedPixelScale}
           sessionStatus={this.state.sessionStatus}
           onResetSession={this.onResetSession}
