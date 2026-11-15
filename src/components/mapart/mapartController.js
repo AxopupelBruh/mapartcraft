@@ -39,8 +39,10 @@ import "./mapartController.css";
 const MAP_SIZE_MIN = 1;
 
 /* Сколько цветов ищется в картинке для автопалитры и для подсветки
-   блоков в списке палитры. */
-const IMAGE_ANALYSIS_CLUSTERS = 12;
+   блоков в списке палитры. Столько же, сколько может попросить поле
+   «Цветов» в модалке, иначе просьба о двадцати блоках осталась бы без
+   ответа: k-means на 32 центрах отрабатывает за тридцать миллисекунд. */
+const IMAGE_ANALYSIS_CLUSTERS = 32;
 
 const clampMapSize = (value) => {
   const number = parseInt(value, 10);
@@ -826,8 +828,17 @@ class MapartController extends Component {
 
   /* Доминирующие цвета картинки и наборы блоков, которые в ней есть. */
   updateImageAnalysis = () => {
-    const { uploadedImage, coloursJSON } = this.state;
-    if (!uploadedImage || !uploadedImage.complete || !uploadedImage.naturalWidth) {
+    const { uploadedImage, uploadedImage_isPlaceholder, coloursJSON } = this.state;
+    /* Плейсхолдер — это картинка «загрузите файл», а не работа
+       пользователя. Анализировать её нельзя: иначе автопалитра
+       предложила бы блоки под иконкой загрузки, а в списке палитры
+       помечались бы цвета, которых в работе нет. */
+    if (
+      uploadedImage_isPlaceholder ||
+      !uploadedImage ||
+      !uploadedImage.complete ||
+      !uploadedImage.naturalWidth
+    ) {
       if (this.state.imageColours.length > 0) {
         this.setState({ imageColours: [], imageColourSetIds: new Set() });
       }

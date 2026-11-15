@@ -132,7 +132,9 @@
       "FULL-LIGHT": "Полный свет",
       "ON": "Вкл.",
       "ON-UNOBTAINABLE": "Вкл. (Недоступные)",
-      "FULL-UNOBTAINABLE": "Полностью недоступные"
+      "FULL-UNOBTAINABLE": "Полностью недоступные",
+      "UPWARDS-ONLY": "Только вверх",
+      "REVERSE-UPWARDS-ONLY": "Только вверх, обратный порядок"
     },
     "NBT-SPECIFIC": {
       "WHERE-SUPPORT-BLOCKS": {
@@ -282,7 +284,9 @@
     "SHOW-PER-SPLIT-TT": "Для повторного использования материалов с заблокированными картами",
     "REFRESH-MATERIALS": "ОБНОВИТЬ МАТЕРИАЛЫ",
     "REFRESH-MATERIALS-TT": "Обновить список материалов",
-    "COPY-CLIPBOARD": null
+    "COPY-CLIPBOARD": null,
+    "SORTED": "Сортировать материалы",
+    "SORTED-TT": "Выключите, чтобы материалы шли в предсказуемом порядке"
   },
   "VIEW-ONLINE": {
     "TITLE": "ПОСМОТРЕТЬ ОНЛАЙН",
