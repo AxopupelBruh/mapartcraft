@@ -10,7 +10,7 @@ import StudioPanel from "./studioPanel";
 import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "../../presets/stylePresets";
 import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
 import { estimateMapSize, estimateRenderSeconds, getMaxMapSize, isBigMap } from "./canvasLimits";
-import { colourSetsPresentInImage, findDominantColours, pureColours, suggestBlocksForColours } from "./autoPalette";
+import { colourSetsPresentInImage, dominantExactColours, findDominantColours, pureColours, suggestBlocksForColours } from "./autoPalette";
 import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
 import coloursJSON from "./json/coloursJSON.json";
 import ViewOnline2D from "./viewOnline2D/viewOnline2D";
@@ -830,6 +830,20 @@ class MapartController extends Component {
     return context.getImageData(0, 0, size, size);
   };
 
+  /* Копия картинки для подсчёта настоящих цветов. Она нужна крупнее
+     уменьшенной: на 96x96 тонкая линия смешивается с фоном, и её цвет
+     получается не тем, что в оригинале. */
+  exactImageData = (image) => {
+    const size = Math.min(512, Math.max(1, image.naturalWidth || image.width || 512));
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d");
+    context.imageSmoothingEnabled = true;
+    context.drawImage(image, 0, 0, size, size);
+    return context.getImageData(0, 0, size, size);
+  };
+
   /* Доминирующие цвета картинки и наборы блоков, которые в ней есть. */
   updateImageAnalysis = () => {
     const { uploadedImage, uploadedImage_isPlaceholder, coloursJSON } = this.state;
@@ -850,7 +864,14 @@ class MapartController extends Component {
     }
     const clusters = findDominantColours(this.sampleImageData(uploadedImage), IMAGE_ANALYSIS_CLUSTERS);
     const colourSetIds = colourSetsPresentInImage(clusters, coloursJSON);
-    this.setState({ imageColours: clusters, flattenColours: pureColours(clusters), imageColourSetIds: colourSetIds });
+    /* Для «плоских цветов» нужны настоящие цвета картинки, а не
+       усреднённые центры кластеров: усреднение сдвигает оттенок. */
+    const exact = dominantExactColours(this.exactImageData(uploadedImage));
+    this.setState({
+      imageColours: clusters,
+      flattenColours: pureColours(exact),
+      imageColourSetIds: colourSetIds,
+    });
   };
 
   /* Автопалитра: блоки подбираются под цвета картинки. */

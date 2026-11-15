@@ -228,6 +228,32 @@ export const suggestBlocksForColours = (clusters, coloursJSON, mcVersion) => {
    Чистые цвета
    -------------------------------------------------------------------------- */
 
+/* Точные цвета картинки: те, что встречаются часто.
+   Для «плоских цветов» нужны именно они, а не усреднённые центры
+   кластеров: усреднение сдвигает цвет, и картинка меняет оттенок — бирюзовые
+   кончики волос превращаются в серые. */
+export const dominantExactColours = (imageData, minimumShare = 0.005) => {
+  const { data } = imageData;
+  const counts = new Map();
+  let opaque = 0;
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index + 3] < 16) continue;
+    const key = (data[index] << 16) | (data[index + 1] << 8) | data[index + 2];
+    counts.set(key, (counts.get(key) || 0) + 1);
+    opaque++;
+  }
+  if (opaque === 0) return [];
+  const colours = [];
+  for (const [key, count] of counts) {
+    const share = count / opaque;
+    if (share < minimumShare) continue;
+    const rgb = [(key >> 16) & 255, (key >> 8) & 255, key & 255];
+    colours.push({ rgb, lab: rgbToLab(rgb), share });
+  }
+  colours.sort((first, second) => second.share - first.share);
+  return colours;
+};
+
 /* Цвет, который лежит между двумя другими, — это сглаженный край: в
    оригинале он получился смешиванием двух цветов границы. Для «плоских
    цветов» такие цвета не нужны: если оставить их, размытая полоса
