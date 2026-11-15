@@ -10,7 +10,7 @@ import StudioPanel from "./studioPanel";
 import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "../../presets/stylePresets";
 import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
 import { estimateMapSize, estimateRenderSeconds, getMaxMapSize, isBigMap } from "./canvasLimits";
-import { colourSetsPresentInImage, findDominantColours, suggestBlocksForColours } from "./autoPalette";
+import { colourSetsPresentInImage, findDominantColours, pureColours, suggestBlocksForColours } from "./autoPalette";
 import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
 import coloursJSON from "./json/coloursJSON.json";
 import ViewOnline2D from "./viewOnline2D/viewOnline2D";
@@ -107,6 +107,8 @@ class MapartController extends Component {
     optionValue_paletteStrategy: "all",
     optionValue_maxTones: 0,
     optionValue_dithering_rotation: 0,
+    /* Тест: прижимать пиксели к доминирующим цветам картинки. */
+    optionValue_flattenColours: false,
     stylePreset: "clean",
     uploadedImage: null,
     uploadedImage_baseFilename: null,
@@ -114,6 +116,8 @@ class MapartController extends Component {
     /* Доминирующие цвета загруженной картинки и наборы блоков, которые в
        ней встречаются. Считаются один раз на картинку. */
     imageColours: [],
+    /* Те же цвета, но без смесей на границах: для «плоских цветов». */
+    flattenColours: [],
     imageColourSetIds: new Set(),
     /* Что сделала последняя автопалитра: сколько блоков подобрано. */
     autoPaletteResult: null,
@@ -840,13 +844,13 @@ class MapartController extends Component {
       !uploadedImage.naturalWidth
     ) {
       if (this.state.imageColours.length > 0) {
-        this.setState({ imageColours: [], imageColourSetIds: new Set() });
+        this.setState({ imageColours: [], flattenColours: [], imageColourSetIds: new Set() });
       }
       return;
     }
     const clusters = findDominantColours(this.sampleImageData(uploadedImage), IMAGE_ANALYSIS_CLUSTERS);
     const colourSetIds = colourSetsPresentInImage(clusters, coloursJSON);
-    this.setState({ imageColours: clusters, imageColourSetIds: colourSetIds });
+    this.setState({ imageColours: clusters, flattenColours: pureColours(clusters), imageColourSetIds: colourSetIds });
   };
 
   /* Автопалитра: блоки подбираются под цвета картинки. */
@@ -1094,6 +1098,11 @@ class MapartController extends Component {
   onOptionChange_dithering_rotation = (e) => {
     const value = parseInt(e.target.value, 10);
     this.setState({ optionValue_dithering_rotation: isNaN(value) ? 0 : value });
+  };
+
+  /* Тестовая кнопка в Local Studio: убирает сглаживание исходника. */
+  onOptionChange_flattenColours = () => {
+    this.setState({ optionValue_flattenColours: !this.state.optionValue_flattenColours });
   };
 
   onOptionChange_cleanup_enabled = () => {
@@ -1650,6 +1659,7 @@ class MapartController extends Component {
       optionValue_paletteStrategy,
       optionValue_maxTones,
       optionValue_dithering_rotation,
+      optionValue_flattenColours,
       optionValue_cleanup_enabled,
       optionValue_cleanup_denoise,
       optionValue_cleanup_denoiseMethod,
@@ -1715,6 +1725,8 @@ class MapartController extends Component {
           sessionStatus={this.state.sessionStatus}
           onResetSession={this.onResetSession}
           sessionResetAvailable={!this.state.uploadedImage_isPlaceholder}
+          flattenColours={optionValue_flattenColours}
+          onOptionChange_flattenColours={this.onOptionChange_flattenColours}
         />
         <BlockSelection
           getLocaleString={getLocaleString}
@@ -1784,6 +1796,8 @@ class MapartController extends Component {
             optionValue_paletteStrategy={optionValue_paletteStrategy}
             optionValue_maxTones={optionValue_maxTones}
             optionValue_dithering_rotation={optionValue_dithering_rotation}
+            optionValue_flattenColours={optionValue_flattenColours}
+            flattenColours={this.state.flattenColours}
             optionValue_cleanup_enabled={optionValue_cleanup_enabled}
             optionValue_cleanup_denoise={optionValue_cleanup_denoise}
             optionValue_cleanup_denoiseMethod={optionValue_cleanup_denoiseMethod}

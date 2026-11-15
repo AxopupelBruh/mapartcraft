@@ -230,7 +230,8 @@
         "DITHERED": "Вкл. (с дитерингом)",
         "SMOOTH": "Вкл. (сплошной цвет)"
       },
-      "BACKGROUND-COLOUR": "Цвет"
+      "BACKGROUND-COLOUR": "Цвет",
+      "FLATTEN": "Плоские цвета (убрать сглаживание картинки)"
     },
     "EXTRAS": {
       "TITLE": "Дополнительно",
@@ -356,7 +357,8 @@
     "LITEMATIC-BUTTON": "Скачать .litematic + PNG",
     "LITEMATIC-TT": "Скачать .litematic и PNG ZIP-архивом",
     "ISLANDS-HINT": "Удаление островков должно быть включено здесь: параметры ниже работают только когда оно не выключено.",
-    "STYLE-MODIFIED": "изменён"
+    "STYLE-MODIFIED": "изменён",
+    "FLATTEN-COLOURS": "Плоские цвета (тест)"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Пиксельный редактор",
@@ -422,5 +424,8 @@
   "EDGE-WARNING": "Примечание: Microsoft Edge не поддерживается.\\nПожалуйста, используйте Chrome (предпочтительно) или Firefox ",
   "NONE": "Нет",
   "EDGE-WARNING-CLOSE": "Закрыть предупреждение",
-  "PRESET-ERROR-CLOSE": "Закрыть предупреждение"
+  "PRESET-ERROR-CLOSE": "Закрыть предупреждение",
+  "LANGUAGES": {
+    "TITLE": "Язык"
+  }
 }

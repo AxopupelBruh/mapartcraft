@@ -73,7 +73,7 @@ class Root extends Component {
             </small>
             {this.props.match.params.countryCode && this.props.match.params.countryCode !== "en" && <small>{this.getLocaleString("TRANSLATION/CREDITS")}</small>}
           </span>
-          <Languages />
+          <Languages getLocaleString={this.getLocaleString} />
         </div>
         <Header getLocaleString={this.getLocaleString} countryCode={this.props.match.params.countryCode} />
         <MapartController getLocaleString={this.getLocaleString} onCorruptedPreset={this.showCorruptedPresetWarning} />

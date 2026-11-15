@@ -1,12 +1,24 @@
+/* Переключатель языка: выпадающий список рядом с названием. */
+
 .languages {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
-.languages img {
+.languagesSelect {
+  padding: 0.25em 0.5em;
+  border: 1px solid var(--border-3);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-2);
+  color: var(--text-1);
+  font-family: Lato, Open Sans, Arial, sans-serif;
+  font-size: var(--fs-sm);
   cursor: pointer;
-  height: 50px;
+}
+
+.languagesSelect:hover {
+  background-color: var(--surface-3);
 }
 
 .flag_et_pop {

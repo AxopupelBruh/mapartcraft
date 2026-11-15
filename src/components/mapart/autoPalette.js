@@ -225,6 +225,56 @@ export const suggestBlocksForColours = (clusters, coloursJSON, mcVersion) => {
 };
 
 /* --------------------------------------------------------------------------
+   Чистые цвета
+   -------------------------------------------------------------------------- */
+
+/* Цвет, который лежит между двумя другими, — это сглаженный край: в
+   оригинале он получился смешиванием двух цветов границы. Для «плоских
+   цветов» такие цвета не нужны: если оставить их, размытая полоса
+   останется ровно там, где её и хотели убрать.
+
+   Поэтому цвета, лежащие на отрезке между двумя другими, отбрасываются.
+   Настоящий маленький цвет (глаз, пятно) таковым не является и остаётся. */
+export const pureColours = (clusters, tolerance = 14) => {
+  const list = (clusters || []).map((cluster) => cluster.rgb);
+  const keep = new Array(list.length).fill(true);
+  for (let index = 0; index < list.length; index++) {
+    const colour = list[index];
+    for (let first = 0; first < list.length; first++) {
+      if (first === index || !keep[first]) continue;
+      for (let second = 0; second < list.length; second++) {
+        if (second === index || second === first || !keep[second]) continue;
+        const a = list[first];
+        const b = list[second];
+        const ab0 = b[0] - a[0];
+        const ab1 = b[1] - a[1];
+        const ab2 = b[2] - a[2];
+        const length = ab0 * ab0 + ab1 * ab1 + ab2 * ab2;
+        if (length === 0) continue;
+        const ac0 = colour[0] - a[0];
+        const ac1 = colour[1] - a[1];
+        const ac2 = colour[2] - a[2];
+        const t = (ac0 * ab0 + ac1 * ab1 + ac2 * ab2) / length;
+        /* Смесь лежит ВНУТРИ отрезка, а не за его концом. */
+        if (t <= 0.08 || t >= 0.92) continue;
+        const dx = ac0 - t * ab0;
+        const dy = ac1 - t * ab1;
+        const dz = ac2 - t * ab2;
+        if (Math.sqrt(dx * dx + dy * dy + dz * dz) <= tolerance) {
+          keep[index] = false;
+          break;
+        }
+      }
+      if (!keep[index]) break;
+    }
+  }
+  const pure = (clusters || []).filter((cluster, index) => keep[index]);
+  /* Если фильтр убрал всё — значит цветов не разобрать, и лучше оставить
+     исходные, чем превратить картинку в одно пятно. */
+  return pure.length > 0 ? pure : clusters || [];
+};
+
+/* --------------------------------------------------------------------------
    Диаграмма палитры (этап 3.7)
    -------------------------------------------------------------------------- */
 

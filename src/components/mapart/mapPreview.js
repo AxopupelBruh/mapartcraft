@@ -15,6 +15,7 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 import IMG_GridOverlay from "../../images/gridOverlay.png";
 
 import { detectPixelScale } from "./pixelPerfect";
+import { rgbToLab } from "./autoPalette";
 import { attachWheel, wheelValue } from "./wheelValue";
 
 import "./mapPreview.css";
@@ -76,6 +77,10 @@ const SOURCE_PROPS = [
   "optionValue_resizeMethod",
   "optionValue_pixelPerfect",
   "optionValue_autoDetectPixelScale",
+  /* Плоские цвета применяются к исходному холсту, поэтому его надо
+     пересобрать заново — иначе переключатель ничего не меняет. */
+  "optionValue_flattenColours",
+  "flattenColours",
   "uploadedImage",
 ];
 
@@ -128,6 +133,8 @@ const DISPLAY_PROPS = [
   "optionValue_paletteStrategy",
   "optionValue_maxTones",
   "optionValue_dithering_rotation",
+  "optionValue_flattenColours",
+  "flattenColours",
   "uploadedImage",
   "pixelEdits",
 ];
@@ -1334,11 +1341,76 @@ class MapPreview extends Component {
 
   // The gamma and the auto levels are applied to the finished source image.
   finishSourceCanvas(ctx_source) {
-    const { optionValue_preprocessingEnabled, preProcessingValue_gamma, preProcessingValue_autoLevels } = this.props;
+    const {
+      optionValue_preprocessingEnabled,
+      preProcessingValue_gamma,
+      preProcessingValue_autoLevels,
+      optionValue_flattenColours,
+      flattenColours,
+    } = this.props;
     if (optionValue_preprocessingEnabled && (preProcessingValue_gamma !== 100 || preProcessingValue_autoLevels)) {
       this.applyPreprocessTone(ctx_source, preProcessingValue_gamma, preProcessingValue_autoLevels);
     }
+    /* Убираем сглаживание: каждый пиксель прижимается к одному из
+       доминирующих цветов картинки. Полоса сглаживания вокруг линии
+       исчезает, и линия становится чёткой — как в «Retro 1-bit», но
+       цвет остаётся. */
+    if (optionValue_flattenColours && flattenColours && flattenColours.length > 0) {
+      this.applyFlattenColours(ctx_source, flattenColours);
+    }
     this.onSourceCanvasReady();
+  }
+
+  /* Прижимает каждый пиксель к ближайшему доминирующему цвету.
+     Расстояние считается в Lab: в RGB два близких цвета не всегда
+     выглядят близкими, и граница уходила бы не туда.
+
+     Одинаковые цвета считаются один раз: у картинки различных цветов
+     обычно сильно меньше, чем пикселей, а после растяжения до размера
+     карты их всё равно немного — сглаживание даёт плавные переходы, а
+     не тысячи разных цветов. */
+  applyFlattenColours(ctx_source, clusters) {
+    const width = ctx_source.canvas.width;
+    const height = ctx_source.canvas.height;
+    let imageData;
+    try {
+      imageData = ctx_source.getImageData(0, 0, width, height);
+    } catch (error) {
+      return;
+    }
+    const data = imageData.data;
+    const cache = new Map();
+    for (let index = 0; index < data.length; index += 4) {
+      /* Прозрачные пиксели не трогаем: у них нет цвета. */
+      if (data[index + 3] < 16) continue;
+      const key = (data[index] << 16) | (data[index + 1] << 8) | data[index + 2];
+      let snapped = cache.get(key);
+      if (!snapped) {
+        snapped = this.nearestDominantColour(data[index], data[index + 1], data[index + 2], clusters);
+        cache.set(key, snapped);
+      }
+      data[index] = snapped[0];
+      data[index + 1] = snapped[1];
+      data[index + 2] = snapped[2];
+    }
+    ctx_source.putImageData(imageData, 0, 0);
+  }
+
+  nearestDominantColour(red, green, blue, clusters) {
+    const lab = rgbToLab([red, green, blue]);
+    let best = clusters[0].rgb;
+    let bestDistance = Infinity;
+    for (const cluster of clusters) {
+      const dL = lab[0] - cluster.lab[0];
+      const da = lab[1] - cluster.lab[1];
+      const db = lab[2] - cluster.lab[2];
+      const distance = dL * dL + da * da + db * db;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = cluster.rgb;
+      }
+    }
+    return best;
   }
 
   // The source canvas is ready, the dithered map can be calculated now.
