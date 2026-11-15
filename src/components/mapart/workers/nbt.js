@@ -284,7 +284,9 @@ class Map_NBT {
         },
         author: {
           type: TagTypes.string,
-          value: "mike2b2t.github.io/mapartcraft",
+          // Воркер собирается в строку и не может импортировать модули,
+          // поэтому адрес здесь написан прямо (см. src/site.js).
+          value: "axopupelbruh.github.io/mapartcraft",
         },
         DataVersion: {
           type: TagTypes.int,
