@@ -72,33 +72,6 @@
   font-weight: normal;
 }
 
-/* Тестовая кнопка: плоские цвета. */
-.studioFlattenButton {
-  margin-top: 0.35em;
-  width: 100%;
-  padding: 0.3em 0.45em;
-  border: 1px dashed var(--border-4);
-  border-radius: var(--radius-sm);
-  background-color: transparent;
-  color: var(--text-3);
-  font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: var(--fs-xs);
-  text-align: left;
-  cursor: pointer;
-}
-
-.studioFlattenButton:hover {
-  border-color: var(--accent);
-  color: var(--text-1);
-}
-
-.studioFlattenButton.active {
-  border-style: solid;
-  border-color: var(--accent);
-  background-color: var(--accent-surface);
-  color: var(--text-1);
-}
-
 .studioStyleButton small {
   display: block;
   color: var(--text-4);

@@ -10,7 +10,7 @@ import StudioPanel from "./studioPanel";
 import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "../../presets/stylePresets";
 import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
 import { estimateMapSize, estimateRenderSeconds, getMaxMapSize, isBigMap } from "./canvasLimits";
-import { colourSetsPresentInImage, dominantExactColours, findDominantColours, pureColours, suggestBlocksForColours } from "./autoPalette";
+import { colourSetsPresentInImage, findDominantColours, suggestBlocksForColours } from "./autoPalette";
 import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
 import coloursJSON from "./json/coloursJSON.json";
 import ViewOnline2D from "./viewOnline2D/viewOnline2D";
@@ -107,8 +107,6 @@ class MapartController extends Component {
     optionValue_paletteStrategy: "all",
     optionValue_maxTones: 0,
     optionValue_dithering_rotation: 0,
-    /* Тест: прижимать пиксели к доминирующим цветам картинки. */
-    optionValue_flattenColours: false,
     stylePreset: "clean",
     uploadedImage: null,
     uploadedImage_baseFilename: null,
@@ -116,8 +114,6 @@ class MapartController extends Component {
     /* Доминирующие цвета загруженной картинки и наборы блоков, которые в
        ней встречаются. Считаются один раз на картинку. */
     imageColours: [],
-    /* Те же цвета, но без смесей на границах: для «плоских цветов». */
-    flattenColours: [],
     imageColourSetIds: new Set(),
     /* Что сделала последняя автопалитра: сколько блоков подобрано. */
     autoPaletteResult: null,
@@ -830,20 +826,6 @@ class MapartController extends Component {
     return context.getImageData(0, 0, size, size);
   };
 
-  /* Копия картинки для подсчёта настоящих цветов. Она нужна крупнее
-     уменьшенной: на 96x96 тонкая линия смешивается с фоном, и её цвет
-     получается не тем, что в оригинале. */
-  exactImageData = (image) => {
-    const size = Math.min(512, Math.max(1, image.naturalWidth || image.width || 512));
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext("2d");
-    context.imageSmoothingEnabled = true;
-    context.drawImage(image, 0, 0, size, size);
-    return context.getImageData(0, 0, size, size);
-  };
-
   /* Доминирующие цвета картинки и наборы блоков, которые в ней есть. */
   updateImageAnalysis = () => {
     const { uploadedImage, uploadedImage_isPlaceholder, coloursJSON } = this.state;
@@ -858,20 +840,13 @@ class MapartController extends Component {
       !uploadedImage.naturalWidth
     ) {
       if (this.state.imageColours.length > 0) {
-        this.setState({ imageColours: [], flattenColours: [], imageColourSetIds: new Set() });
+        this.setState({ imageColours: [], imageColourSetIds: new Set() });
       }
       return;
     }
     const clusters = findDominantColours(this.sampleImageData(uploadedImage), IMAGE_ANALYSIS_CLUSTERS);
     const colourSetIds = colourSetsPresentInImage(clusters, coloursJSON);
-    /* Для «плоских цветов» нужны настоящие цвета картинки, а не
-       усреднённые центры кластеров: усреднение сдвигает оттенок. */
-    const exact = dominantExactColours(this.exactImageData(uploadedImage));
-    this.setState({
-      imageColours: clusters,
-      flattenColours: pureColours(exact),
-      imageColourSetIds: colourSetIds,
-    });
+    this.setState({ imageColours: clusters, imageColourSetIds: colourSetIds });
   };
 
   /* Автопалитра: блоки подбираются под цвета картинки. */
@@ -1121,10 +1096,6 @@ class MapartController extends Component {
     this.setState({ optionValue_dithering_rotation: isNaN(value) ? 0 : value });
   };
 
-  /* Тестовая кнопка в Local Studio: убирает сглаживание исходника. */
-  onOptionChange_flattenColours = () => {
-    this.setState({ optionValue_flattenColours: !this.state.optionValue_flattenColours });
-  };
 
   onOptionChange_cleanup_enabled = () => {
     this.setState({ optionValue_cleanup_enabled: !this.state.optionValue_cleanup_enabled });
@@ -1680,7 +1651,6 @@ class MapartController extends Component {
       optionValue_paletteStrategy,
       optionValue_maxTones,
       optionValue_dithering_rotation,
-      optionValue_flattenColours,
       optionValue_cleanup_enabled,
       optionValue_cleanup_denoise,
       optionValue_cleanup_denoiseMethod,
@@ -1746,8 +1716,6 @@ class MapartController extends Component {
           sessionStatus={this.state.sessionStatus}
           onResetSession={this.onResetSession}
           sessionResetAvailable={!this.state.uploadedImage_isPlaceholder}
-          flattenColours={optionValue_flattenColours}
-          onOptionChange_flattenColours={this.onOptionChange_flattenColours}
         />
         <BlockSelection
           getLocaleString={getLocaleString}
@@ -1817,8 +1785,6 @@ class MapartController extends Component {
             optionValue_paletteStrategy={optionValue_paletteStrategy}
             optionValue_maxTones={optionValue_maxTones}
             optionValue_dithering_rotation={optionValue_dithering_rotation}
-            optionValue_flattenColours={optionValue_flattenColours}
-            flattenColours={this.state.flattenColours}
             optionValue_cleanup_enabled={optionValue_cleanup_enabled}
             optionValue_cleanup_denoise={optionValue_cleanup_denoise}
             optionValue_cleanup_denoiseMethod={optionValue_cleanup_denoiseMethod}

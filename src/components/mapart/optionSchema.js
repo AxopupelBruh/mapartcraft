@@ -289,19 +289,6 @@ export const OPTION_SCHEMA = [
 
   /* --------------------------- Preprocessing ------------------------- */
   {
-    /* Тестовая опция: сглаживание исходника убирается — каждый пиксель
-       прижимается к одному из доминирующих цветов картинки. Чёрная
-       линия становится чёткой, как в «Retro 1-bit», но цвета остаются.
-       В форме её показывать не нужно: включается кнопкой в Local Studio. */
-    key: "optionValue_flattenColours",
-    handler: "onOptionChange_flattenColours",
-    type: "checkbox",
-    valueType: "event",
-    group: "preprocessing",
-    labelKey: "MAP-SETTINGS/PREPROCESSING/FLATTEN",
-    form: false,
-  },
-  {
     key: "optionValue_preprocessingEnabled",
     handler: "onOptionChange_PreProcessingEnabled",
     type: "checkbox",

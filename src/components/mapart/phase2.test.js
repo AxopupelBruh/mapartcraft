@@ -82,7 +82,6 @@ const LEGACY_PERSISTED_KEYS = [
   "optionValue_paletteStrategy",
   "optionValue_maxTones",
   "optionValue_dithering_rotation",
-  "optionValue_flattenColours",
   "stylePreset",
   "selectedPresetName",
 ];
