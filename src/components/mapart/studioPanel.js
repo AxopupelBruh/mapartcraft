@@ -54,6 +54,8 @@ class StudioPanel extends Component {
       sessionStatus,
       onResetSession,
       sessionResetAvailable,
+      flattenColours,
+      onOptionChange_flattenColours,
     } = this.props;
 
     /* activeStyleId приходит из контроллера: он учитывает, что настройки
@@ -105,6 +107,19 @@ class StudioPanel extends Component {
               );
             })}
           </div>
+          {/* Тестовая кнопка: убирает сглаживание исходника — линии
+              становятся чёткими, как в «Retro 1-bit», но цвет остаётся.
+              Вместе с «Clean Pixel» даёт ровные заливки без смешивания,
+              с Bayer — тот же вид, но с растрром. */}
+          <button
+            type="button"
+            className={`studioFlattenButton${flattenColours ? " active" : ""}`}
+            onClick={onOptionChange_flattenColours}
+            aria-pressed={!!flattenColours}
+            title={this.t("MAP-SETTINGS/PREPROCESSING/FLATTEN", "Flatten colours (remove the smoothing of the picture)")}
+          >
+            {this.t("STUDIO/FLATTEN-COLOURS", "Flat colours (test)")}
+          </button>
           <div className="studioDitherStrength">
             <label htmlFor="studioDitherStrength">
               <span>{this.t("STUDIO/DITHER-STRENGTH", "Dither strength")}</span>

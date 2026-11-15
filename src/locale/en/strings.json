@@ -230,7 +230,8 @@
         "DITHERED": "On (dithered)",
         "SMOOTH": "On (smooth)"
       },
-      "BACKGROUND-COLOUR": "Colour"
+      "BACKGROUND-COLOUR": "Colour",
+      "FLATTEN": "Flatten colours (remove the smoothing of the picture)"
     },
     "EXTRAS": {
       "TITLE": "Extras",
@@ -356,7 +357,8 @@
     "LITEMATIC-BUTTON": "Download .litematic + PNG",
     "LITEMATIC-TT": "Download .litematic and PNG as a ZIP archive",
     "ISLANDS-HINT": "Island removal must be switched on here: the options below only work when it is not Off.",
-    "STYLE-MODIFIED": "modified"
+    "STYLE-MODIFIED": "modified",
+    "FLATTEN-COLOURS": "Flat colours (test)"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Pixel editor",
@@ -422,5 +424,8 @@
   "EDGE-WARNING": "Note: using Microsoft Edge is unsupported.\\nPlease use Chrome (preferred) or Firefox for MapartCraft",
   "NONE": "None",
   "EDGE-WARNING-CLOSE": "Close the warning",
-  "PRESET-ERROR-CLOSE": "Close the warning"
+  "PRESET-ERROR-CLOSE": "Close the warning",
+  "LANGUAGES": {
+    "TITLE": "Language"
+  }
 }
