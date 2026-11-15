@@ -31,9 +31,12 @@
 .studioPanel_heading h2 {
   font-family: "kenpixel_mini_square", Lato, sans-serif;
   color: var(--accent);
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
   font-weight: normal;
   text-align: left;
+  /* Название панели — в одну строку: в колонке 300 px крупный пиксельный
+     шрифт переносил его на две. */
+  white-space: nowrap;
 }
 
 .studioPanel_kicker {

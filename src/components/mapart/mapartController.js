@@ -21,6 +21,7 @@ import ColourMethods from "./json/colourMethods.json";
 import CropModes from "./json/cropModes.json";
 import DefaultPresets from "../../presets/palettePresets.json";
 import { CLEANUP_PRESETS, getCleanupPreset } from "../../presets/cleanupPresets";
+import { SITE_URL } from "../../site";
 import { makePreset, PRESET_KIND, presetsFromJson, presetsToJson, toPalettePreset } from "../../presets/presetFormat";
 import DitherMethods from "./json/ditherMethods.json";
 import MapModes from "./json/mapModes.json";
@@ -152,6 +153,11 @@ class MapartController extends Component {
       if (cookiesPreset_updated === undefined) {
         cookiesPreset_updated = DefaultPresets.find((defaultPreset) => defaultPreset.name === cookiesPreset_loaded.name);
       }
+      /* Пресет переименовали: старое имя должно вести к новому встроенному,
+         а не остаться отдельным пользовательским. */
+      if (cookiesPreset_updated === undefined && cookiesPreset_loaded.name === "Моя палитра") {
+        cookiesPreset_updated = DefaultPresets.find((defaultPreset) => defaultPreset.id === "myPalette");
+      }
       if (cookiesPreset_updated === undefined) {
         cookiesPreset_updated = cookiesPreset_loaded;
       }
@@ -181,11 +187,12 @@ class MapartController extends Component {
       this.state.optionValue_version = supportedVersionFound;
     }
 
-    // Start new users on the user's own 56-block palette. Saved settings win
-    // below; custom presets are never touched.
-    const defaultPalette = cookiesPresets_updated.find((preset) => preset.name === "Моя палитра");
+    // Новый пользователь начинает с палитры из всех блоков: так сразу
+    // видно, что приложение умеет, а выбор блоков — дело пользователя.
+    // Сохранённые настройки ниже важнее этого.
+    const defaultPalette = cookiesPresets_updated.find((preset) => preset.id === "everything");
     if (defaultPalette) {
-      this.state.selectedPresetName = "Моя палитра";
+      this.state.selectedPresetName = defaultPalette.name;
       for (const [colourSetId, blockId] of defaultPalette.settings.blocks) {
         const block = this.state.coloursJSON[colourSetId]?.blocks[blockId];
         if (block && block.validVersions && this.state.optionValue_version.MCVersion in block.validVersions) {
@@ -340,6 +347,12 @@ class MapartController extends Component {
         restoredDisabledTones[colourSetId] = new Set(Array.isArray(tones) ? tones : []);
       }
       patch.disabledTones = restoredDisabledTones;
+    }
+
+    /* Пресет палитры переименовали: старое имя в сохранённых настройках
+       должно вести к новому встроенному. */
+    if (patch.selectedPresetName === "Моя палитра") {
+      patch.selectedPresetName = "Ax palette";
     }
 
     if (
@@ -1419,7 +1432,7 @@ class MapartController extends Component {
           });
       }
     }
-    return "https://mike2b2t.github.io/mapartcraft/?preset=" + presetQueryString;
+    return `${SITE_URL}/?preset=${presetQueryString}`;
   };
 
   handleSharePreset = () => {
