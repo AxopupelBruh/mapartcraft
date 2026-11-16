@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "FAQ",
-    "PLEASE-READ-1": "Proszę sprawdź ",
-    "PLEASE-READ-2": " Przed zadaniem mi jakiego kolwiek pytania!",
     "VIDEO-TUTORIAL": "Wideo tutorial"
-  },
-  "DESCRIPTION": {
-    "1": "Minecraftowy generator mapartów używający plików schematic i map.dat, zaprojektowany do bycia przyjaznym dla adminów serwerów i graczy surwiwalowych na serwerach jak ",
-    "2": ", działający w twojej przeglądarce.",
-    "3": "Inspirowany ",
-    "4": "map art'owym programem Redstonehelper'a",
-    "5": ", z celem do dodania bardzo chcianych rozwiązań oraz z usunięciem potrzeby pobierania programu.",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Wybieranie bloków",

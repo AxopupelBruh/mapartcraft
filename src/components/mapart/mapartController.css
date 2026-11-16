@@ -167,9 +167,15 @@
   }
 
   /* Панель экспорта: кнопки во всю ширину, чтобы по ним не промахнуться. */
+  .exportBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .greenButtonsRow {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
   }
 
   .greenButton {

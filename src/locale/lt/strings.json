@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "DUK",
-    "PLEASE-READ-1": "Prašome perskaityti ",
-    "PLEASE-READ-2": " prieš užduodami bet kokius klausimus!",
     "VIDEO-TUTORIAL": "Vaizdo pamoka"
-  },
-  "DESCRIPTION": {
-    "1": "Minecraft žemėlapio schemų ir map.dat generatorius, sukurtas taip, kad būtų įmanomas tiek serverių administratoriams, tiek išlikimo žaidėjams tokiuose serveriuose kaip ",
-    "2": ", veikianis jūsų naršyklėje.",
-    "3": "Įkvėptas ",
-    "4": "Redstonehelper žemėlapių meno programa",
-    "5": ", siekiant pridėti labai pageidaujamų funkcijų ir pašalinti būtinybę atsisiųsti programą.",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Bloko pasirinkimas",

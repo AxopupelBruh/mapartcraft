@@ -603,25 +603,7 @@ class GreenButtons extends Component {
         {buttons_mapModeConditional}
       </div>
     );
-    /* Проверка перед экспортом (этап 4, пункт 4.3): что стоит знать до
-       того, как нажать кнопку экспорта. */
-    const exportChecks = this.props.exportChecks || [];
-    const checksDiv = exportChecks.length > 0 ? (
-      <div className="exportCheck" role="status">
-        <span className="exportCheck_title">{this.t("EXPORT-CHECK/TITLE", "Check before export")}</span>
-        {exportChecks.map((check) => (
-          <span key={check.id} className={`exportCheck_item exportCheck_${check.level}`}>
-            {check.text}
-          </span>
-        ))}
-      </div>
-    ) : null;
-    return (
-      <React.Fragment>
-        {buttonsDiv}
-        {checksDiv}
-      </React.Fragment>
-    );
+    return buttonsDiv;
   }
 }
 

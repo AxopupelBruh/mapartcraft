@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "OD",
-    "PLEASE-READ-1": "Bonvolu vidi la ",
-    "PLEASE-READ-2": "-n antaŭ ol demandi iun ie!",
     "VIDEO-TUTORIAL": "Videa instrukcio"
-  },
-  "DESCRIPTION": {
-    "1": "Minecraft maparta generilo de schematic kaj map.dat, kreita por esti realigita por kaj servilaj administrantoj kaj travivaj ludantoj ĉe serviloj kiel ",
-    "2": ", laborebla ĉe via retumilo",
-    "3": "Inspirita de ",
-    "4": "Redstonehelper's map art programo",
-    "5": ", kun la celo por aldoni ofte petatajn apartaĵojn kaj forigi la neceson por enŝuti programon",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Blokelektejo",

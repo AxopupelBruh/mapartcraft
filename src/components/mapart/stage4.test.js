@@ -6,6 +6,7 @@ import { render } from "@testing-library/react";
 
 import MapWorker from "./workers/mapCanvas";
 import StudioPanel from "./studioPanel";
+import PaletteAccuracy from "./paletteAccuracy";
 
 import coloursJSON from "./json/coloursJSON.json";
 import ColourMethods from "./json/colourMethods.json";
@@ -15,7 +16,6 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 
 import { getSiteUrl, SITE_URL, siteUrlWithQuery } from "../../site";
 import { buildProjectFile, dataUrlToBlob, parseProjectFile, PROJECT_FORMAT, projectFileName } from "./projectFile";
-import { checkExport, hasBlockingCheck, summariseChecks } from "./exportCheck";
 import { drawCompareAfter, drawCompareBefore } from "./compareView";
 
 import enStrings from "../../locale/en/strings.json";
@@ -190,73 +190,6 @@ test("2.5 картинка из проекта восстанавливаетс�
   expect(blob.size).toBe(3);
 });
 
-/* ------------------------------------------- 3. проверка перед экспортом */
-
-const version = { MCVersion: "1.21.11" };
-const paletteWithBlocks = { 28: { blocks: { 0: { validVersions: { "1.21.11": {} } } } } };
-
-test("3.1 без картинки и без палитры экспорт бессмыслен", () => {
-  const checks = checkExport({ hasImage: false, selectedBlocks: {}, coloursJSON: {} });
-  expect(hasBlockingCheck(checks)).toBe(true);
-  expect(checks.map((check) => check.id)).toContain("no-image");
-  expect(checks.map((check) => check.id)).toContain("empty-palette");
-});
-
-test("3.2 палитра выбрана и блоки доступны — блокирующих пунктов нет", () => {
-  const checks = checkExport({
-    hasImage: true,
-    selectedBlocks: { 28: "0" },
-    coloursJSON: paletteWithBlocks,
-    optionValue_version: version,
-    previewReady: true,
-  });
-  expect(hasBlockingCheck(checks)).toBe(false);
-  expect(summariseChecks(checks).errors).toBe(0);
-});
-
-test("3.3 блок, которого нет в выбранной версии, — предупреждение", () => {
-  const checks = checkExport({
-    hasImage: true,
-    selectedBlocks: { 28: "0" },
-    coloursJSON: { 28: { blocks: { 0: { validVersions: { "1.12.2": {} } } } } },
-    optionValue_version: version,
-    previewReady: true,
-  });
-  const unavailable = checks.find((check) => check.id === "blocks-unavailable");
-  expect(unavailable).toBeDefined();
-  expect(unavailable.level).toBe("warning");
-  expect(unavailable.params.count).toBe(1);
-  expect(unavailable.params.version).toBe("1.21.11");
-});
-
-test("3.4 размер карты пересчитывается в файлы и блоки", () => {
-  const checks = checkExport({
-    hasImage: true,
-    selectedBlocks: { 28: "0" },
-    coloursJSON: paletteWithBlocks,
-    optionValue_version: version,
-    optionValue_mapSize_x: 6,
-    optionValue_mapSize_y: 6,
-    previewReady: true,
-  });
-  const size = checks.find((check) => check.id === "map-size");
-  expect(size.params.files).toBe(36);
-  expect(size.params.blocks).toBe(128 * 6 * 128 * 6);
-  expect(size.messageKey).toBe("EXPORT-CHECK/MAP-SIZE-SPLIT");
-});
-
-test("3.5 непроготовившийся предпросмотр — предупреждение, а не ошибка", () => {
-  const checks = checkExport({
-    hasImage: true,
-    selectedBlocks: { 28: "0" },
-    coloursJSON: paletteWithBlocks,
-    optionValue_version: version,
-    previewReady: false,
-  });
-  expect(hasBlockingCheck(checks)).toBe(false);
-  expect(checks.map((check) => check.id)).toContain("preview-not-ready");
-});
-
 /* ------------------------------------------- 4. точность квантования */
 
 const W = 128;
@@ -423,7 +356,7 @@ test("6.3 ключи новых функций есть в обоих языка
     "PROJECT/SAVE",
     "PROJECT/OPEN",
     "STUDIO/ACCURACY",
-    "EXPORT-CHECK/TITLE",
+    "MAP-SETTINGS/MAP-SIZE-SUMMARY",
     "MAP-PREVIEW/COMPARE",
   ]) {
     for (const strings of [enStrings, ruStrings]) {
@@ -465,7 +398,15 @@ const studioPanelProps = (overrides) => ({
   onOpenProject: jest.fn(),
   projectSaveAvailable: true,
   projectStatus: "",
-  quantisationAccuracy: null,
+  ...overrides,
+});
+
+const paletteAccuracyProps = (overrides) => ({
+  getLocaleString: (key) => {
+    const value = key.split("/").reduce((folder, part) => (folder ? folder[part] : undefined), enStrings);
+    return value || key;
+  },
+  accuracy: null,
   ...overrides,
 });
 
@@ -485,23 +426,23 @@ test("7.2 без картинки сохранение проекта недос
 });
 
 test("7.3 индикатор точности показывает долю пикселей, попавших в палитру", () => {
-  const { container } = render(
-    <StudioPanel {...studioPanelProps({ quantisationAccuracy: { exact: 2000, total: 2500, share: 0.8 } })} />
-  );
+  const { container } = render(<PaletteAccuracy {...paletteAccuracyProps({ accuracy: { exact: 2000, total: 2500, share: 0.8 } })} />);
   expect(container.textContent).toContain("80%");
-  expect(container.textContent).toContain("2000 of 2500");
+  /* Подробности — в подсказке: сама строка остаётся короткой. */
+  expect(container.querySelector(".tooltipText").textContent).toContain("2000 of 2500");
+  expect(container.querySelector(".mapAccuracyHint").textContent).not.toContain("2000 of 2500");
 });
 
 test("7.4 без рендера точность не выдумывается", () => {
-  const { container } = render(<StudioPanel {...studioPanelProps({ quantisationAccuracy: null })} />);
-  expect(container.textContent).toContain("No render yet");
+  const { container } = render(<PaletteAccuracy {...paletteAccuracyProps({ accuracy: null })} />);
+  expect(container.textContent).toBe("");
 });
 
 /* ------------------------------------------- 8. мобильная раскладка */
 
 const layoutCss = fs.readFileSync(path.join(__dirname, "mapartController.css"), "utf-8");
 const studioCss = fs.readFileSync(path.join(__dirname, "studioPanel.css"), "utf-8");
-const exportCss = fs.readFileSync(path.join(__dirname, "greenButtons.css"), "utf-8");
+const accuracyCss = fs.readFileSync(path.join(__dirname, "paletteAccuracy.css"), "utf-8");
 
 test("8.1 на телефоне кнопки и поля достаются для пальца", () => {
   const mobile = layoutCss.slice(layoutCss.lastIndexOf("@media (max-width: 720px)"));
@@ -514,10 +455,15 @@ test("8.2 у кнопок экспорта текст не уезжает вве
   expect(mobile).toMatch(/\.greenButton_text[\s\S]*line-height:\s*38px/);
 });
 
-test("8.3 панель проекта и проверка экспорта размечены стилями", () => {
+test("8.3 кнопки экспорта на телефоне занимают всю ширину", () => {
+  const mobile = layoutCss.slice(layoutCss.lastIndexOf("@media (max-width: 720px)"));
+  expect(mobile).toMatch(/\.greenButtonsRow[\s\S]*width:\s*100%/);
+});
+
+test("8.4 панель проекта и индикатор точности размечены стилями", () => {
   expect(studioCss).toContain(".studioProjectRow");
-  expect(studioCss).toContain(".studioAccuracy");
-  expect(exportCss).toContain(".exportCheck");
-  /* Ошибка проверки должна быть видна сразу, а не сливаться с остальным. */
-  expect(exportCss).toContain(".exportCheck_error");
+  /* Точность палитры живёт под превью, а не внизу панели студии: там её
+     перекрывала липкая полоса экспорта. */
+  expect(accuracyCss).toContain(".mapAccuracyHint");
+  expect(studioCss).not.toContain(".studioAccuracy");
 });

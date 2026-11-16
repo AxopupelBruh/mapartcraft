@@ -7,19 +7,8 @@
     "DESCRIPTION": "Um gerador de esquemas e arquivos map.dat do Minecraft"
   },
   "FAQ": {
-    "FAQ": "FAQ (Perguntas frequentes)" ,
-    "PLEASE-READ-1": "Por-favor verifique o ",
-    "PLEASE-READ-2": " antes de fazer qualquer pergunta!",
+    "FAQ": "FAQ (Perguntas frequentes)",
     "VIDEO-TUTORIAL": "Tutorial em vídeo"
-  },
-  "DESCRIPTION": {
-    "1": "Um gerador de esquemas e arquivos map.dat do Minecraft, projetado para ser prático tanto para administradores de servidores quanto para jogadores em servidores como ",
-    "2": ", rodando no seu navegador.",
-    "3": "Inspirado pelo ",
-    "4": "programa de arte de mapa do Redstonehelper",
-    "5": ", com o objetivo de adicionar recursos muito pedidos e remover a necessidade de fazer download de um programa.",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Seleção de blocos",

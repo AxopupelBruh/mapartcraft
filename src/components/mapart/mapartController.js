@@ -23,7 +23,6 @@ import DefaultPresets from "../../presets/palettePresets.json";
 import { CLEANUP_PRESETS, getCleanupPreset } from "../../presets/cleanupPresets";
 import { siteUrlWithQuery } from "../../site";
 import { buildProjectFile, projectFileName, readProjectFile } from "./projectFile";
-import { checkExport } from "./exportCheck";
 import { makePreset, PRESET_KIND, presetsFromJson, presetsToJson, toPalettePreset } from "../../presets/presetFormat";
 import DitherMethods from "./json/ditherMethods.json";
 import MapModes from "./json/mapModes.json";
@@ -693,7 +692,7 @@ class MapartController extends Component {
   }
 
   loadUploadedImageFromURL(imageURL, baseFilename, options = {}) {
-    const { placeholder = false, revokeObjectURL = false, imageBlob = null, pixelEdits = null } = options;
+    const { placeholder = false, revokeObjectURL = false, imageBlob = null, pixelEdits = null, projectStatus = "" } = options;
     const loadId = ++this.imageLoadId;
     const img = new Image();
     img.onload = () => {
@@ -709,6 +708,9 @@ class MapartController extends Component {
            новой они сбрасываются, а при открытии проекта восстанавливаются
            из файла. */
         pixelEdits: pixelEdits && typeof pixelEdits === "object" ? pixelEdits : {},
+        /* Бейдж «проект сохранён/открыт» относится к прошлой картинке:
+           после загрузки новой он больше не врёт. */
+        projectStatus: projectStatus,
       });
     };
     img.onerror = () => {
@@ -1593,41 +1595,14 @@ class MapartController extends Component {
         /* Правки пикселей относятся к картинке из проекта, поэтому старые
            правки от прошлой картинки сбрасываются, а новые — восстанавливаются. */
         pixelEdits: project.pixelEdits,
+        /* Бейдж ставится вместе с картинкой: иначе он появился бы и сразу
+           исчез бы, когда картинка догрузится. */
+        projectStatus: "opened",
       });
-      if (this.mounted) this.setState({ projectStatus: "opened" });
     } catch (error) {
       console.warn("Could not open the project", error);
       window.alert(`${getLocaleString("PROJECT/ERROR-OPEN")} ${error.message || error}`);
     }
-  };
-
-  /* ---------------------------------------------------------------------
-     Проверка перед экспортом (этап 4, пункт 4.3).
-     --------------------------------------------------------------------- */
-  getExportChecks = () => {
-    const checks = checkExport({
-      hasImage: !this.state.uploadedImage_isPlaceholder,
-      selectedBlocks: this.state.selectedBlocks,
-      coloursJSON: this.state.coloursJSON,
-      optionValue_version: this.state.optionValue_version,
-      optionValue_mapSize_x: this.state.optionValue_mapSize_x,
-      optionValue_mapSize_y: this.state.optionValue_mapSize_y,
-      previewReady: !!this.state.currentMaterialsData.pixelsData,
-    });
-    const { getLocaleString } = this.props;
-    return checks.map((check) => ({
-      ...check,
-      text: this.localiseCheck(check, getLocaleString),
-    }));
-  };
-
-  /* Подставляет числа в текст пункта проверки: {files} -> 36 и так далее. */
-  localiseCheck = (check, getLocaleString) => {
-    const template = getLocaleString ? getLocaleString(check.messageKey) : null;
-    if (!template) return check.messageKey;
-    return template.replace(/\{(\w+)\}/g, (match, key) =>
-      check.params && check.params[key] !== undefined ? String(check.params[key]) : match
-    );
   };
 
   onChooseViewOnline3D = () => {
@@ -1842,7 +1817,6 @@ class MapartController extends Component {
           onOpenProject={this.handleOpenProjectClicked}
           projectSaveAvailable={!this.state.uploadedImage_isPlaceholder && !!this.uploadedImageBlob}
           projectStatus={this.state.projectStatus}
-          quantisationAccuracy={this.state.quantisationAccuracy}
         />
         <BlockSelection
           getLocaleString={getLocaleString}
@@ -1885,6 +1859,7 @@ class MapartController extends Component {
         <div className="previewColumn">
           <MapPreview
             getLocaleString={getLocaleString}
+            quantisationAccuracy={this.state.quantisationAccuracy}
             coloursJSON={coloursJSON}
             selectedBlocks={selectedBlocks}
             disabledTones={disabledTones}
@@ -1993,7 +1968,6 @@ class MapartController extends Component {
               uploadedImage_baseFilename={uploadedImage_baseFilename}
               currentMaterialsData={currentMaterialsData}
               mapPreviewWorker_inProgress={mapPreviewWorker_inProgress}
-              exportChecks={this.getExportChecks()}
               downloadBlobFile={this.downloadBlobFile}
               onGetViewOnlineNBT={this.onGetViewOnlineNBT}
             />

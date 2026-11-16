@@ -16,6 +16,7 @@ import IMG_GridOverlay from "../../images/gridOverlay.png";
 
 import { detectPixelScale } from "./pixelPerfect";
 import { drawCompareAfter, drawCompareBefore } from "./compareView";
+import PaletteAccuracy from "./paletteAccuracy";
 import { attachWheel, wheelValue } from "./wheelValue";
 
 import "./mapPreview.css";
@@ -2287,6 +2288,7 @@ class MapPreview extends Component {
       onFileDialogEvent,
       uploadedImage,
       pixelEdits,
+      quantisationAccuracy,
     } = this.props;
     const {
       workerProgress,
@@ -2586,6 +2588,10 @@ class MapPreview extends Component {
                 {uploadedImage === null ? null : `${uploadedImage.width.toString()}x${uploadedImage.height.toString()}`}
               </small>
             </Tooltip>
+            {/* Точность квантования: сколько пикселей попали в палитру
+                точно. Подробности — в подсказке, чтобы строка оставалась
+                короткой. */}
+            <PaletteAccuracy accuracy={quantisationAccuracy} getLocaleString={getLocaleString} />
           </div>
           <div>
             <button type="button" className="previewModeButton" onClick={this.setPreviewScaleOne} title="1 map pixel = 1 screen pixel">

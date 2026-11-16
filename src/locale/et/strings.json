@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "KKK",
-    "PLEASE-READ-1": "Palun lugege ",
-    "PLEASE-READ-2": " enne küsimuste küsimist!",
     "VIDEO-TUTORIAL": "Videoõpetus"
-  },
-  "DESCRIPTION": {
-    "1": "Minecrafti kaardikunsti schematic'u ja map.dat failide generaator, loodud nii serveri administraatorite kui ka survival serverite jaoks, nagu ",
-    "2": ", jooksmas sinu brauseris",
-    "3": "Inspireeritud ",
-    "4": "Redstonehelperi kaardikunsti programmi",
-    "5": " põhjal, eesmärgiga lisada paljunõutud lisavõimalusi ning eemaldada vajadus programmi alla laadida",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Plokkide valik",

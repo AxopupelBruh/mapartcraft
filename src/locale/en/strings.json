@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "FAQ",
-    "PLEASE-READ-1": "Please check the ",
-    "PLEASE-READ-2": " before asking any questions anywhere!",
     "VIDEO-TUTORIAL": "Video tutorial"
-  },
-  "DESCRIPTION": {
-    "1": "A local-first Minecraft mapart schematic and .map.dat generator with a pixel editor, cleanup tools, palettes up to 26.3 and .litematic export. It is built for server admins and survival players on servers like ",
-    "2": ", and runs entirely in your browser.",
-    "3": "The studio keeps the original MapartCraft workflow and adds newer blocks, image processing and editing tools. Inspired by ",
-    "4": "Redstonehelper's map art program",
-    "5": ".",
-    "6": "Based on the original ",
-    "7": " by rebane2001. Feature requests and bug reports go to "
   },
   "FORK-LABEL": "Fork of ",
   "BLOCK-SELECTION": {
@@ -260,7 +249,9 @@
     "MAP-SIZE-CONFIRM": "This map needs about {memory} of memory and about {seconds} s to render. The tab may freeze for a while. Continue?",
     "MAP-SIZE-INCREASE": "Increase {axis}",
     "MAP-SIZE-DECREASE": "Decrease {axis}",
-    "MAP-SIZE-RESETS-EDITS": "Changing the map size removes the manual pixel edits. Continue?"
+    "MAP-SIZE-RESETS-EDITS": "Changing the map size removes the manual pixel edits. Continue?",
+    "MAP-SIZE-SUMMARY": "{files} files, {blocks} blocks",
+    "MAP-SIZE-SUMMARY-ONE": "1 file, {blocks} blocks"
   },
   "DOWNLOAD": {
     "ERROR-NONE-SELECTED": "Select blocks before downloading!",
@@ -360,8 +351,7 @@
     "ISLANDS-HINT": "Island removal must be switched on here: the options below only work when it is not Off.",
     "STYLE-MODIFIED": "modified",
     "ACCURACY": "Palette accuracy",
-    "ACCURACY-HINT": "{exact} of {total} pixels hit the palette exactly",
-    "ACCURACY-EMPTY": "No render yet"
+    "ACCURACY-HINT": "{exact} of {total} pixels hit the palette exactly"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Pixel editor",
@@ -439,14 +429,5 @@
     "ERROR-NO-IMAGE": "Load an image first — a project needs the source picture.",
     "ERROR-SAVE": "Could not save the project:",
     "ERROR-OPEN": "Could not open the project:"
-  },
-  "EXPORT-CHECK": {
-    "TITLE": "Check before export",
-    "NO-IMAGE": "No image loaded.",
-    "EMPTY-PALETTE": "The palette is empty — pick at least one block.",
-    "BLOCKS-UNAVAILABLE": "{count} selected blocks are not available in version {version}.",
-    "PREVIEW-NOT-READY": "The preview is not ready yet — wait for it before exporting.",
-    "MAP-SIZE-SPLIT": "Map {sizeX}×{sizeY} = {files} files, {blocks} blocks.",
-    "MAP-SIZE-ONE": "Map {sizeX}×{sizeY} = 1 file, {blocks} blocks."
   }
 }

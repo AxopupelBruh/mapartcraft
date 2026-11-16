@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "FAQ",
-    "PLEASE-READ-1": "Por Favor verifique o ",
-    "PLEASE-READ-2": " antes de fazer perguntas em qualquer lado",
     "VIDEO-TUTORIAL": "Video tutorial"
-  },
-  "DESCRIPTION": {
-    "1": "Um gerador de schematics de mapart e ficheiros map.dat para minecraft, feito para ser factível para ambos admins de servidores ou jogadores de modo sobrevivência em servidores como ",
-    "2": ", executado no seu Navegador",
-    "3": "Inspirado pelo ",
-    "4": "programa de map art de Redstonehelper",
-    "5": ", com o objetivo de adicionar recursos muito pedidos e remover a necessidade de descarregar o programa",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Seleção de blocos",
