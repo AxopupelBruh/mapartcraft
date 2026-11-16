@@ -57,9 +57,6 @@ class StudioPanel extends Component {
       optionValue_dithering,
       optionValue_dithering_strength,
       onOptionChange_dithering_strength,
-      optionValue_dithering_propagation_red,
-      optionValue_dithering_propagation_green,
-      optionValue_dithering_propagation_blue,
       detectedPixelScale,
       sessionStatus,
       onResetSession,
@@ -67,7 +64,6 @@ class StudioPanel extends Component {
       onSaveProject,
       projectSaveAvailable,
       projectStatus,
-      quantisationAccuracy,
     } = this.props;
 
     /* activeStyleId приходит из контроллера: он учитывает, что настройки
@@ -94,6 +90,35 @@ class StudioPanel extends Component {
                 </button>
               ) : null}
             </div>
+          </div>
+          {/* Проект целиком: картинка, настройки и правки пикселей в одном
+              файле. Кнопки стоят вверху панели, а не внизу: внизу их
+              перекрывает липкая полоса экспорта. */}
+          <div className="studioProjectRow">
+            <button type="button" className="studioProjectButton" onClick={onSaveProject} disabled={!projectSaveAvailable}>
+              {this.t("PROJECT/SAVE", "Save project")}
+            </button>
+            <button
+              type="button"
+              className="studioProjectButton"
+              onClick={() => this.projectInputRef.current && this.projectInputRef.current.click()}
+            >
+              {this.t("PROJECT/OPEN", "Open project")}
+            </button>
+            <input
+              type="file"
+              className="displayNone"
+              accept=".mapartstudio.json,.json,application/json"
+              ref={this.projectInputRef}
+              onChange={this.onProjectFileChosen}
+            />
+            {projectStatus ? (
+              <span className="studioProjectStatus">
+                {projectStatus === "saved"
+                  ? this.t("PROJECT/SAVED", "Project saved")
+                  : this.t("PROJECT/OPENED", "Project opened")}
+              </span>
+            ) : null}
           </div>
           <div className="studioStyleGrid">
             {STYLE_PRESETS.map((style) => {
@@ -139,21 +164,6 @@ class StudioPanel extends Component {
               {optionValue_dithering === 0
                 ? this.t("STUDIO/DITHER-NONE", "Dithering is disabled for the None method.")
                 : this.t("STUDIO/DITHER-HINT", "0 — no error propagation, 100 — preset, 200 — stronger.")}
-              {optionValue_dithering !== 0 ? (
-                <span className="studioDitherEffective">
-                  {this.t("MAP-SETTINGS/DITHERING/EFFECTIVE", "Effective propagation")}:{" "}
-                  {[
-                    optionValue_dithering_propagation_red,
-                    optionValue_dithering_propagation_green,
-                    optionValue_dithering_propagation_blue,
-                  ]
-                    .map((propagation, index) => {
-                      const effective = Math.round((optionValue_dithering_strength * (propagation || 0)) / 100);
-                      return `${"RGB"[index]} ${effective}%`;
-                    })
-                    .join(" · ")}
-                </span>
-              ) : null}
             </small>
           </div>
           <div className="studioToggleRow">
@@ -187,43 +197,6 @@ class StudioPanel extends Component {
                   ? this.t("STUDIO/SCALE-LANCZOS", "Lanczos")
                   : this.t("STUDIO/SMOOTH", "smooth")}
             </span>
-          </div>
-          <div className="studioProjectRow">
-            <button type="button" className="studioProjectButton" onClick={onSaveProject} disabled={!projectSaveAvailable}>
-              {this.t("PROJECT/SAVE", "Save project")}
-            </button>
-            <button
-              type="button"
-              className="studioProjectButton"
-              onClick={() => this.projectInputRef.current && this.projectInputRef.current.click()}
-            >
-              {this.t("PROJECT/OPEN", "Open project")}
-            </button>
-            <input
-              type="file"
-              className="displayNone"
-              accept=".mapartstudio.json,.json,application/json"
-              ref={this.projectInputRef}
-              onChange={this.onProjectFileChosen}
-            />
-            {projectStatus ? (
-              <span className="studioProjectStatus">
-                {projectStatus === "saved"
-                  ? this.t("PROJECT/SAVED", "Project saved")
-                  : this.t("PROJECT/OPENED", "Project opened")}
-              </span>
-            ) : null}
-          </div>
-          <div className="studioAccuracy">
-            <span>{this.t("STUDIO/ACCURACY", "Palette accuracy")}</span>
-            <b>{quantisationAccuracy ? `${Math.round((quantisationAccuracy.share || 0) * 100)}%` : "—"}</b>
-            <small>
-              {quantisationAccuracy && quantisationAccuracy.total
-                ? this.t("STUDIO/ACCURACY-HINT", "{exact} of {total} pixels hit the palette exactly")
-                    .replace("{exact}", String(quantisationAccuracy.exact))
-                    .replace("{total}", String(quantisationAccuracy.total))
-                : this.t("STUDIO/ACCURACY-EMPTY", "No render yet")}
-            </small>
           </div>
         </div>
       </div>

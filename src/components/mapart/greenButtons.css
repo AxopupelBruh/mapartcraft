@@ -83,36 +83,3 @@
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
-
-/* Проверка перед экспортом (этап 4, пункт 4.3). */
-.exportCheck {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25em 0.6em;
-  margin-top: 0.2em;
-  font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: var(--fs-xs);
-  line-height: 1.25;
-}
-
-.exportCheck_title {
-  color: var(--text-4);
-}
-
-.exportCheck_item {
-  overflow-wrap: anywhere;
-}
-
-.exportCheck_error {
-  color: var(--danger);
-}
-
-.exportCheck_warning {
-  color: var(--accent);
-}
-
-.exportCheck_info {
-  color: var(--text-4);
-}

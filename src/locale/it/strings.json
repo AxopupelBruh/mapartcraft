@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "FAQ",
-    "PLEASE-READ-1": "Per favore controlla la  ",
-    "PLEASE-READ-2": "  prima di contattarmi!",
     "VIDEO-TUTORIAL": "Video tutorial"
-  },
-  "DESCRIPTION": {
-    "1": "Un generatore di file schematic e map.dat per la realizzazione di mapart in Minecraft, progettato per essere utilizzabile sia da admin sia da giocatori survival su server come ",
-    "2": " ed eseguibile nel tuo browser",
-    "3": "Ispirato dal ",
-    "4": "generatore di mapart di Redstonehelper",
-    "5": ", ha l'obbiettivo di implementare funzionalità molto richieste e di eliminare il bisogno di scaricare un programma",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Selezione di blocchi",

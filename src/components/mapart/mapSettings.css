@@ -288,6 +288,22 @@
   gap: 0.25em;
 }
 
+/* Ступпер и подсказки под ним: столбиком, иначе подпись «Map size»
+   сжималась в ноль и наезжала на кнопки. */
+.mapSizeControl {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15em;
+  min-width: 0;
+}
+
+/* Подпись поля не переносится по словам: «Map size» должно быть в одну
+   строку, а «X» и «Y» — в двух строках под ней. */
+.optionField_custom .optionField_label {
+  white-space: nowrap;
+}
+
 .mapSizeStepButton {
   min-width: 22px;
   height: 22px;

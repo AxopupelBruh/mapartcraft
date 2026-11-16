@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "FAQ",
-    "PLEASE-READ-1": "Bitte lies das ",
-    "PLEASE-READ-2": " bevor Du mich kontaktierst!",
     "VIDEO-TUTORIAL": "Erklärvideo"
-  },
-  "DESCRIPTION": {
-    "1": "Ein Generator zum Erstellen von Minecraft Mapart im Schematic und map.dat Format für sowohl Server-Admins, als auch Surival-Spieler auf Servern wie ",
-    "2": ", innerhalb Deines Browsers",
-    "3": "Inspiriert durch ",
-    "4": "Redstonehelpers Mapart-Programm",
-    "5": ", mit dem Ziel verschiedenste gewünschte Funktionen zu implementieren und das Programm online verfügbar zu machen.",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Blockauswahl",

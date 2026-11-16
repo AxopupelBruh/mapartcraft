@@ -85,6 +85,19 @@ const MapSizeField = ({ values, handlers, getLocaleString }) => {
   const isBig = estimate.megabytes >= 512;
   const renderSeconds = estimateRenderSeconds(values.optionValue_mapSize_x, values.optionValue_mapSize_y);
 
+  /* Сколько получится файлов и блоков: карта режется на куски 128×128. */
+  const sizeX = Math.max(1, parseInt(values.optionValue_mapSize_x, 10) || 1);
+  const sizeY = Math.max(1, parseInt(values.optionValue_mapSize_y, 10) || 1);
+  const fileCount = sizeX * sizeY;
+  const blockCount = 128 * sizeX * 128 * sizeY;
+  const summary = (
+    fileCount === 1
+      ? getLocaleString("MAP-SETTINGS/MAP-SIZE-SUMMARY-ONE", "1 file, {blocks} blocks")
+      : getLocaleString("MAP-SETTINGS/MAP-SIZE-SUMMARY", "{files} files, {blocks} blocks")
+  )
+    .replace("{files}", String(fileCount))
+    .replace("{blocks}", String(blockCount));
+
   const renderDimension = (key, axis, id) => (
     <React.Fragment key={key}>
       <span className="optionField_pairLabel">{axis}</span>
@@ -119,7 +132,9 @@ const MapSizeField = ({ values, handlers, getLocaleString }) => {
   );
 
   return (
-    <React.Fragment>
+    /* Ступпер и подсказки стоят столбиком: в одну строку подпись поля
+       «Map size» сжималась в ноль, и текст наезжал на кнопки. */
+    <div className="mapSizeControl">
       <span className="mapSizeStepper">
         {renderDimension(SIZE_X_KEY, "X", SIZE_X_ID)}
         {renderDimension(SIZE_Y_KEY, "Y", SIZE_Y_ID)}
@@ -145,7 +160,8 @@ const MapSizeField = ({ values, handlers, getLocaleString }) => {
             .replace("{seconds}", renderSeconds)}
         </span>
       ) : null}
-    </React.Fragment>
+      <span className="optionField_hint">{summary}</span>
+    </div>
   );
 };
 

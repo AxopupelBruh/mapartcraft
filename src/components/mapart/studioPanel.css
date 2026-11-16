@@ -206,13 +206,6 @@
   color: var(--danger);
 }
 
-.studioDitherEffective {
-  display: block;
-  margin-top: 0.2em;
-  color: var(--accent);
-  font-family: "kenpixel_mini_square", Lato, sans-serif;
-}
-
 .studioStyleModified {
   font-style: normal;
   color: var(--accent-active);
@@ -227,9 +220,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4em;
-  margin-top: 0.55em;
-  padding-top: 0.5em;
-  border-top: 1px solid var(--border-3);
+  margin-bottom: 0.55em;
+  padding-bottom: 0.5em;
+  border-bottom: 1px solid var(--border-3);
 }
 
 .studioProjectButton {
@@ -256,30 +249,5 @@
 .studioProjectStatus {
   color: var(--accent);
   font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: var(--fs-2xs);
-}
-
-/* Точность квантования (этап 4, пункт 4.4). */
-.studioAccuracy {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.4em;
-  margin-top: 0.45em;
-  color: var(--text-3);
-  font-family: Lato, Open Sans, Arial, sans-serif;
-  font-size: var(--fs-xs);
-}
-
-.studioAccuracy b {
-  color: var(--accent);
-  font-family: "kenpixel_mini_square", Lato, sans-serif;
-  font-size: var(--fs-md);
-  font-weight: normal;
-}
-
-.studioAccuracy small {
-  color: var(--text-muted);
   font-size: var(--fs-2xs);
 }

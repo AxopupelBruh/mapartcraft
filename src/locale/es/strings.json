@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "Preguntas frecuentes",
-    "PLEASE-READ-1": "Por favor, ¡Echa un vistazo a ",
-    "PLEASE-READ-2": " antes de realizar cualquier pregunta!",
     "VIDEO-TUTORIAL": "Video tutorial"
-  },
-  "DESCRIPTION": {
-    "1": "Un generador de map.dat y .schematic para Minecraft. Diseñado para ser utilizado tanto por administradores de servidores, como por jugadores en modo supervivencia en servidores como ",
-    "2": ", ejecutándose en tu buscador.",
-    "3": "Inspirado por el ",
-    "4": "programa para map art de Redstonehelper",
-    "5": ", con el objetivo de añadir nuevas caraterísticas y para eliminar la necesidad de descargar un programa.",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Selección de bloques",

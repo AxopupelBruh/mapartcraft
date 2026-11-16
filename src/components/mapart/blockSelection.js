@@ -342,7 +342,12 @@ class BlockSelection extends Component {
   getSelectedSummary = (availableColourSets) => {
     const { selectedBlocks } = this.props;
     return availableColourSets
-      .filter(([colourSetId]) => selectedBlocks[colourSetId] && selectedBlocks[colourSetId] !== "-1")
+      /* Id блока может быть 0 — это обычный номер, а не «ничего не
+         выбрано». Поэтому проверяем на undefined, а не на правдивость. */
+      .filter(([colourSetId]) => {
+        const blockId = selectedBlocks[colourSetId];
+        return blockId !== undefined && blockId !== null && blockId !== "-1";
+      })
       .map(([colourSetId]) => ({ colourSetId, blockId: selectedBlocks[colourSetId] }));
   };
 

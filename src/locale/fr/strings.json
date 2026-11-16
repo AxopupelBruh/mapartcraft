@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "FAQ",
-    "PLEASE-READ-1": "Merci de lire la ",
-    "PLEASE-READ-2": " avant de poser toutes questions!",
     "VIDEO-TUTORIAL": "Tutoriel vidéo"
-  },
-  "DESCRIPTION": {
-    "1": "Un générateur de Mapart Minecraft: schematic et de map.dat, conçu pour être utilisable par les administrateurs de serveurs ainsi que par les joueurs en survie comme sur le serveur ",
-    "2": ", qui fonctionne sur navigateur web.",
-    "3": "Inspiré par ",
-    "4": "Redstonehelper's map art program",
-    "5": ", avec l’objectif de rendre accessible une fonctionnalité très demandée sans avoir besoin de télécharger aucun programme.",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "Sélection des blocs",

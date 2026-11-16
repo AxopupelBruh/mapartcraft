@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "常見問題",
-    "PLEASE-READ-1": "在詢問任何問題前，請先閱讀",
-    "PLEASE-READ-2": "！",
     "VIDEO-TUTORIAL": "影片教學"
-  },
-  "DESCRIPTION": {
-    "1": "一個 Minecraft 地圖畫 schematic 及 map.dat 產生器，伺服器管理員和例如在 ",
-    "2": "的生存玩家皆可使用，並直接在您的瀏覽器運行。",
-    "3": "啟發自 ",
-    "4": "Redstonehelper 製作的地圖畫產生器",
-    "5": "，目標為新增其他功能，且不再需要下載程式。",
-    "6": null,
-    "7": null
   },
   "BLOCK-SELECTION": {
     "TITLE": "選擇方塊",

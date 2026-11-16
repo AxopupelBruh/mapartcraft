@@ -8,18 +8,7 @@
   },
   "FAQ": {
     "FAQ": "SSS",
-    "PLEASE-READ-1": "Lütfen herhangi bir yerde soru sormadan önce ",
-    "PLEASE-READ-2": " sayfasını okuyunuz!",
     "VIDEO-TUTORIAL": "Videolu anlatım"
-  },
-  "DESCRIPTION": {
-    "1": "Minecraft mapart şematiği ve map.dat oluşturucusu, sunucu sahipleri hem de oyuncuları için ",
-    "2": ", gibi sunucular için tasarlanmış, tarayıcında çalışır.",
-    "3": "",
-    "4": "Redstonehelper's map art program",
-    "5": "'dan esinlenilerek tavsiye edilen özelliklerin ve programı indirme zorunluğunun ortadan kalkması için yapılmıştır",
-    "6": "Bu, rebane2001 tarafından yapılan",
-    "7": "'ın forkudur. İstek, öneri ve şikayetler için; "
   },
   "BLOCK-SELECTION": {
     "TITLE": "Blok seçimi",
