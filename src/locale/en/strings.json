@@ -101,7 +101,9 @@
     "ASPECT-RATIO-MISMATCH-TT": "Image doesn't match map's aspect ratio",
     "MAP-TOO-LARGE": "This browser could not allocate a canvas for this map size. Try a smaller map.",
     "SCALE-MINUS-TT": "Make preview smaller",
-    "SCALE-PLUS-TT": "Make preview bigger"
+    "SCALE-PLUS-TT": "Make preview bigger",
+    "COMPARE": "Before/after",
+    "COMPARE-TT": "Hold to see the picture before the cleanup filters"
   },
   "MAP-SETTINGS": {
     "TITLE": "Settings",
@@ -356,7 +358,10 @@
     "LITEMATIC-BUTTON": "Download .litematic + PNG",
     "LITEMATIC-TT": "Download .litematic and PNG as a ZIP archive",
     "ISLANDS-HINT": "Island removal must be switched on here: the options below only work when it is not Off.",
-    "STYLE-MODIFIED": "modified"
+    "STYLE-MODIFIED": "modified",
+    "ACCURACY": "Palette accuracy",
+    "ACCURACY-HINT": "{exact} of {total} pixels hit the palette exactly",
+    "ACCURACY-EMPTY": "No render yet"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Pixel editor",
@@ -425,5 +430,23 @@
   "PRESET-ERROR-CLOSE": "Close the warning",
   "LANGUAGES": {
     "TITLE": "Language"
+  },
+  "PROJECT": {
+    "SAVE": "Save project",
+    "OPEN": "Open project",
+    "SAVED": "Project saved",
+    "OPENED": "Project opened",
+    "ERROR-NO-IMAGE": "Load an image first — a project needs the source picture.",
+    "ERROR-SAVE": "Could not save the project:",
+    "ERROR-OPEN": "Could not open the project:"
+  },
+  "EXPORT-CHECK": {
+    "TITLE": "Check before export",
+    "NO-IMAGE": "No image loaded.",
+    "EMPTY-PALETTE": "The palette is empty — pick at least one block.",
+    "BLOCKS-UNAVAILABLE": "{count} selected blocks are not available in version {version}.",
+    "PREVIEW-NOT-READY": "The preview is not ready yet — wait for it before exporting.",
+    "MAP-SIZE-SPLIT": "Map {sizeX}×{sizeY} = {files} files, {blocks} blocks.",
+    "MAP-SIZE-ONE": "Map {sizeX}×{sizeY} = 1 file, {blocks} blocks."
   }
 }

@@ -64,6 +64,12 @@ var flatToneList = [];
 // on the tones that can be picked, so changing a dithering slider must not
 // throw them away, but changing the palette must.
 var flatToneSignature = null;
+// The RGB values of the tones that can be picked, as one set. It answers the
+// question "is this pixel already exactly a palette colour?" in one lookup,
+// which is what the quantisation accuracy is measured with.
+var exactToneSet = new Set();
+// How many pixels of the last render hit the palette exactly.
+var paletteAccuracy = { exact: 0, total: 0, share: 0 };
 // The brightness ladder of the palette (stage 3): the tones sorted by their
 // lightness. The blue noise and the luma dithering pick a tone by
 // brightness and only then look for the right hue among the tones of the
@@ -780,20 +786,57 @@ function setupExactColourCache() {
 // the search does not change.
 function buildFlatToneList() {
   const tones = [];
+  const exactTones = new Set();
   for (const colourSet of colourSetsToUse) {
     const toneKeys = Object.keys(colourSet.tonesRGB);
     for (const toneKey of toneKeys) {
+      const toneRGB = colourSet.tonesRGB[toneKey];
       tones.push({
-        rgb: colourSet.tonesRGB[toneKey],
+        rgb: toneRGB,
         colourSetId: colourSet.colourSetId,
         tone: toneKey,
         // The colour space value of the tone is calculated once per palette
         // instead of once per tone and pixel.
-        metricValue: convertColourForMetric(colourSet.tonesRGB[toneKey]),
+        metricValue: convertColourForMetric(toneRGB),
       });
+      exactTones.add((toneRGB[0] << 16) + (toneRGB[1] << 8) + toneRGB[2]);
     }
   }
   flatToneList = tones;
+  exactToneSet = exactTones;
+}
+
+/* --------------------------------------------------------------------------
+   Точность квантования (этап 4, пункт 4.4).
+
+   Считает, сколько пикселей картинки попали в палитру точно, без
+   приближения. Остальные пиксели дизеринг размазывает между двумя
+   тонами — это нормально, но по этой цифре видно, насколько сильно
+   картинка «перекрашивается».
+
+   Считается по картинке после очистки, но до дизеринга: в цикле рендера
+   цвет пикселя меняется на лету (диффузия ошибки), и там исходного цвета
+   уже нет.
+   -------------------------------------------------------------------------- */
+function countExactPalettePixels() {
+  const data = canvasImageData.data;
+  const pixelCount = data.length / 4;
+  let exact = 0;
+  let total = 0;
+  for (let index = 0; index < pixelCount; index++) {
+    const offset = index * 4;
+    if (data[offset + 3] === 0) continue; // прозрачные пиксели не считаются
+    total++;
+    if (exactToneSet.has((data[offset] << 16) + (data[offset + 1] << 8) + data[offset + 2])) {
+      exact++;
+    }
+  }
+  paletteAccuracy = {
+    exact: exact,
+    total: total,
+    share: total > 0 ? exact / total : 0,
+  };
+  return paletteAccuracy;
 }
 
 /* --------------------------------------------------------------------------
@@ -2446,6 +2489,9 @@ function getMapartImageDataAndMaterials() {
     }
   }
   const edgeMask = cleanupApply();
+  /* Точность квантования считается здесь: картинка уже очищена, но ещё не
+     перекрашена дизерингом. */
+  countExactPalettePixels();
 
   for (let y = 0; y < optionValue_mapSize_y; y++) {
     let mapsRowToAdd = [];
@@ -2995,6 +3041,7 @@ function renderPixels(body, requestId) {
         pixels: canvasImageData,
         maps: maps,
         currentSelectedBlocks: selectedBlocks,
+        accuracy: paletteAccuracy,
       },
       requestId: requestId,
     },

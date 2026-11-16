@@ -39,7 +39,10 @@ class Header extends Component {
           {getLocaleString("DESCRIPTION/5")}
           <br></br>
           {getLocaleString("DESCRIPTION/6")}
-          <a href="https://rebane2001.com/mapartcraft" target="_blank" rel="noopener noreferrer">
+          {/* Ссылка ведёт на репозиторий оригинала, а не на его личный
+              сайт: адрес личной страницы может умереть или переехать, и
+              пользователь уйдёт в никуда. */}
+          <a href="https://github.com/rebane2001/mapartcraft" target="_blank" rel="noopener noreferrer">
             MapartCraft
           </a>
           {getLocaleString("DESCRIPTION/7")}
