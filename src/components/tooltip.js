@@ -14,21 +14,46 @@ class Tooltip extends Component {
     this.tooltipId = `tooltip-${(tooltipCounter += 1)}`;
   }
 
+  componentWillUnmount() {
+    this.removeHideListeners();
+  }
+
+  hide = () => {
+    this.removeHideListeners();
+    this.setState({ hovering: false });
+  };
+
+  addHideListeners = () => {
+    window.addEventListener("scroll", this.hide, true);
+    window.addEventListener("pointerdown", this.handleOutsidePointer, true);
+  };
+
+  removeHideListeners = () => {
+    window.removeEventListener("scroll", this.hide, true);
+    window.removeEventListener("pointerdown", this.handleOutsidePointer, true);
+  };
+
+  handleOutsidePointer = (e) => {
+    if (this.containerRef && !this.containerRef.contains(e.target)) this.hide();
+  };
+
   handleMouseOver = () => {
+    if (!this.state.hovering) this.addHideListeners();
     this.setState({ hovering: true });
   };
 
   handleMouseOut = () => {
-    this.setState({ hovering: false });
+    this.hide();
   };
 
   /* Клавиатура: тултип должен открываться и на focus, а не только по наведению. */
   handleFocus = () => {
+    if (!this.state.hovering) this.addHideListeners();
     this.setState({ hovering: true });
   };
 
   handleBlur = () => {
-    this.setState({ hovering: false });
+    this.hide();
   };
 
   render() {
@@ -52,7 +77,7 @@ class Tooltip extends Component {
     });
 
     return (
-      <div className="tooltipContainer">
+      <div className="tooltipContainer" ref={(el) => (this.containerRef = el)}>
         <div
           onMouseOver={this.handleMouseOver}
           onMouseOut={this.handleMouseOut}

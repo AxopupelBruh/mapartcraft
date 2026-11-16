@@ -1,9 +1,13 @@
 .tooltipContainer {
   display: inline-block;
+  position: relative;
 }
 
 .tooltipText {
   position: absolute;
+  top: 100%;
+  left: 0;
+  white-space: nowrap;
   z-index: var(--z-tooltip);
   margin: 0;
   padding: 0.3em 0.45em;
