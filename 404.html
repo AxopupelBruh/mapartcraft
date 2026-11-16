@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MapartCraft</title>
+  <script>
+    (function () {
+      var segments = window.location.pathname.split("/").filter(Boolean);
+      var first = segments[0] || "";
+      var routeRoots = ["en", "ru", "ua", "de", "pl", "fr", "it", "pt", "es", "et", "lt", "tr", "ja", "el", "eo", "pt-Br", "zh-Hans", "zh-Hant", "faq"];
+      var base = routeRoots.indexOf(first) >= 0 ? "/" : (first ? "/" + first + "/" : "/");
+      var target = window.location.pathname + window.location.search + window.location.hash;
+      window.location.replace(base + "?spa-redirect=" + encodeURIComponent(target));
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to MapartCraft...</p>
+</body>
+</html>
