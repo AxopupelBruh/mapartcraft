@@ -219,3 +219,67 @@
   margin-left: 0.35em;
   font-size: 0.85em;
 }
+
+/* Проект в файл (этап 4, пункт 4.1). */
+.studioProjectRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4em;
+  margin-top: 0.55em;
+  padding-top: 0.5em;
+  border-top: 1px solid var(--border-3);
+}
+
+.studioProjectButton {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-5);
+  background-color: var(--surface-3);
+  color: var(--text-2);
+  padding: 0.22em 0.45em;
+  cursor: pointer;
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: var(--fs-2xs);
+}
+
+.studioProjectButton:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.studioProjectButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.studioProjectStatus {
+  color: var(--accent);
+  font-family: Lato, Open Sans, Arial, sans-serif;
+  font-size: var(--fs-2xs);
+}
+
+/* Точность квантования (этап 4, пункт 4.4). */
+.studioAccuracy {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4em;
+  margin-top: 0.45em;
+  color: var(--text-3);
+  font-family: Lato, Open Sans, Arial, sans-serif;
+  font-size: var(--fs-xs);
+}
+
+.studioAccuracy b {
+  color: var(--accent);
+  font-family: "kenpixel_mini_square", Lato, sans-serif;
+  font-size: var(--fs-md);
+  font-weight: normal;
+}
+
+.studioAccuracy small {
+  color: var(--text-muted);
+  font-size: var(--fs-2xs);
+}

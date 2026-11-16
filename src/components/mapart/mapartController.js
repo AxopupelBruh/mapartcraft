@@ -11,7 +11,7 @@ import { getStylePreset, STYLE_PRESETS, STYLE_PRESET_IDS } from "../../presets/s
 import { OPTION_SCHEMA, PERSISTED_OPTION_KEYS } from "./optionSchema";
 import { estimateMapSize, estimateRenderSeconds, getMaxMapSize, isBigMap } from "./canvasLimits";
 import { colourSetsPresentInImage, findDominantColours, suggestBlocksForColours } from "./autoPalette";
-import { clearSession, loadSession, loadSettings, saveSession, saveSettings } from "../../studioStorage";
+import { clearSession, loadSession, loadSettings, downloadBlob, saveSession, saveSettings } from "../../studioStorage";
 import coloursJSON from "./json/coloursJSON.json";
 import ViewOnline2D from "./viewOnline2D/viewOnline2D";
 import ViewOnline3D from "./viewOnline3D/viewOnline3D";
@@ -21,7 +21,9 @@ import ColourMethods from "./json/colourMethods.json";
 import CropModes from "./json/cropModes.json";
 import DefaultPresets from "../../presets/palettePresets.json";
 import { CLEANUP_PRESETS, getCleanupPreset } from "../../presets/cleanupPresets";
-import { SITE_URL } from "../../site";
+import { siteUrlWithQuery } from "../../site";
+import { buildProjectFile, projectFileName, readProjectFile } from "./projectFile";
+import { checkExport } from "./exportCheck";
 import { makePreset, PRESET_KIND, presetsFromJson, presetsToJson, toPalettePreset } from "../../presets/presetFormat";
 import DitherMethods from "./json/ditherMethods.json";
 import MapModes from "./json/mapModes.json";
@@ -121,6 +123,11 @@ class MapartController extends Component {
     pixelEdits: {},
     detectedPixelScale: 1,
     sessionStatus: "",
+    /* Состояние проекта: "" | "saved" | "opened" */
+    projectStatus: "",
+    /* Точность квантования последнего рендера: сколько пикселей попали
+       в палитру точно (этап 4, пункт 4.4). */
+    quantisationAccuracy: null,
     presets: [],
     selectedPresetName: "None",
     currentMaterialsData: {
@@ -686,7 +693,7 @@ class MapartController extends Component {
   }
 
   loadUploadedImageFromURL(imageURL, baseFilename, options = {}) {
-    const { placeholder = false, revokeObjectURL = false, imageBlob = null } = options;
+    const { placeholder = false, revokeObjectURL = false, imageBlob = null, pixelEdits = null } = options;
     const loadId = ++this.imageLoadId;
     const img = new Image();
     img.onload = () => {
@@ -698,7 +705,10 @@ class MapartController extends Component {
         uploadedImage_baseFilename: baseFilename || "MyArt",
         uploadedImage_isPlaceholder: placeholder,
         detectedPixelScale: 1,
-        pixelEdits: {},
+        /* Правки пикселей относятся к конкретной картинке: при загрузке
+           новой они сбрасываются, а при открытии проекта восстанавливаются
+           из файла. */
+        pixelEdits: pixelEdits && typeof pixelEdits === "object" ? pixelEdits : {},
       });
     };
     img.onerror = () => {
@@ -1432,7 +1442,9 @@ class MapartController extends Component {
           });
       }
     }
-    return `${SITE_URL}/?preset=${presetQueryString}`;
+    /* Ссылка ведёт на ту копию студии, на которой её нажали: адрес
+       берётся из документа, а не из строки в коде. */
+    return siteUrlWithQuery(`preset=${presetQueryString}`);
   };
 
   handleSharePreset = () => {
@@ -1514,11 +1526,108 @@ class MapartController extends Component {
   };
 
   handleSetMapMaterials = (currentMaterialsData) => {
-    this.setState({ currentMaterialsData: currentMaterialsData, mapPreviewWorker_inProgress: false });
+    this.setState({
+      currentMaterialsData: currentMaterialsData,
+      mapPreviewWorker_inProgress: false,
+      /* Точность квантования приезжает вместе с пикселями. */
+      quantisationAccuracy: currentMaterialsData.accuracy || null,
+    });
   };
 
   handlePixelEditsChange = (pixelEdits) => {
     this.setState({ pixelEdits: pixelEdits || {}, mapPreviewWorker_inProgress: true });
+  };
+
+  /* ---------------------------------------------------------------------
+     Проект в файл (этап 4, пункт 4.1).
+
+     Проект — это картинка, настройки, пользовательские блоки и правки
+     пикселей в одном файле `.mapartstudio.json`. Так работу можно
+     перенести на другую машину и не потерять при очистке кэша браузера.
+     --------------------------------------------------------------------- */
+  handleSaveProjectClicked = async () => {
+    const { getLocaleString } = this.props;
+    if (this.state.uploadedImage_isPlaceholder || !this.uploadedImageBlob) {
+      window.alert(getLocaleString("PROJECT/ERROR-NO-IMAGE"));
+      return;
+    }
+    try {
+      const blob = await buildProjectFile({
+        imageBlob: this.uploadedImageBlob,
+        imageBaseFilename: this.state.uploadedImage_baseFilename,
+        settings: this.getSettingsSnapshot(),
+        customBlocks: this.getCustomBlocks(),
+        pixelEdits: this.state.pixelEdits,
+      });
+      downloadBlob(blob, projectFileName(this.state.uploadedImage_baseFilename));
+      if (this.mounted) this.setState({ projectStatus: "saved" });
+    } catch (error) {
+      console.warn("Could not save the project", error);
+      window.alert(`${getLocaleString("PROJECT/ERROR-SAVE")} ${error.message || error}`);
+    }
+  };
+
+  handleOpenProjectClicked = async (file) => {
+    const { getLocaleString } = this.props;
+    if (!file) return;
+    try {
+      const project = await readProjectFile(file);
+      const customBlocks = project.customBlocks.length > 0 ? project.customBlocks : this.getCustomBlocks();
+      let mergedColours = this.state.coloursJSON;
+      if (project.customBlocks.length > 0) {
+        CookieManager.setCookie("mapartcraft_customBlocks", JSON.stringify(customBlocks));
+        mergedColours = this.getMergedColoursJSON(customBlocks);
+      }
+      const patch = this.getStateFromSettings(project.settings, mergedColours);
+      patch.coloursJSON = mergedColours;
+      patch.uploadedImage_baseFilename = project.imageBaseFilename;
+      patch.uploadedImage_isPlaceholder = false;
+      this.setState(patch);
+
+      const imageURL = URL.createObjectURL(project.imageBlob);
+      this.uploadedImageBlob = project.imageBlob;
+      this.loadUploadedImageFromURL(imageURL, project.imageBaseFilename, {
+        placeholder: false,
+        revokeObjectURL: true,
+        imageBlob: project.imageBlob,
+        /* Правки пикселей относятся к картинке из проекта, поэтому старые
+           правки от прошлой картинки сбрасываются, а новые — восстанавливаются. */
+        pixelEdits: project.pixelEdits,
+      });
+      if (this.mounted) this.setState({ projectStatus: "opened" });
+    } catch (error) {
+      console.warn("Could not open the project", error);
+      window.alert(`${getLocaleString("PROJECT/ERROR-OPEN")} ${error.message || error}`);
+    }
+  };
+
+  /* ---------------------------------------------------------------------
+     Проверка перед экспортом (этап 4, пункт 4.3).
+     --------------------------------------------------------------------- */
+  getExportChecks = () => {
+    const checks = checkExport({
+      hasImage: !this.state.uploadedImage_isPlaceholder,
+      selectedBlocks: this.state.selectedBlocks,
+      coloursJSON: this.state.coloursJSON,
+      optionValue_version: this.state.optionValue_version,
+      optionValue_mapSize_x: this.state.optionValue_mapSize_x,
+      optionValue_mapSize_y: this.state.optionValue_mapSize_y,
+      previewReady: !!this.state.currentMaterialsData.pixelsData,
+    });
+    const { getLocaleString } = this.props;
+    return checks.map((check) => ({
+      ...check,
+      text: this.localiseCheck(check, getLocaleString),
+    }));
+  };
+
+  /* Подставляет числа в текст пункта проверки: {files} -> 36 и так далее. */
+  localiseCheck = (check, getLocaleString) => {
+    const template = getLocaleString ? getLocaleString(check.messageKey) : null;
+    if (!template) return check.messageKey;
+    return template.replace(/\{(\w+)\}/g, (match, key) =>
+      check.params && check.params[key] !== undefined ? String(check.params[key]) : match
+    );
   };
 
   onChooseViewOnline3D = () => {
@@ -1729,6 +1838,11 @@ class MapartController extends Component {
           sessionStatus={this.state.sessionStatus}
           onResetSession={this.onResetSession}
           sessionResetAvailable={!this.state.uploadedImage_isPlaceholder}
+          onSaveProject={this.handleSaveProjectClicked}
+          onOpenProject={this.handleOpenProjectClicked}
+          projectSaveAvailable={!this.state.uploadedImage_isPlaceholder && !!this.uploadedImageBlob}
+          projectStatus={this.state.projectStatus}
+          quantisationAccuracy={this.state.quantisationAccuracy}
         />
         <BlockSelection
           getLocaleString={getLocaleString}
@@ -1879,6 +1993,7 @@ class MapartController extends Component {
               uploadedImage_baseFilename={uploadedImage_baseFilename}
               currentMaterialsData={currentMaterialsData}
               mapPreviewWorker_inProgress={mapPreviewWorker_inProgress}
+              exportChecks={this.getExportChecks()}
               downloadBlobFile={this.downloadBlobFile}
               onGetViewOnlineNBT={this.onGetViewOnlineNBT}
             />

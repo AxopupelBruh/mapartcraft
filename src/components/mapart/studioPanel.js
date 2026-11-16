@@ -7,6 +7,7 @@ import "./studioPanel.css";
 
 class StudioPanel extends Component {
   ditherStrengthRef = React.createRef();
+  projectInputRef = React.createRef();
 
   componentDidMount() {
     /* Колесо мыши над ползунком силы дизеринга меняет значение. */
@@ -24,6 +25,15 @@ class StudioPanel extends Component {
   componentWillUnmount() {
     if (this.detachWheel) this.detachWheel();
   }
+
+  /* Открытие проекта: файл выбирается через скрытый input. Значение
+     сбрасывается, иначе повторный выбор того же файла не сработает. */
+  onProjectFileChosen = (event) => {
+    const { onOpenProject } = this.props;
+    const file = event.target.files && event.target.files[0];
+    event.target.value = "";
+    if (file && onOpenProject) onOpenProject(file);
+  };
 
   t(key, fallback) {
     const { getLocaleString } = this.props;
@@ -54,6 +64,10 @@ class StudioPanel extends Component {
       sessionStatus,
       onResetSession,
       sessionResetAvailable,
+      onSaveProject,
+      projectSaveAvailable,
+      projectStatus,
+      quantisationAccuracy,
     } = this.props;
 
     /* activeStyleId приходит из контроллера: он учитывает, что настройки
@@ -173,6 +187,43 @@ class StudioPanel extends Component {
                   ? this.t("STUDIO/SCALE-LANCZOS", "Lanczos")
                   : this.t("STUDIO/SMOOTH", "smooth")}
             </span>
+          </div>
+          <div className="studioProjectRow">
+            <button type="button" className="studioProjectButton" onClick={onSaveProject} disabled={!projectSaveAvailable}>
+              {this.t("PROJECT/SAVE", "Save project")}
+            </button>
+            <button
+              type="button"
+              className="studioProjectButton"
+              onClick={() => this.projectInputRef.current && this.projectInputRef.current.click()}
+            >
+              {this.t("PROJECT/OPEN", "Open project")}
+            </button>
+            <input
+              type="file"
+              className="displayNone"
+              accept=".mapartstudio.json,.json,application/json"
+              ref={this.projectInputRef}
+              onChange={this.onProjectFileChosen}
+            />
+            {projectStatus ? (
+              <span className="studioProjectStatus">
+                {projectStatus === "saved"
+                  ? this.t("PROJECT/SAVED", "Project saved")
+                  : this.t("PROJECT/OPENED", "Project opened")}
+              </span>
+            ) : null}
+          </div>
+          <div className="studioAccuracy">
+            <span>{this.t("STUDIO/ACCURACY", "Palette accuracy")}</span>
+            <b>{quantisationAccuracy ? `${Math.round((quantisationAccuracy.share || 0) * 100)}%` : "—"}</b>
+            <small>
+              {quantisationAccuracy && quantisationAccuracy.total
+                ? this.t("STUDIO/ACCURACY-HINT", "{exact} of {total} pixels hit the palette exactly")
+                    .replace("{exact}", String(quantisationAccuracy.exact))
+                    .replace("{total}", String(quantisationAccuracy.total))
+                : this.t("STUDIO/ACCURACY-EMPTY", "No render yet")}
+            </small>
           </div>
         </div>
       </div>

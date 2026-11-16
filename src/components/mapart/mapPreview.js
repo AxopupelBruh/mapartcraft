@@ -15,6 +15,7 @@ import WhereSupportBlocksModes from "./json/whereSupportBlocksModes.json";
 import IMG_GridOverlay from "../../images/gridOverlay.png";
 
 import { detectPixelScale } from "./pixelPerfect";
+import { drawCompareAfter, drawCompareBefore } from "./compareView";
 import { attachWheel, wheelValue } from "./wheelValue";
 
 import "./mapPreview.css";
@@ -178,6 +179,8 @@ class MapPreview extends Component {
     editorSelection: null,
     editorClipboardInfo: null,
     editorStatus: "",
+    /* Показывается ли картинка до очистки (кнопка «было/стало»). */
+    compareBefore: false,
   };
 
   mapCanvasWorker = new WorkerBuilder(MapCanvasWorker);
@@ -1556,6 +1559,10 @@ class MapPreview extends Component {
     const ctx_display = canvasRef_display.current.getContext("2d");
     ctx_display.imageSmoothingEnabled = false;
     ctx_display.putImageData(imageData, 0, 0);
+    /* Пиксели последнего рендера запоминаются: по отпусканию кнопки
+       «было/стало» к ним возвращаются, без нового рендера. */
+    this.lastRenderedImageData = imageData;
+    if (this.state.compareBefore) this.drawCompareBefore();
     this.clearEditorOverlay();
     if (this.state.editorEnabled) this.refreshEditorColours(pixels.data);
     this.setState({ workerProgress: 1 });
@@ -1566,8 +1573,41 @@ class MapPreview extends Component {
         pixelsHeight: canvasRef_display.current.height,
         maps: data.body.maps,
         currentSelectedBlocks: data.body.currentSelectedBlocks,
+        accuracy: data.body.accuracy || null,
       });
     }
+  };
+
+  /* ---------------------------------------------------------------------
+     Сравнение «было/стало» (этап 4, пункт 4.2).
+
+     «До» — картинка после масштабирования и предобработки, но до
+     фильтров очистки. Она уже лежит в скрытом холсте источника, поэтому
+     показывается мгновенно: второй рендер не нужен.
+     «После» — пиксели последнего рендера.
+     --------------------------------------------------------------------- */
+  drawCompareBefore = () => {
+    const display = this.canvasRef_display.current;
+    const source = this.canvasRef_source.current;
+    if (!display || !source) return false;
+    return drawCompareBefore(display.getContext("2d"), source, display.width, display.height);
+  };
+
+  drawCompareAfter = () => {
+    const display = this.canvasRef_display.current;
+    if (!display || !this.lastRenderedImageData) return false;
+    return drawCompareAfter(display.getContext("2d"), this.lastRenderedImageData);
+  };
+
+  onCompareBeforeStart = () => {
+    if (this.state.compareBefore) return;
+    if (this.drawCompareBefore()) this.setState({ compareBefore: true });
+  };
+
+  onCompareAfterEnd = () => {
+    if (!this.state.compareBefore) return;
+    this.drawCompareAfter();
+    this.setState({ compareBefore: false });
   };
   resetEditorHistory = () => {
     this.editorUndo = [];
@@ -2260,6 +2300,7 @@ class MapPreview extends Component {
       editorSelection,
       editorClipboardInfo,
       editorStatus,
+      compareBefore,
     } = this.state;
     let editedPixelCount = 0;
     let maskedPixelCount = 0;
@@ -2287,6 +2328,25 @@ class MapPreview extends Component {
               title={this.t("PIXEL-EDITOR/TITLE-TT", "Per-pixel edits included in PNG and .litematic")}
             >
               {this.t("PIXEL-EDITOR/TITLE", "Pixel editor")}
+            </button>
+            {/* Сравнение «было/стало»: пока кнопка удерживается, видно
+                картинку до фильтров очистки. */}
+            <button
+              type="button"
+              className={`pixelEditorToggle compareBeforeButton${compareBefore ? " active" : ""}`}
+              onPointerDown={this.onCompareBeforeStart}
+              onPointerUp={this.onCompareAfterEnd}
+              onPointerLeave={this.onCompareAfterEnd}
+              onPointerCancel={this.onCompareAfterEnd}
+              onKeyDown={(event) => {
+                if (event.key === " " || event.key === "Enter") this.onCompareBeforeStart();
+              }}
+              onKeyUp={this.onCompareAfterEnd}
+              onBlur={this.onCompareAfterEnd}
+              disabled={!uploadedImage}
+              title={this.t("MAP-PREVIEW/COMPARE-TT", "Hold to see the picture before the cleanup filters")}
+            >
+              {this.t("MAP-PREVIEW/COMPARE", "Before/after")}
             </button>
             {editorEnabled ? (
               <React.Fragment>
