@@ -2,24 +2,45 @@
 
 [Russian version](README.ru.md)
 
-**MapartCraft Local Studio is a community fork of [mike2b2t/mapartcraft](https://github.com/mike2b2t/mapartcraft)**, which is based on the original [MapartCraft by rebane2001](https://rebane2001.com/mapartcraft). It keeps the upstream NBT / map.dat workflow and adds a local-first studio, newer Minecraft palettes, extra image processing and a built-in pixel editor. It is not a separate map-art format or a from-scratch replacement.
+**MapartCraft Local Studio is a community fork of [mike2b2t/mapartcraft](https://github.com/mike2b2t/mapartcraft)**, which is based on the original [MapartCraft by rebane2001](https://rebane2001.com/mapartcraft). It keeps the upstream NBT / map.dat workflow and adds a local-first studio, newer Minecraft palettes, extra image processing, a built-in pixel editor and project files. It is not a separate map-art format or a from-scratch replacement.
 
 **Live site:** <https://axopupelbruh.github.io/mapartcraft/>
 
 ## What this fork adds
 
+### Studio and interface
+
 - Installable PWA with offline app-shell caching; all processing stays in the browser.
-- Pixel-perfect 2D preview: Pixel (nearest), Smooth and High quality (Lanczos), integer zoom, optional pixel grid and auto-scale for pixel mode.
-- Style presets: Clean Pixel, Retro Grid, Retro 1-bit, Soft Gradient and Low-Block.
-- Compact palette modal with search by block/colour, tone toggles, "no block" entries and custom blocks. Built-in 56-block and `Piston clearable` (32-block) presets are included.
+- Style presets: Clean Pixel, Retro Grid, Retro 1-bit, Soft Gradient and Low-Block. The Studio panel also has a global **Dither strength** slider: `0%` disables error propagation, `100%` matches the preset, `200%` makes the dither stronger.
+- Pixel-perfect 2D preview: Pixel (nearest), Smooth and High quality (Lanczos), integer zoom, optional pixel grid and auto-scale for pixel mode. Every slider also reacts to the mouse wheel.
+- A **hold-to-compare** button next to the preview: while it is held, the picture before the cleanup filters is shown, and the pixels of the last render come back when it is released.
+- **Palette accuracy** under the preview: the share of pixels that hit a palette colour exactly. Useful to judge how much the palette repaints the picture.
+- Mobile layout: one column, 40 px touch targets, a horizontally scrollable materials table and full-width export buttons.
+- Studio and editor UI localized in English and Russian, with a language switcher in the header; other languages fall back to English.
+
+### Palette and dithering
+
 - Minecraft palette versions from 1.12.2 through 1.21.5, plus 1.21.11, 26.2 and 26.3. Newer blocks include copper shelves/chests/statues/lanterns/lightning rods, sulfur, cinnabar, poplar wood and leaves, wool/concrete stairs and slabs, and more.
-- Manual pixel editor with brush, eraser, eyedropper, fill, line/rectangle/ellipse, magic wand, lasso, rectangular selection, copy/paste, move, flip/rotate, mask and protect tools, undo/redo, brush sizes, zoom/Fit and hotkeys.
-- Cleanup/improvement pass: median/bilateral/guided denoise, preserve edges, remove islands (size-only or Smart), simplify colours (RGB or perceptual Lab), adaptive dithering and edge-aware Floyd–Steinberg with serpentine order.
+- Compact palette modal with search by block/colour, tone toggles, "no block" entries and custom blocks. Built-in 56-block and `Piston clearable` (32-block) presets are included.
+- **Smart palette**: sorting by brightness, a brightness/chroma diagram with click-to-select, and markers showing which colours are present in the uploaded picture.
+- **Auto palette**: k-means clustering in Lab space picks a set of blocks for the picture; choose 8, 16 or 32 colours.
+- Two new dithering methods: **blue noise** computed for the current palette, and **brightness and colour**, which dithers only the lightness and keeps the hue, so gradients stop turning into colour noise.
+- **Pattern rotation** from 0° to 90° for every method that uses a matrix.
+- Cleanup and improvement pass: median/bilateral/guided denoise, preserve edges, remove islands (size-only or Smart), simplify colours (RGB or perceptual Lab), adaptive dithering and edge-aware Floyd–Steinberg with serpentine order.
 - Image preprocessing: gamma and auto levels.
+
+### Pixel editor
+
+- Brush, eraser, eyedropper, fill, line/rectangle/ellipse, magic wand, lasso, rectangular selection, copy/paste, move, flip/rotate, mask and protect tools, undo/redo, brush sizes, zoom/Fit and hotkeys.
+- **Mask** does not paint a colour: it marks the pixel as "do not dither this pixel" and maps its source colour to the closest single palette tone. Masks end up in the exported files, survive palette cleanup and are cleared together with the other edits when the image or map size changes.
+- Edited pixels and masks bypass dithering and keep their selected tone. They are included in the preview, the shared PNG and every `.litematic` file, and are restored with the session after a reload.
+
+### Projects and export
+
+- **Project files**: the picture, the settings, custom blocks and the manual pixel edits can be saved to a single `.mapartstudio.json` and opened again on another machine. It is ordinary JSON, so it can be opened in a text editor.
 - One-slot recovery of the current image, settings and manual edits in IndexedDB.
-- Direct `.litematic` export with a shared PNG preview in a regular ZIP.
-- Existing `.nbt` and `.map.dat` exports remain available.
-- Studio/editor UI localized in English and Russian; other languages fall back to English.
+- Direct `.litematic` export with a shared PNG preview in a regular ZIP. `.nbt`, split `.nbt` ZIP and `.map.dat` exports remain available.
+- The share link points to the copy of the studio it was created on, and the palette can be shared as a URL or as a preset file.
 
 Nothing is uploaded. Settings and custom palettes are stored in the browser. The current image, settings and manual edits are kept in a single IndexedDB recovery slot and restored after a reload; uploading another image replaces that slot.
 
@@ -50,47 +71,9 @@ MyArt.png
 
 Split maps produce `MyArt_0_0.litematic`, `MyArt_1_0.litematic`, and so on, plus one shared `MyArt.png`. The files are placed at the ZIP root, so no art folder or folder picker is involved.
 
-`.nbt`, split `.nbt` ZIP and `.map.dat` exports are available in the existing download panel.
-
 The default schematic support setting is **Add blocks under: No blocks** with **Block to add: air**. You can still select another support mode or material in Settings.
 
 Firefox is supported as a normal website. The `.litematic + PNG` export always downloads a ZIP archive.
-
-## Pixel editor
-
-Enable **Pixel editor** above the preview to correct individual map pixels. The brush paints with a colour sampled from the current quantised preview, so the chosen block tone is guaranteed to be available in the active palette and style. The eyedropper picks a colour directly from the preview, the eraser restores the source image, and right-click erases while the brush is active. Drag to paint a stroke, then use **Undo**, **Redo** or **Reset edits** as needed.
-
-The editor also has:
-
-- **Mask** — does not paint a new colour: it marks the pixel as “do not dither this pixel” and maps its original source colour to the closest single palette tone. It is useful for clean text, eyes, outlines and areas where dithering creates speckles. Masks are included in the exported files, protected from palette cleanup and cleared together with the other edits when the image or map size changes. The brush, by contrast, stores an exact chosen colour.
-- **Fill** — flood-fills the connected area under the cursor with the current colour.
-- **Shapes** — line, rectangle and ellipse with an optional filled mode.
-- **Magic wand** — selects a connected same-colour region with an adjustable tolerance.
-- **Lasso** — freehand polygon selection with the same mask-based copy/paste, fill, erase, flip and rotate actions.
-- **Selection** — drag a rectangle, then copy, paste, move, fill, erase, flip, rotate or clear the selection. The clipboard works across maps in the current split canvas.
-- **Move** — drag a selected fragment; the vacated area is filled with the dominant surrounding colour.
-- **Size** — 1×1, 2×2, 3×3 or 5×5 for brush, eraser, mask and shape outlines.
-- **Shift** — constrains lines to axes/45° and rectangles/ellipses to squares/circles.
-- **Zoom** — `−`, `+`, `1:1` and **Fit** in the editor, plus `Ctrl+wheel` zoom.
-- Hotkeys: `B` brush, `E` eraser, `I` eyedropper, `M` mask, `F` fill, `L` line, `U` rectangle, `O` ellipse, `W` magic wand, `S` lasso, `R` selection, `V` move, `Ctrl+Z` undo, `Ctrl+Shift+Z` redo, `Ctrl+C`/`Ctrl+V` copy/paste, `Delete` erase selection, `Esc` clear selection.
-
-Edited pixels and masks bypass dithering and keep their selected tone. Edits are included in the preview, the shared PNG and every `.litematic` file. They are restored with the current session after a reload. Changing the map size or uploading another image starts with a clean edit layer. Undo history is intentionally in-memory only.
-
-Advanced dithering remains available in **Settings**: choose the dither method and tune the red, green and blue error propagation independently. The Studio panel also has a global **Dither strength** slider: `0%` disables error propagation, `100%` matches the style preset and `200%` makes the dither stronger. Style presets reset this slider to `100%`, after which it can be tuned freely.
-
-### Cleanup and enhancement
-
-Open **Cleanup & enhancement** in Studio. The source pass runs on a copy of the image inside the worker before palette quantization; island cleanup also runs on the final palette indices. The uploaded original and manual edits are never changed. It includes:
-
-- **Denoise** — edge-preserving cleanup for grain and isolated colour noise. Methods: **Median**, **Bilateral** and **Guided**.
-- **Preserve edges** — controls how strongly the denoise protects small details and line art.
-- **Remove islands** — removes isolated 1–4 px colour islands before quantization. A separate checkbox controls the low-contrast island pass on final palette indices, protecting lines, manual edits and masks.
-- **Simplify colours** — median-cut colour simplification to 16/24/32/48/64 source colours before Minecraft palette mapping.
-- **Dither only in smooth areas** — skips dithering where the image has strong edges or high local variance, so outlines and textured areas stay crisp.
-
-Preset buttons: **Clean art**, **Soft**, **Details** and **Off**. Cleanup settings are saved in the local settings snapshot.
-
-Custom presets are stored in `localStorage` (with a cookie fallback for older installs), so deleted presets do not return on the next visit. Deleting the active custom preset also clears the active block selection.
 
 ## Development
 
@@ -100,20 +83,13 @@ npm start
 
 The app remains usable from the localhost development server. Service-worker registration is enabled for production builds; when testing install/offline behaviour, use the built app on `127.0.0.1` or HTTPS.
 
+Tests run with `CI=true npx react-scripts test --watchAll=false`. `node src/tools/checkLocaleParity.js` reports which translation keys are missing in each language.
+
 ## Building for deployment
 
 Run `npm run build`. The output in `build/` can be served by any static host. The build uses relative asset paths, and the router derives its basename from the current URL, so the same artifact works at the domain root and in a GitHub Pages project subdirectory.
 
-### GitHub Pages
-
-The site is published from the `gh-pages` branch. The source stays on `main`; `deploy.sh` builds the app and force-pushes only the generated files to `gh-pages`. Route paths are restored on deep links by `public/404.html`.
-
-1. In the repository, open **Settings → Pages** and set **Build and deployment → Source** to **Deploy from a branch**.
-2. Choose the `gh-pages` branch and the `/ (root)` folder.
-3. Run `./deploy.sh` after changes.
-4. Open `https://<user>.github.io/<repository>/` after the deployment finishes.
-
-The generated files are not committed to `main`; `npm run build` output is deployed to `gh-pages` by the script.
+The site is published from the `gh-pages` branch. The source stays on `main`; `deploy.sh` builds the app and force-pushes only the generated files to `gh-pages`. Route paths are restored on deep links by `public/404.html`. The generated files are not committed to `main`.
 
 ## Credits and license
 
@@ -127,6 +103,6 @@ MapartCraft Local Studio is a fork of [mike2b2t/mapartcraft](https://github.com/
 - Translation credits can be seen on the translated pages
 - [SelfAdjointOperator](https://github.com/SelfAdjointOperator) for some extra features
 - jkascpkmc (Discord) for the improved Bayer/pattern dithering algorithm
-- [OpenCode / DeepSeek V4.1 Flash](CONTRIBUTORS.md) for implementation assistance, testing and deployment
+- [OpenCode / DeepSeek V4.1 Flash](CONTRIBUTORS.md) and [OpenCode / MiniMax M3.1 Flash](CONTRIBUTORS.md) for implementation, debugging, testing and deployment
 - [Upstream contributors](https://github.com/mike2b2t/mapartcraft/graphs/contributors)
 - [Contributors to this fork](https://github.com/AxopupelBruh/mapartcraft/graphs/contributors)
