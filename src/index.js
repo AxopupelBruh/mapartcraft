@@ -8,9 +8,17 @@ import Root from "./components/root";
 import "./index.css";
 
 // The app is served both from the domain root (local/Tailscale) and from a
-// GitHub Pages project subdirectory. Derive the router basename from the
-// current document URL instead of hard-coding either case.
-const appBasePath = new URL(".", document.baseURI).pathname.replace(/\/+$/, "");
+// GitHub Pages project subdirectory. The router basename must be the
+// directory the app is installed in — NOT the current URL.
+//
+// Раньше basename считался как new URL(".", document.baseURI): на обычной
+// странице это работало, но на глубокой ссылке вида /ru/faq получалось
+// "/ru/", и роутер срезал "/ru" — язык и путь FAQ терялись. Поэтому база
+// берётся из пути к бандлу: он всегда лежит в корне приложения
+// (/static/js/main.js или /mapartcraft/static/js/main.js).
+const bundleScript = document.querySelector('script[src*="static/js/"]');
+const bundlePath = bundleScript ? new URL(bundleScript.src).pathname : "";
+const appBasePath = bundlePath.replace(/\/static\/js\/.*$/, "").replace(/\/+$/, "");
 const basename = appBasePath || "/";
 const appBaseUrl = `${window.location.origin}${basename === "/" ? "/" : basename + "/"}`;
 
@@ -30,7 +38,12 @@ ReactDOM.render(
   <React.StrictMode>
     <Router basename={basename}>
       <Switch>
-        <Route path="/:countryCode?/faq" component={FAQ} />
+        {/* FAQ живёт и в английской, и в русской версии. Маршруты
+            разделены явно: в "/:countryCode?/faq" опциональный параметр
+            в середине пути не попадал в match.params, и страница всегда
+            показывалась по-английски. */}
+        <Route path="/faq" component={FAQ} />
+        <Route path="/:countryCode/faq" component={FAQ} />
         <Route path="/:countryCode?" component={Root} />
       </Switch>
     </Router>

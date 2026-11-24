@@ -7,6 +7,50 @@
     "DESCRIPTION": "Fork of mike2b2t/mapartcraft: local-first Minecraft map art studio with pixel editor, cleanup, palettes up to 26.3, .litematic and PNG export."
   },
   "FAQ": {
+    "CLOSE": "Close",
+    "TITLE": "FAQ",
+    "GET-STARTED": "How do I get started?",
+    "SECTION-GENERAL": "General",
+    "GENERAL-OUTPUT-CHANGE": "Why does the output change with the same image and settings?",
+    "GENERAL-OUTPUT-CHANGE-BODY": "The JPEG decoding and scaling algorithms vary between browsers and get changed all the time. If you wish to be 100% sure your image stays the same, right click on the Map preview and choose Save image as.... Next time you can upload the image you saved.",
+    "SECTION-SCHEMATIC": "Schematic (.nbt)",
+    "NBT-WHAT-TO-DO": "What do I do with the NBT file?",
+    "NBT-USE-AS-SCHEMATIC": "Use it like a .schematic file.",
+    "NBT-HOW-TO-USE": "How can I use the NBT file?",
+    "NBT-HOW-TO-USE-BODY": "You can use it with programs like cubical.xyz, MCEdit and mods like Schematica / Litematica. You can also import them into your game directly with a structure block - although it might require a redstone power source (#100). It might be a better idea to use a datafile instead - it's easier and gives more colors.",
+    "SCHEMATIC-NEED": "...but I need a .schematic file!",
+    "SCHEMATIC-NEED-BODY": "Import it into cubical.xyz or MCEdit and export as .schematic. Note that if you're using MCEdit or Cubical, you must export the map as 1.12.2. You do not need a .schematic file for use with Baritone; use Schematica and the \"#schematica\" command.",
+    "MCEDIT-BROKEN": "But MCEdit doesn't work!",
+    "MCEDIT-BROKEN-BODY": "Make sure you're using MCEdit Unified and importing the NBT as a schematic, NOT loading it as a world. Alternatively, use Cubical.",
+    "NOOBLINE": "Why is there a row of extra blocks?",
+    "NOOBLINE-BODY": "The shade a block shows up as on the map is decided by the block North of it; if the Northern block is higher then a darker tone shows, else if the Northern block is lower then a lighter tone shows, else a normal tone shows. Thus an extra row of blocks (colloquially known as a noobline) exists at the top of a map to shade the top row properly.",
+    "ALIGN": "How do I align the map?",
+    "ALIGN-BODY": "When you have found a suitable place to build your map (eg above an ocean) make sure to open the map first and find the bottom left corner for aligning your schematic. Maps in Minecraft align to a fixed 128x128 grid. North is always the up-direction on maps and you shouldn't need to rotate the schematic.",
+    "SECTION-DATAFILE": "Datafile (.dat)",
+    "DATAFILE-WHAT-IS": "What is a map.dat file?",
+    "DATAFILE-WHAT-IS-BODY": "'.dat' is the native format Minecraft stores map data in, meaning you can use it to import maps into your worlds without needing to build a physical structure. It also enables you to use a fourth extra shade of color not accessible in survival.",
+    "DATAFILE-WHAT-TO-DO": "What do I do with the map.dat file?",
+    "DATAFILE-WHAT-TO-DO-BODY": "You can use the map.dat file in singleplayer or a server you own. Create a new map in-game, go to your world's save file, then the data folder and from there you can replace map_xxx.dat files. MapartCraft downloads a .zip file containing all of the 1x1 map.dat files.",
+    "SECTION-SETTINGS": "Settings",
+    "SETTINGS-MAP-SIZE": "Map size?",
+    "SETTINGS-MAP-SIZE-BODY": "This will define how many maps you will create for your picture. When creating bigger maps, it's recommended to split it into multiple schematics (lest large staircased maps stretch above the world height limit). This can be done with the \"DOWNLOAD AS 1X1 SPLIT\" button which downloads all the 1x1 NBTs in a .zip file.",
+    "SETTINGS-STRETCHED": "My image is stretched!",
+    "SETTINGS-STRETCHED-BODY": "Change your map size, enable the crop option, or edit your image with an image editor.",
+    "SETTINGS-STAIRCASING": "'Staircasing'?",
+    "SETTINGS-STAIRCASING-BODY": "This will make your map 3D. Doing so will give you 3 times the colors, often producing a much richer mapart, but it will also make the map a lot harder to build, as it is not flat. 3D 'Classic' and 'Valley' modes produce the exact same resulting map image, however they are built differently; 'Valley' mode allows the map to be built without any downwards staircases, which may be easier in survival. Observe the difference:",
+    "SETTINGS-EXTRAS": "More staircasing modes can be enabled from the Extras settings tab.",
+    "SETTINGS-BETTER-COLOR": "Better color?",
+    "SETTINGS-BETTER-COLOR-BODY": "This setting will give you more natural colors. Disabling this will make the website faster and give you slightly worse colors. It is recommended to keep this enabled.",
+    "SETTINGS-DITHERING": "Dithering?",
+    "SETTINGS-DITHERING-BODY": "This will add grain to your image to make it look a lot smoother. Floyd-Steinberg dithering is the most accurate, but the Ordered/Bayer dithering will usually have less artifacts and gives the image an unique style. It is usually recommended to disable dithering for flat-colored artwork.",
+    "SETTINGS-BLOCK-TO-ADD": "Add blocks under/Block to add?",
+    "SETTINGS-BLOCK-TO-ADD-BODY": "Here you can pick the block that will be put under either important blocks (eg carpets, sand, pressure plates) or all blocks. This block will also be used for the noobline, which cannot be disabled.",
+    "SETTINGS-PRESETS": "Presets?",
+    "SETTINGS-PRESETS-BODY": "You can use presets to save and load block configurations. Pick your blocks and click \"Save\" to save them as a preset, pick a preset to load it and click \"Delete\" to delete the loaded preset. It is also possible to share a link for your preset with others.",
+    "SECTION-CUSTOM-BLOCKS": "Custom Blocks",
+    "CUSTOM-BLOCKS-BODY": "Custom blocks can be added from the bottom of the blocks selection pane. Different versions of a block can be added for the same block name, eg for 1.12.2 and 1.13.2+. Some examples are provided in the 'examples' section. NBT tags / block states can be found on the Minecraft Wiki. To edit an existing custom block, select it, edit the tags / versions etc, and then click the 'add' button to overwrite. Note that presets URLs do not support custom blocks.",
+    "IMG-CLASSIC-VS-VALLEY": "Classic and Valley staircase modes",
+    "IMG-PALETTE": "Palette",
     "FAQ": "FAQ",
     "VIDEO-TUTORIAL": "Video tutorial"
   },
@@ -81,7 +125,10 @@
       "ERROR-NO-NAME": "Enter block name before adding",
       "EXAMPLES": "Examples",
       "DELETE": "Delete",
-      "NO-EXPORT": "Note: Custom blocks will not be exported."
+      "NO-EXPORT": "Note: Custom blocks will not be exported.",
+      "STAIRS": "Stairs",
+      "SLABS": "Slabs",
+      "ALPHA-SLABS": "'Alpha slabs'"
     }
   },
   "MAP-PREVIEW": {
@@ -92,7 +139,11 @@
     "SCALE-MINUS-TT": "Make preview smaller",
     "SCALE-PLUS-TT": "Make preview bigger",
     "COMPARE": "Before/after",
-    "COMPARE-TT": "Hold to see the picture before the cleanup filters"
+    "COMPARE-TT": "Hold to see the picture before the cleanup filters",
+    "SCALE-1TO1-TT": "1 map pixel = 1 screen pixel",
+    "SCALE-PIXEL-N": "pixel x{n}",
+    "SCALE-PIXEL-1TO1": "pixel 1:1",
+    "SCALE-SMOOTH": "smooth"
   },
   "MAP-SETTINGS": {
     "TITLE": "Settings",
@@ -251,7 +302,18 @@
     "MAP-SIZE-DECREASE": "Decrease {axis}",
     "MAP-SIZE-RESETS-EDITS": "Changing the map size removes the manual pixel edits. Continue?",
     "MAP-SIZE-SUMMARY": "{files} files, {blocks} blocks",
-    "MAP-SIZE-SUMMARY-ONE": "1 file, {blocks} blocks"
+    "MAP-SIZE-SUMMARY-ONE": "1 file, {blocks} blocks",
+    "MODE-NBT": "Schematic (NBT)",
+    "MODE-MAPDAT": "Datafile (map.dat)",
+    "COLOUR-METHOD": {
+      "MAPARTCRAFT-DEFAULT": "MapartCraft Default (\"Better Colour\" on, close to CIE76 D50)",
+      "EUCLIDIAN": "Euclidian (\"Better Colour\" off)",
+      "CIE76-D65": "CIE76 D65 (L*a*b* space)",
+      "CIE76-D50": "CIE76 D50 (L*a*b* space)",
+      "CIEDE2000-D65": "CIEDE2000 D65 (L*a*b* space)",
+      "CIEDE2000-D50": "CIEDE2000 D50 (L*a*b* space)",
+      "HCT": "HCT (Hue, Chroma, Tone)"
+    }
   },
   "DOWNLOAD": {
     "ERROR-NONE-SELECTED": "Select blocks before downloading!",
@@ -351,7 +413,8 @@
     "ISLANDS-HINT": "Island removal must be switched on here: the options below only work when it is not Off.",
     "STYLE-MODIFIED": "modified",
     "ACCURACY": "Palette accuracy",
-    "ACCURACY-HINT": "{exact} of {total} pixels hit the palette exactly"
+    "ACCURACY-HINT": "{exact} of {total} pixels hit the palette exactly",
+    "TITLE": "Local Studio"
   },
   "PIXEL-EDITOR": {
     "TITLE": "Pixel editor",
@@ -428,6 +491,19 @@
     "OPENED": "Project opened",
     "ERROR-NO-IMAGE": "Load an image first — a project needs the source picture.",
     "ERROR-SAVE": "Could not save the project:",
-    "ERROR-OPEN": "Could not open the project:"
+    "ERROR-OPEN": "Could not open the project:",
+    "ERR": {
+      "NO-IMAGE-TO-SAVE": "There is no image to save.",
+      "CANNOT-READ-IMAGE": "Could not read the image.",
+      "NO-IMAGE": "The project file has no image.",
+      "IMAGE-DAMAGED": "The image in the project file is damaged.",
+      "NOT-JSON": "The project file is not valid JSON.",
+      "EMPTY": "The project file is empty.",
+      "WRONG-FILE": "This is not a MapArtCraft project file.",
+      "NO-VERSION": "The project file has no version.",
+      "NEWER-VERSION": "The project file was made by a newer version of the app (format {version}).",
+      "NO-FILE": "There is no file to open.",
+      "CANNOT-READ-FILE": "Could not read the file."
+    }
   }
 }

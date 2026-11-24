@@ -59,6 +59,7 @@ class StudioPanel extends Component {
       onOptionChange_dithering_strength,
       detectedPixelScale,
       sessionStatus,
+      sessionError,
       onResetSession,
       sessionResetAvailable,
       onSaveProject,
@@ -69,11 +70,15 @@ class StudioPanel extends Component {
     /* activeStyleId приходит из контроллера: он учитывает, что настройки
        могли измениться вручную, и подсвечивает последний применённый стиль. */
     const activeStyle = activeStyleId || (stylePreset !== "custom" ? stylePreset : optionValue_style) || "clean";
+
+    /* Метод None: дизеринга нет, поэтому сила дизеринга ни на что не
+       влияет. Панель гасим, чтобы не выглядело действующей. */
+    const ditheringDisabled = optionValue_dithering === 0;
     return (
       <div className="studioPanel">
         <div className="studioPanel_group studioPanel_styles">
           <div className="studioPanel_heading">
-            <h2>Local Studio</h2>
+            <h2>{this.t("STUDIO/TITLE", "Local Studio")}</h2>
             <div className="studioPanel_headingActions">
               <span className="studioPanel_kicker">
                 {sessionStatus === "saving"
@@ -84,6 +89,11 @@ class StudioPanel extends Component {
                       ? this.t("STUDIO/SESSION-ERROR", "Session save failed")
                       : this.t("STUDIO/KICKER", "style & pixels")}
               </span>
+              {sessionStatus === "error" && sessionError ? (
+                <span className="studioSessionError" title={sessionError}>
+                  {sessionError}
+                </span>
+              ) : null}
               {sessionResetAvailable ? (
                 <button type="button" className="studioSessionReset" onClick={onResetSession}>
                   {this.t("STUDIO/RESET-SESSION", "Reset session")}
@@ -144,7 +154,7 @@ class StudioPanel extends Component {
               );
             })}
           </div>
-          <div className="studioDitherStrength">
+          <div className={`studioDitherStrength${ditheringDisabled ? " studioDitherStrength_disabled" : ""}`}>
             <label htmlFor="studioDitherStrength">
               <span>{this.t("STUDIO/DITHER-STRENGTH", "Dither strength")}</span>
               <b>{optionValue_dithering_strength}%</b>
@@ -158,10 +168,10 @@ class StudioPanel extends Component {
               step="5"
               value={optionValue_dithering_strength}
               onChange={(event) => onOptionChange_dithering_strength(parseInt(event.target.value))}
-              disabled={optionValue_dithering === 0}
+              disabled={ditheringDisabled}
             />
             <small>
-              {optionValue_dithering === 0
+              {ditheringDisabled
                 ? this.t("STUDIO/DITHER-NONE", "Dithering is disabled for the None method.")
                 : this.t("STUDIO/DITHER-HINT", "0 — no error propagation, 100 — preset, 200 — stronger.")}
             </small>

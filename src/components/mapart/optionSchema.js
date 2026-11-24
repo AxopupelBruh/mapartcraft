@@ -121,7 +121,12 @@ export const OPTION_SCHEMA = [
     group: "output",
     labelKey: "MAP-SETTINGS/MODE",
     tooltipKey: "MAP-SETTINGS/MODE-TT",
-    options: () => Object.values(MapModes).map((mapMode) => ({ value: mapMode.uniqueId, label: mapMode.name })),
+    options: () =>
+      Object.values(MapModes).map((mapMode) => ({
+        value: mapMode.uniqueId,
+        labelKey: mapMode.localeKey,
+        label: mapMode.name,
+      })),
   },
   {
     key: "optionValue_mapSize_x",

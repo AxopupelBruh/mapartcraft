@@ -122,6 +122,9 @@ class MapartController extends Component {
     pixelEdits: {},
     detectedPixelScale: 1,
     sessionStatus: "",
+    /* Причина последней ошибки сохранения сессии: показывается рядом
+       со статусом, чтобы «ошибка» не была загадкой. */
+    sessionError: "",
     /* Состояние проекта: "" | "saved" | "opened" */
     projectStatus: "",
     /* Точность квантования последнего рендера: сколько пикселей попали
@@ -593,7 +596,7 @@ class MapartController extends Component {
   saveSessionNow() {
     if (this.state.uploadedImage_isPlaceholder || !this.uploadedImageBlob) return;
     const revision = this.sessionRevision;
-    if (this.mounted) this.setState({ sessionStatus: "saving" });
+    if (this.mounted) this.setState({ sessionStatus: "saving", sessionError: "" });
     saveSession({
       imageBlob: this.uploadedImageBlob,
       imageBaseFilename: this.state.uploadedImage_baseFilename,
@@ -602,11 +605,15 @@ class MapartController extends Component {
       pixelEdits: this.state.pixelEdits,
     })
       .then(() => {
-        if (this.mounted && revision === this.sessionRevision) this.setState({ sessionStatus: "saved" });
+        if (this.mounted && revision === this.sessionRevision) this.setState({ sessionStatus: "saved", sessionError: "" });
       })
       .catch((error) => {
         console.warn("Could not save the current session", error);
-        if (this.mounted && revision === this.sessionRevision) this.setState({ sessionStatus: "error" });
+        /* Причину показываем пользователю: «ошибка сохранения» сама по
+           себе ничего не объясняет, а смотреть в консоль браузера он не
+           будет. */
+        const reason = error && error.message ? error.message : String(error);
+        if (this.mounted && revision === this.sessionRevision) this.setState({ sessionStatus: "error", sessionError: reason });
       });
   }
 
@@ -1565,9 +1572,25 @@ class MapartController extends Component {
       if (this.mounted) this.setState({ projectStatus: "saved" });
     } catch (error) {
       console.warn("Could not save the project", error);
-      window.alert(`${getLocaleString("PROJECT/ERROR-SAVE")} ${error.message || error}`);
+      window.alert(`${getLocaleString("PROJECT/ERROR-SAVE")} ${this.projectErrorText(error)}`);
     }
   };
+
+  /* Текст ошибки проекта: у ошибок есть ключ локали, поэтому текст
+     переводится. Если ключа нет (например, ошибка чтения файла из
+     браузера) — показываем как есть. */
+  projectErrorText(error) {
+    const { getLocaleString } = this.props;
+    if (error && error.localeKey) {
+      let text = getLocaleString(error.localeKey) || error.localeKey;
+      const params = error.params || {};
+      for (const name of Object.keys(params)) {
+        text = text.replace(`{${name}}`, String(params[name]));
+      }
+      return text;
+    }
+    return (error && error.message) || String(error);
+  }
 
   handleOpenProjectClicked = async (file) => {
     const { getLocaleString } = this.props;
@@ -1601,7 +1624,7 @@ class MapartController extends Component {
       });
     } catch (error) {
       console.warn("Could not open the project", error);
-      window.alert(`${getLocaleString("PROJECT/ERROR-OPEN")} ${error.message || error}`);
+      window.alert(`${getLocaleString("PROJECT/ERROR-OPEN")} ${this.projectErrorText(error)}`);
     }
   };
 
@@ -1811,6 +1834,7 @@ class MapartController extends Component {
           onOptionChange_dithering_strength={this.onOptionChange_dithering_strength}
           detectedPixelScale={detectedPixelScale}
           sessionStatus={this.state.sessionStatus}
+          sessionError={this.state.sessionError}
           onResetSession={this.onResetSession}
           sessionResetAvailable={!this.state.uploadedImage_isPlaceholder}
           onSaveProject={this.handleSaveProjectClicked}

@@ -133,6 +133,18 @@
   min-width: 0;
 }
 
+/* Кастомные поля (размер карты, блок снизу) — то же самое: подпись и
+   управление друг под другом. В одну строку колонка с подписью
+   сжималась до пары десятков пикселей, и подпись наезжала на кнопки
+   ступпера. */
+.optionField_custom {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.optionField_custom .optionField_control {
+  width: 100%;
+}
+
 .optionField_range input[type="range"] {
   width: 108px;
   accent-color: var(--accent);

@@ -27,6 +27,17 @@ export const PROJECT_FORMAT = "mapartstudio";
 export const PROJECT_VERSION = 1;
 export const PROJECT_EXTENSION = ".mapartstudio.json";
 
+/* Ошибка проекта с ключом локали: текст переводится в контроллере,
+   поэтому пользователю не показывается английский текст.
+   Английский текст остаётся в message — он нужен как запасной вариант
+   (и для тестов, которые проверяют понятность ошибки). */
+export function projectError(localeKey, englishText, params = {}) {
+  const error = new Error(englishText);
+  error.localeKey = localeKey;
+  error.params = params;
+  return error;
+}
+
 /* Имя файла проекта по имени картинки. */
 export function projectFileName(baseFilename, fallback = "project") {
   const cleaned = String(baseFilename || "")
@@ -41,12 +52,12 @@ export function projectFileName(baseFilename, fallback = "project") {
 export function blobToDataUrl(blob) {
   return new Promise((resolve, reject) => {
     if (!blob) {
-      reject(new Error("There is no image to save"));
+      reject(projectError("PROJECT/ERR/NO-IMAGE-TO-SAVE", "There is no image to save"));
       return;
     }
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error || new Error("Could not read the image"));
+    reader.onerror = () => reject(reader.error || projectError("PROJECT/ERR/CANNOT-READ-IMAGE", "Could not read the image"));
     reader.readAsDataURL(blob);
   });
 }
@@ -54,10 +65,10 @@ export function blobToDataUrl(blob) {
 /* Строка с данными в base64 -> Blob. */
 export function dataUrlToBlob(dataUrl) {
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
-    throw new Error("The project file has no image");
+    throw projectError("PROJECT/ERR/NO-IMAGE", "The project file has no image");
   }
   const commaIndex = dataUrl.indexOf(",");
-  if (commaIndex < 0) throw new Error("The image in the project file is damaged");
+  if (commaIndex < 0) throw projectError("PROJECT/ERR/IMAGE-DAMAGED", "The image in the project file is damaged");
   const header = dataUrl.slice(0, commaIndex);
   const mimeMatch = /data:([^;,]+)/.exec(header);
   const mimeType = mimeMatch ? mimeMatch[1] : "application/octet-stream";
@@ -131,23 +142,23 @@ export function parseProjectFile(text) {
   try {
     parsed = JSON.parse(text);
   } catch (error) {
-    throw new Error("The project file is not valid JSON");
+    throw projectError("PROJECT/ERR/NOT-JSON", "The project file is not valid JSON");
   }
   if (!parsed || typeof parsed !== "object") {
-    throw new Error("The project file is empty");
+    throw projectError("PROJECT/ERR/EMPTY", "The project file is empty");
   }
   if (parsed.format !== PROJECT_FORMAT) {
-    throw new Error("This is not a MapArtCraft project file");
+    throw projectError("PROJECT/ERR/WRONG-FILE", "This is not a MapArtCraft project file");
   }
   const version = Number(parsed.version);
   if (!Number.isInteger(version) || version < 1) {
-    throw new Error("The project file has no version");
+    throw projectError("PROJECT/ERR/NO-VERSION", "The project file has no version");
   }
   if (version > PROJECT_VERSION) {
-    throw new Error(`The project file was made by a newer version of the app (format ${version})`);
+    throw projectError("PROJECT/ERR/NEWER-VERSION", `The project file was made by a newer version of the app (format ${version})`, { version });
   }
   if (!parsed.image || typeof parsed.image !== "object" || !parsed.image.dataUrl) {
-    throw new Error("The project file has no image");
+    throw projectError("PROJECT/ERR/NO-IMAGE", "The project file has no image");
   }
   const imageBlob = dataUrlToBlob(parsed.image.dataUrl);
   return {
@@ -163,7 +174,7 @@ export function parseProjectFile(text) {
 export function readProjectFile(file) {
   return new Promise((resolve, reject) => {
     if (!file) {
-      reject(new Error("There is no file to open"));
+      reject(projectError("PROJECT/ERR/NO-FILE", "There is no file to open"));
       return;
     }
     const reader = new FileReader();
@@ -174,7 +185,7 @@ export function readProjectFile(file) {
         reject(error);
       }
     };
-    reader.onerror = () => reject(reader.error || new Error("Could not read the file"));
+    reader.onerror = () => reject(reader.error || projectError("PROJECT/ERR/CANNOT-READ-FILE", "Could not read the file"));
     reader.readAsText(file);
   });
 }

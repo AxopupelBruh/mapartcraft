@@ -2570,11 +2570,11 @@ class MapPreview extends Component {
             <small className="pixelModeHint">
               {optionValue_resizeMethod === "pixel"
                 ? detectedPixelScale > 1
-                  ? `pixel x${detectedPixelScale}`
-                  : "pixel 1:1"
+                  ? getLocaleString("MAP-PREVIEW/SCALE-PIXEL-N").replace("{n}", String(detectedPixelScale))
+                  : getLocaleString("MAP-PREVIEW/SCALE-PIXEL-1TO1")
                 : optionValue_resizeMethod === "lanczos"
                   ? "Lanczos"
-                  : "smooth"}
+                  : getLocaleString("MAP-PREVIEW/SCALE-SMOOTH")}
             </small>
             <Tooltip tooltipText={getLocaleString("MAP-PREVIEW/ASPECT-RATIO-MISMATCH-TT")}>
               <small
@@ -2594,7 +2594,7 @@ class MapPreview extends Component {
             <PaletteAccuracy accuracy={quantisationAccuracy} getLocaleString={getLocaleString} />
           </div>
           <div>
-            <button type="button" className="previewModeButton" onClick={this.setPreviewScaleOne} title="1 map pixel = 1 screen pixel">
+            <button type="button" className="previewModeButton" onClick={this.setPreviewScaleOne} title={getLocaleString("MAP-PREVIEW/SCALE-1TO1-TT")}>
               1:1
             </button>
             <Tooltip tooltipText={getLocaleString("MAP-PREVIEW/SCALE-PLUS-TT")}>

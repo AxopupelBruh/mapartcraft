@@ -23,9 +23,22 @@ class Root extends Component {
     }
   }
 
-  getLocaleString = (stringName, languageCodeOverride) => {
-    // languageCodeOverride only used inside this method for falling back to en
-    const countryCode = languageCodeOverride !== undefined ? languageCodeOverride : this.props.match.params.countryCode;
+  /* Перевод строки по ключу "SECTION/KEY".
+
+     Второй аргумент — запасной текст на случай, если ключа нет в словаре
+     вообще. Раньше на этом месте стоял код языка: вызовы вида
+     getLocaleString("MAP-SETTINGS/MAP-SIZE-SUMMARY", "{files} files…")
+     трактовали английскую строку как код языка, и русский пользователь
+     видел английский текст вместо своего. Теперь код языка — только
+     внутренний аргумент (см. localeStringFor), а наружу — fallback. */
+  getLocaleString = (stringName, fallback) => {
+    const value = this.localeStringFor(stringName, this.props.match.params.countryCode);
+    if (value !== null && value !== undefined) return value;
+    return fallback !== undefined ? fallback : null;
+  };
+
+  /* Поиск строки в конкретном языке с откатом на английский. */
+  localeStringFor = (stringName, countryCode) => {
     if (countryCode in Locale) {
       let stringSegments = stringName.split("/");
       const stringLast = stringSegments.pop();
@@ -37,11 +50,11 @@ class Root extends Component {
       if (folder === undefined || folder === null || folder[stringLast] === null || folder[stringLast] === undefined) {
         // Fall back to English, but do not recurse forever when a new key has
         // not been translated yet.
-        return countryCode === "en" ? null : this.getLocaleString(stringName, "en");
+        return countryCode === "en" ? null : this.localeStringFor(stringName, "en");
       }
       return folder[stringLast];
     }
-    return this.getLocaleString(stringName, "en");
+    return this.localeStringFor(stringName, "en");
   };
 
   onEdgeWarningButtonClick = () => {
@@ -63,7 +76,7 @@ class Root extends Component {
         <div className="titleAndLanguages">
           <span>
             <h1>
-              MapartCraft <small className="titleSubtitle">Local Studio</small>
+              MapartCraft <small className="titleSubtitle">{this.getLocaleString("STUDIO/TITLE") || "Local Studio"}</small>
             </h1>
             <small className="forkCredit">
               {this.getLocaleString("FORK-LABEL")}

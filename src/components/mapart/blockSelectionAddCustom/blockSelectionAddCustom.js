@@ -22,6 +22,7 @@ class BlockSelectionAddCustom extends Component {
   examplesGroups = [
     {
       title: "Stairs",
+      titleKey: "BLOCK-SELECTION/ADD-CUSTOM/STAIRS",
       blocks: [
         {
           blockName: "birch_stairs",
@@ -35,6 +36,7 @@ class BlockSelectionAddCustom extends Component {
     },
     {
       title: "Slabs",
+      titleKey: "BLOCK-SELECTION/ADD-CUSTOM/SLABS",
       blocks: [
         {
           blockName: "stone_slab",
@@ -55,6 +57,7 @@ class BlockSelectionAddCustom extends Component {
     },
     {
       title: "'Alpha slabs'",
+      titleKey: "BLOCK-SELECTION/ADD-CUSTOM/ALPHA-SLABS",
       blocks: [
         {
           blockName: "stone_slab",
@@ -174,7 +177,7 @@ class BlockSelectionAddCustom extends Component {
         <summary>{getLocaleString("BLOCK-SELECTION/ADD-CUSTOM/EXAMPLES")}</summary>
         {this.examplesGroups.map((examplesGroup) => (
           <div key={examplesGroup.title}>
-            <b>{examplesGroup.title}</b>
+            <b>{examplesGroup.titleKey ? getLocaleString(examplesGroup.titleKey) : examplesGroup.title}</b>
             {examplesGroup.blocks.map((block) => (
               <div
                 key={block.blockName}

@@ -60,17 +60,50 @@ function requestToPromise(request) {
 function transactionDone(transaction) {
   return new Promise((resolve, reject) => {
     transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
+    transaction.onerror = () => reject(transaction.error || new Error("IndexedDB transaction failed"));
     transaction.onabort = () => reject(transaction.error || new Error("IndexedDB transaction aborted"));
   });
 }
 
+/* Ошибка IndexedDB без читаемого сообщения (transaction.error бывает null)
+   бесполезна пользователю: он видит «ошибка сохранения» и ничего больше.
+   Поэтому текст собирается вручную из name и message. */
+function describeStorageError(error, fallbackText) {
+  if (!error) return fallbackText;
+  const name = error.name || "Error";
+  const message = error.message || "";
+  if (!message) return `${name}: ${fallbackText}`;
+  return `${name}: ${message}`;
+}
+
 export async function saveSession(session) {
+  /* Картинку в базу кладём байтами, а не как Blob.
+
+     Firefox не даёт записать в IndexedDB Blob, который сам же только что
+     оттуда прочитали: вторая запись падает с UnknownError, и сохранение
+     сессии перестаёт работать после восстановления (любая смена
+     настройки). Сырые байты такой проблемы не имеют, а Blob из них
+     собирается на лету при чтении. */
+  const record = { ...session };
+  if (record.imageBlob instanceof Blob) {
+    record.imageType = record.imageBlob.type || "image/png";
+    record.imageBuffer = await record.imageBlob.arrayBuffer();
+    delete record.imageBlob;
+  }
+
   const db = await openStudioDB();
-  const tx = db.transaction(SESSION_STORE, "readwrite");
-  tx.objectStore(SESSION_STORE).put({ ...session, id: "current", savedAt: Date.now() });
-  await transactionDone(tx);
-  db.close();
+  try {
+    const tx = db.transaction(SESSION_STORE, "readwrite");
+    /* Ошибку записи ловим по запросу, а не по транзакции: у транзакции
+       error бывает null, и причина теряется. */
+    const request = tx.objectStore(SESSION_STORE).put({ ...record, id: "current", savedAt: Date.now() });
+    await requestToPromise(request);
+    await transactionDone(tx);
+  } catch (error) {
+    throw new Error(describeStorageError(error, "Could not write the session to the browser database"));
+  } finally {
+    db.close();
+  }
 }
 
 export async function loadSession() {
@@ -78,7 +111,14 @@ export async function loadSession() {
   const tx = db.transaction(SESSION_STORE, "readonly");
   const result = await requestToPromise(tx.objectStore(SESSION_STORE).get("current"));
   db.close();
-  return result || null;
+  if (!result) return null;
+
+  /* Собираем Blob из байтов (см. saveSession). Старые сессии, где картинка
+     лежала как Blob, читаем как есть. */
+  if (result.imageBuffer && !result.imageBlob) {
+    result.imageBlob = new Blob([result.imageBuffer], { type: result.imageType || "image/png" });
+  }
+  return result;
 }
 
 export async function clearSession() {

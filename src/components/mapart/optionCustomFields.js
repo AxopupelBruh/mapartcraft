@@ -92,8 +92,8 @@ const MapSizeField = ({ values, handlers, getLocaleString }) => {
   const blockCount = 128 * sizeX * 128 * sizeY;
   const summary = (
     fileCount === 1
-      ? getLocaleString("MAP-SETTINGS/MAP-SIZE-SUMMARY-ONE", "1 file, {blocks} blocks")
-      : getLocaleString("MAP-SETTINGS/MAP-SIZE-SUMMARY", "{files} files, {blocks} blocks")
+      ? getLocaleString("MAP-SETTINGS/MAP-SIZE-SUMMARY-ONE") || "1 file, {blocks} blocks"
+      : getLocaleString("MAP-SETTINGS/MAP-SIZE-SUMMARY") || "{files} files, {blocks} blocks"
   )
     .replace("{files}", String(fileCount))
     .replace("{blocks}", String(blockCount));
