@@ -17,23 +17,26 @@
   box-sizing: border-box;
 }
 
+/* Шапка панели: название — своей строкой по центру, под ним строка
+   со статусом сессии и кнопкой сброса. Раньше всё стояло в одну строку,
+   и под крупным заголовком зияла пустота (слева от кнопки). */
 .studioPanel_heading {
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5em;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35em;
   border-bottom: 1px solid var(--border-3);
-  padding-bottom: 0.25em;
+  padding-bottom: 0.3em;
   margin-bottom: 0.5em;
 }
 
 .studioPanel_heading h2 {
   font-family: "kenpixel_mini_square", Lato, sans-serif;
   color: var(--accent);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-lg);
   font-weight: normal;
-  text-align: left;
+  /* Название по центру шапки: меньше пустого места по краям. */
+  text-align: center;
   /* Название панели — в одну строку: в колонке 300 px крупный пиксельный
      шрифт переносил его на две. */
   white-space: nowrap;
@@ -43,7 +46,9 @@
   color: var(--text-5);
   font-family: Lato, Open Sans, Arial, sans-serif;
   font-size: var(--fs-sm);
-  text-align: right;
+  text-align: left;
+  /* Статус прижимается влево, кнопка сброса — вправо. */
+  margin-right: auto;
 }
 
 .studioStyleGrid {
@@ -215,7 +220,7 @@
 }
 
 .studioPanel_headingActions {
-  display: inline-flex;
+  display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
