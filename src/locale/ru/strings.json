@@ -414,6 +414,15 @@
     "STYLE-MODIFIED": "изменён",
     "ACCURACY": "Точность палитры",
     "ACCURACY-HINT": "{exact} из {total} пикселей попали в палитру точно",
+    "ACCURACY-MISSES": "{missed} пикселей не попали в палитру:",
+    "ACCURACY-MISS-ITEM": "{block} ({tone}) — {count} px, отличие {difference}",
+    "ACCURACY-SHIFT-HINT": "Цвета отличаются всего на пару единиц — скорее всего, их сдвинула предобработка. Верните яркость, контраст и насыщенность к 100%.",
+    "TONE": {
+      "DARK": "тёмный",
+      "NORMAL": "обычный",
+      "LIGHT": "светлый",
+      "UNOBTAINABLE": "недоступный"
+    },
     "TITLE": "Локальная студия"
   },
   "PIXEL-EDITOR": {

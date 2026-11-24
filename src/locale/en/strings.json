@@ -414,6 +414,15 @@
     "STYLE-MODIFIED": "modified",
     "ACCURACY": "Palette accuracy",
     "ACCURACY-HINT": "{exact} of {total} pixels hit the palette exactly",
+    "ACCURACY-MISSES": "{missed} pixels miss the palette:",
+    "ACCURACY-MISS-ITEM": "{block} ({tone}) — {count} px, off by {difference}",
+    "ACCURACY-SHIFT-HINT": "The colours are off by only a couple of units — preprocessing probably shifted them. Put brightness, contrast and saturation back to 100%.",
+    "TONE": {
+      "DARK": "dark",
+      "NORMAL": "normal",
+      "LIGHT": "light",
+      "UNOBTAINABLE": "unobtainable"
+    },
     "TITLE": "Local Studio"
   },
   "PIXEL-EDITOR": {

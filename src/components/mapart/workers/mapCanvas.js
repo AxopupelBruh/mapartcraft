@@ -817,24 +817,115 @@ function buildFlatToneList() {
    Считается по картинке после очистки, но до дизеринга: в цикле рендера
    цвет пикселя меняется на лету (диффузия ошибки), и там исходного цвета
    уже нет.
+
+   Кроме самой цифры собираются оттенки, которые не попали: сколько
+   пикселей каждого цвета и какой блок к нему ближе всего. Без этого
+   непонятно, откуда взялись, скажем, 10% промаха: то ли таких оттенков
+   нет в Minecraft, то ли цвета сдвинула предобработка.
    -------------------------------------------------------------------------- */
+
+/* Ближайший оттенок палитры для цвета, который в неё не попал. Ищется по
+   ВСЕМ наборам и тонам, а не только по выбранным: в отчёте видно, какой
+   блок стоило бы добавить. Результат кэшируется: у картинки обычно
+   намного меньше различных цветов, чем пикселей. */
+var nearestToneCache = new Map();
+
+function nearestPaletteTone(rgb) {
+  const key = (rgb[0] << 16) + (rgb[1] << 8) + rgb[2];
+  if (nearestToneCache.has(key)) return nearestToneCache.get(key);
+  let best = null;
+  let bestDistance = Infinity;
+  for (const colourSetId of Object.keys(coloursJSON)) {
+    const colourSet = coloursJSON[colourSetId];
+    for (const toneKey of Object.keys(colourSet.tonesRGB)) {
+      const toneRGB = colourSet.tonesRGB[toneKey];
+      /* Тон с «чадлой» альфой (цвет прозрачности) — не настоящий цвет. */
+      if (!toneRGB || toneRGB.some((channel) => !Number.isFinite(channel) || channel < 0 || channel > 255)) continue;
+      const dr = rgb[0] - toneRGB[0];
+      const dg = rgb[1] - toneRGB[1];
+      const db = rgb[2] - toneRGB[2];
+      const distance = dr * dr + dg * dg + db * db;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = { colourSetId: colourSetId, tone: toneKey, rgb: toneRGB };
+      }
+    }
+  }
+  if (!best) {
+    nearestToneCache.set(key, null);
+    return null;
+  }
+  /* Насколько сильно цвет отличается от ближайшего оттенка: по самой
+     большой разнице каналов (0..255). */
+  const difference = Math.max(
+    Math.abs(rgb[0] - best.rgb[0]),
+    Math.abs(rgb[1] - best.rgb[1]),
+    Math.abs(rgb[2] - best.rgb[2])
+  );
+  const result = {
+    colourSetId: best.colourSetId,
+    tone: best.tone,
+    blockName: blockNameForColourSet(best.colourSetId),
+    difference: difference,
+  };
+  nearestToneCache.set(key, result);
+  return result;
+}
+
+/* Название блока набора: выбранный, а если его нет — первый в наборе. */
+function blockNameForColourSet(colourSetId) {
+  const colourSet = coloursJSON[colourSetId];
+  if (!colourSet || !colourSet.blocks) return null;
+  const selectedId = selectedBlocks[colourSetId];
+  const block =
+    selectedId !== undefined && selectedId !== "-1" && colourSet.blocks[selectedId]
+      ? colourSet.blocks[selectedId]
+      : colourSet.blocks[Object.keys(colourSet.blocks)[0]];
+  return block ? block.displayName : null;
+}
+
 function countExactPalettePixels() {
   const data = canvasImageData.data;
   const pixelCount = data.length / 4;
   let exact = 0;
   let total = 0;
+  /* Счётчик промахов: ключ — цвет, значение — сколько таких пикселей. */
+  const misses = new Map();
   for (let index = 0; index < pixelCount; index++) {
     const offset = index * 4;
     if (data[offset + 3] === 0) continue; // прозрачные пиксели не считаются
     total++;
-    if (exactToneSet.has((data[offset] << 16) + (data[offset + 1] << 8) + data[offset + 2])) {
+    const rgb = (data[offset] << 16) + (data[offset + 1] << 8) + data[offset + 2];
+    if (exactToneSet.has(rgb)) {
       exact++;
+    } else {
+      const count = misses.get(rgb);
+      if (count === undefined) misses.set(rgb, 1);
+      else misses.set(rgb, count + 1);
     }
   }
+  /* Четыре самых частых промаха: больше не нужно, подсказка короткая. */
+  const topMisses = [...misses.entries()]
+    .sort((first, second) => second[1] - first[1])
+    .slice(0, 4)
+    .map(([rgb, count]) => {
+      const rgbValues = [(rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255];
+      const nearest = nearestPaletteTone(rgbValues);
+      return {
+        count: count,
+        rgb: rgbValues,
+        colourSetId: nearest ? nearest.colourSetId : null,
+        tone: nearest ? nearest.tone : null,
+        blockName: nearest ? nearest.blockName : null,
+        difference: nearest ? nearest.difference : null,
+      };
+    });
   paletteAccuracy = {
     exact: exact,
     total: total,
     share: total > 0 ? exact / total : 0,
+    missed: total - exact,
+    misses: topMisses,
   };
   return paletteAccuracy;
 }
@@ -2931,6 +3022,7 @@ onmessage = (e) => {
     // new cache.
     exactColourCache.clear();
     setupExactColourCache();
+    nearestToneCache.clear();
     postMessage({
       head: "INIT_DONE",
       body: {},
@@ -2968,6 +3060,7 @@ function renderPixels(body, requestId) {
     DitherMethods = body.DitherMethods || DitherMethods;
     exactColourCache.clear();
     setupExactColourCache();
+    nearestToneCache.clear();
   }
   currentRequestId = requestId;
   canvasImageData = body.canvasImageData;

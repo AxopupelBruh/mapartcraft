@@ -438,6 +438,40 @@ test("7.4 без рендера точность не выдумывается",
   expect(container.textContent).toBe("");
 });
 
+test("7.5 подсказка объясняет, какие оттенки не попали в палитру", () => {
+  const accuracy = {
+    exact: 58676,
+    total: 65536,
+    share: 58676 / 65536,
+    missed: 6860,
+    misses: [
+      { count: 3605, rgb: [164, 168, 184], colourSetId: "7", tone: "light", blockName: "Clay", difference: 1 },
+      { count: 3255, rgb: [112, 112, 180], colourSetId: "4", tone: "dark", blockName: "Ice", difference: 2 },
+    ],
+  };
+  const { container } = render(<PaletteAccuracy {...paletteAccuracyProps({ accuracy })} />);
+  const tooltip = container.querySelector(".tooltipText").textContent;
+  expect(tooltip).toContain("6860 pixels miss the palette");
+  expect(tooltip).toContain("Clay (light)");
+  expect(tooltip).toContain("Ice (dark)");
+  /* Отличие в единицу-две — значит, цвета сдвинула предобработка. */
+  expect(tooltip).toContain("preprocessing");
+});
+
+test("7.6 далёкие промахи не выдают себя за сдвиг предобработки", () => {
+  const accuracy = {
+    exact: 8000,
+    total: 10000,
+    share: 0.8,
+    missed: 2000,
+    misses: [{ count: 2000, rgb: [7, 7, 7], colourSetId: "28", tone: "dark", blockName: "Black Wool", difference: 10 }],
+  };
+  const { container } = render(<PaletteAccuracy {...paletteAccuracyProps({ accuracy })} />);
+  const tooltip = container.querySelector(".tooltipText").textContent;
+  expect(tooltip).toContain("Black Wool (dark)");
+  expect(tooltip).not.toContain("preprocessing");
+});
+
 /* ------------------------------------------- 8. мобильная раскладка */
 
 const layoutCss = fs.readFileSync(path.join(__dirname, "mapartController.css"), "utf-8");
