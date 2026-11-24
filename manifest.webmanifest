@@ -1,0 +1,27 @@
+{
+  "name": "MapartCraft Local Studio (fork)",
+  "short_name": "MapartCraft",
+  "description": "Fork of mike2b2t/mapartcraft: local-first map art studio with pixel editor, cleanup, palettes up to 26.3 and .litematic export.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#333333",
+  "theme_color": "#333333",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
